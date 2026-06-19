@@ -1,4 +1,4 @@
-import type { CheckContext, RuleResult, Template } from "./types.ts";
+import type { CheckContext, RuleResult, Template } from "../types.ts";
 
 export async function runChecks(
 	template: Template,

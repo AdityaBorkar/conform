@@ -23,19 +23,28 @@ function shortId(id: string): string {
 	return idx >= 0 ? id.slice(idx + 1) : id;
 }
 
-export function renderTui(templateName: string, results: RuleResult[]): string {
+export function renderTui(
+	templateName: string,
+	results: RuleResult[],
+	options: { verbose?: boolean } = {},
+): string {
+	const { verbose = false } = options;
+	const visible = verbose
+		? results
+		: results.filter((r) => r.status !== "pass");
+
 	const lines: string[] = [];
 	lines.push(`${BOLD}@adityab/conform${RESET} — ${templateName} template`);
 	lines.push("");
 
 	const groups = new Map<string, RuleResult[]>();
-	for (const result of results) {
+	for (const result of visible) {
 		const group = groups.get(result.group) ?? [];
 		group.push(result);
 		groups.set(result.group, group);
 	}
 
-	const maxIdLen = Math.max(...results.map((r) => shortId(r.id).length));
+	const maxIdLen = Math.max(...visible.map((r) => shortId(r.id).length));
 
 	for (const [group, groupResults] of groups) {
 		lines.push(group);

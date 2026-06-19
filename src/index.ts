@@ -1,4 +1,4 @@
-export { defineConfig, defineTemplate, rule } from "./template-api.ts";
+export { defineConfig, defineTemplate, rule } from "./template-api/index.ts";
 export type {
 	CheckContext,
 	CheckResult,

@@ -5,7 +5,7 @@ import type {
 	Rule,
 	RuleSeverity,
 	Template,
-} from "./types.ts";
+} from "../types.ts";
 
 export function defineTemplate(template: Template): Template {
 	return template;

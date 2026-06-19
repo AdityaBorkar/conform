@@ -4,6 +4,9 @@
   "workspaces": {
     "": {
       "name": "@adityab-conform",
+      "dependencies": {
+        "commander": "^15.0.0",
+      },
       "devDependencies": {
         "@biomejs/biome": "^2.5.0",
         "@types/bun": "^1.3.14",
@@ -78,6 +81,8 @@
     "@typescript/typescript-win32-x64": ["@typescript/typescript-win32-x64@7.0.1-rc", "", { "os": "win32", "cpu": "x64" }, "sha512-98R3+OqDr/r0/PLWEoXu88AE0lGVLNd335Ew8ONgzK1JWkNs4ou/5BGt3Or1ij4iXjH+c7PRL+jFjCbtWze+EA=="],
 
     "bun-types": ["bun-types@1.3.14", "", { "dependencies": { "@types/node": "*" } }, "sha512-4N0ig0fEomHt5R0KCFWjovxow98rIoRwKolrYdCcknNwMekCXRnWEUvgu5soYV8QXtVsrUD8B95MBOZGPvr6KQ=="],
+
+    "commander": ["commander@15.0.0", "", {}, "sha512-z67u4ZhzCL/Tydu1lJARtEZYWbWaN7oYLHbsuzocr6y4N6WZAagG3RQ4FW61V1/0+jImpj293XfrcYnd1qxtPg=="],
 
     "husky": ["husky@9.1.7", "", { "bin": { "husky": "bin.js" } }, "sha512-5gs5ytaNjBrh5Ow3zrvdUUY+0VxIuWVL4i9irt6friV+BqdCfmV11CQTWMiBYWHbXhco+J1kHfTOUkePhCDvMA=="],
 

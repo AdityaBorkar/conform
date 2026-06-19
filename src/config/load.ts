@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import type { ConformConfig } from "./types.ts";
+import type { ConformConfig } from "../types.ts";
 
 export async function loadConfig(
 	targetPath: string,

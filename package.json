@@ -25,5 +25,8 @@
 		"prepare": "husky",
 		"check:lint": "biome check --fix .",
 		"check:types": "tsc --noEmit"
+	},
+	"dependencies": {
+		"commander": "^15.0.0"
 	}
 }
