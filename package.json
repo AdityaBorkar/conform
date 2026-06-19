@@ -1,0 +1,29 @@
+{
+	"name": "@adityab/conform",
+	"version": "0.1.0",
+	"module": "src/index.ts",
+	"type": "module",
+	"bin": {
+		"conform": "src/cli.ts"
+	},
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"files": [
+		"src",
+		"templates"
+	],
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.0",
+		"@types/bun": "^1.3.14",
+		"husky": "^9.1.7"
+	},
+	"peerDependencies": {
+		"typescript": "^7.0.1-rc"
+	},
+	"scripts": {
+		"prepare": "husky",
+		"check:lint": "biome check --fix .",
+		"check:types": "tsc --noEmit"
+	}
+}
