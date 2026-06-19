@@ -6,6 +6,7 @@
     "allowUnusedLabels": false,
     "exactOptionalPropertyTypes": true,
     "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
     "jsx": "react-jsx",
     "lib": ["ESNext"],
     "module": "Preserve",
@@ -19,13 +20,13 @@
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "skipLibCheck": true,
     "strict": true,
     "target": "ESNext",
     "types": ["bun"],
-    "verbatimModuleSyntax": true,
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "verbatimModuleSyntax": true
   }
 }

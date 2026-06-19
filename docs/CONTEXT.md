@@ -29,11 +29,18 @@ Rule
   group: string           — e.g. "package.json"
   description: string     — Human-readable explanation
   severity: Fail | Warn   — Expected severity if the check doesn't pass
-  check: (ctx) => CheckResult | Promise<CheckResult>
+  kind: "deterministic" | "ai"
+  check: (ctx) => CheckResult | Promise<CheckResult>   — deterministic rules
+  prompt?: string         — ai only: instruction to the AI
+  files?: string[]        — ai only: which files to feed to the AI
 
 CheckResult
   status: Pass | Warn | Fail
   message?: string        — Why it passed/failed
+
+AiCheckResult extends CheckResult
+  confidence: number      — 0-1, how confident the AI is
+  reasoning: string       — Why the AI reached this conclusion
 
 CheckContext
   targetPath: string
@@ -41,6 +48,25 @@ CheckContext
   readJson(relPath): JsonValue | null
   fileExists(relPath): boolean
   packageJson: PackageJson | null
+
+RuleResult
+  id: string
+  group: string
+  description: string
+  severity: RuleSeverity
+  status: Severity
+  message?: string
+  kind: "deterministic" | "ai"
+  confidence?: number     — ai only
+  reasoning?: string      — ai only
+
+ConformConfig
+  template: string
+  ai?: {
+    model: string                              — e.g. "anthropic/claude-sonnet-4-5-20250929"
+    apiKey?: string                            — inline key (not recommended for committed configs)
+    apiKeyEnvVar?: string                      — env var name, default "CONFORM_AI_API_KEY"
+  }
 
 Severity = Pass | Warn | Fail
 ```
@@ -58,7 +84,7 @@ templates/
 A template file looks like:
 
 ```ts
-import { defineTemplate, rule } from "@adityab/conform";
+import { defineTemplate, rule, aiRule } from "@adityab/conform";
 
 export default defineTemplate({
   name: "npm-publish",
@@ -76,6 +102,15 @@ export default defineTemplate({
         return { status: "pass", message: ctx.packageJson.name };
       },
     }),
+    aiRule({
+      id: "husky:conventional-commits",
+      group: "husky",
+      description: "commit-msg hook enforces conventional commits",
+      severity: "fail",
+      files: [".husky/commit-msg"],
+      prompt:
+        "Does this commit-msg hook enforce conventional commits format (type(scope)!: description)? Check if it uses commitlint or a similar tool.",
+    }),
   ],
 });
 ```
@@ -89,18 +124,25 @@ import { defineConfig } from "@adityab/conform";
 
 export default defineConfig({
   template: "npm-publish",
+  ai: {
+    model: "anthropic/claude-sonnet-4-5-20250929",
+    // Option 1: env var (recommended) — reads CONFORM_AI_API_KEY by default
+    // Option 2: inline key (not recommended for committed configs)
+    // apiKey: "sk-...",
+  },
 });
 ```
 
 ## CLI
 
 ```
-conform check [--path <dir>] [--json]
+conform check [--path <dir>] [--json] [--disable-ai]
 ```
 
 - `check` — Run conformance checks against the configured template
 - `--path` — Target directory (default: CWD)
 - `--json` — Machine-readable JSON output instead of TUI table
+- `--disable-ai` — Skip all AI-powered rules (they are excluded from results entirely)
 
 ## Exit Codes
 
@@ -124,6 +166,7 @@ package.json
 husky
   ✓ dev-deps            husky in devDependencies
   ✗ hooks-dir           .husky/ directory missing
+  ✗ conventional-commits ✱ commit-msg hook does not enforce conventional commits
 
 biome
   ✓ dev-deps            @biomejs/biome in devDependencies
@@ -140,8 +183,10 @@ files
   ✓ gitignore           .gitignore exists
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  12 passed  ·  3 warned  ·  4 failed
+  12 passed  ·  3 warned  ·  5 failed   (1 AI)
 ```
+
+✱ = AI-evaluated rule
 
 ## JSON Output
 
@@ -155,10 +200,21 @@ files
       "group": "package.json",
       "description": "name field is present in package.json",
       "status": "pass",
-      "message": "@adityab/conform"
+      "message": "@adityab/conform",
+      "kind": "deterministic"
+    },
+    {
+      "id": "husky:conventional-commits",
+      "group": "husky",
+      "description": "commit-msg hook enforces conventional commits",
+      "status": "fail",
+      "message": "commit-msg hook does not enforce conventional commits",
+      "kind": "ai",
+      "confidence": 0.87,
+      "reasoning": "The .husky/commit-msg file contains only an echo statement with no commitlint or similar validation tool configured."
     }
   ],
-  "summary": { "pass": 12, "warn": 3, "fail": 4 }
+  "summary": { "pass": 12, "warn": 3, "fail": 5, "ai": 1 }
 }
 ```
 

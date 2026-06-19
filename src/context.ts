@@ -31,9 +31,13 @@ export function createCheckContext(targetPath: string): CheckContext {
     const content = readFile(relPath);
     if (content === null) return null;
     try {
-      return JSON.parse(stripJsonComments(content)) as T;
+      return JSON.parse(content) as T;
     } catch {
-      return null;
+      try {
+        return JSON.parse(stripJsonComments(content)) as T;
+      } catch {
+        return null;
+      }
     }
   }
 

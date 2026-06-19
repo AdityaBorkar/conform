@@ -1,9 +1,15 @@
-export { defineConfig, defineTemplate, rule } from "./template-api/index.ts";
+export {
+  defineConfig,
+  defineTemplate,
+  domain,
+  rule,
+} from "./conform-api/index.ts";
 export type {
   CheckContext,
   CheckResult,
   ConformConfig,
   ConformOutput,
+  GroupBy,
   PackageJson,
   Rule,
   RuleResult,

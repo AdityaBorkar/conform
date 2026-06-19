@@ -1,12 +1,12 @@
-import type { ConformOutput, RuleResult } from "@/types.ts";
+import type { ConformOutput, GroupBy, RuleResult } from "@/types.ts";
 
 export function renderJson(
   templateName: string,
   targetPath: string,
   results: RuleResult[],
-  options: { verbose?: boolean } = {},
+  options: { verbose?: boolean; groupBy?: GroupBy } = {},
 ): string {
-  const { verbose = false } = options;
+  const { verbose = false, groupBy = "domains" } = options;
   const visible = verbose
     ? results
     : results.filter((r) => r.status !== "pass");
@@ -25,6 +25,10 @@ export function renderJson(
     },
     template: templateName,
   };
+
+  if (groupBy === "files") {
+    output.groupBy = "files";
+  }
 
   return JSON.stringify(output, null, 2);
 }

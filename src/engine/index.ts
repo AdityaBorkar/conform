@@ -8,14 +8,18 @@ export async function runChecks(
 
   for (const rule of template.rules) {
     const result = await rule.check(ctx);
-    results.push({
+    const entry: RuleResult = {
       description: rule.description,
+      domain: rule.domain,
       group: rule.group,
       id: rule.id,
-      message: result.message,
       severity: rule.severity,
       status: result.status,
-    });
+    };
+    if (result.message !== undefined) {
+      entry.message = result.message;
+    }
+    results.push(entry);
   }
 
   return results;

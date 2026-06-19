@@ -9,7 +9,7 @@ export async function loadConfig(
   try {
     const mod = await import(configPath);
     const config: ConformConfig = mod.default ?? mod;
-    if (config?.template) return config;
+    if (config.template) return config;
     return null;
   } catch {
     return null;

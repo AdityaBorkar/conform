@@ -12,7 +12,7 @@ export async function resolver(name: string): Promise<Template | null> {
   try {
     const mod = await import(indexPath);
     const template: Template = mod.default ?? mod;
-    if (template?.name && Array.isArray(template?.rules)) {
+    if (template.name && Array.isArray(template.rules)) {
       return template;
     }
   } catch {

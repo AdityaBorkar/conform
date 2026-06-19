@@ -2,9 +2,11 @@
   "bin": {
     "conform": "src/cli.ts"
   },
+  "bugs": "https://github.com/adityab/conform/issues",
   "dependencies": {
     "commander": "^15.0.0"
   },
+  "description": "CLI tool that checks repositories against conformance templates",
   "devDependencies": {
     "@biomejs/biome": "^2.5.0",
     "@changesets/changelog-git": "^0.2.1",
@@ -12,14 +14,23 @@
     "@types/bun": "^1.3.14",
     "husky": "^9.1.7"
   },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
   "exports": {
     ".": "./src/index.ts"
   },
   "files": ["src", "templates"],
+  "homepage": "https://github.com/adityab/conform#readme",
+  "license": "MIT",
   "module": "src/index.ts",
   "name": "@adityab/conform",
   "peerDependencies": {
     "typescript": "^7.0.1-rc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adityab/conform.git"
   },
   "scripts": {
     "changeset": "changeset",
@@ -27,8 +38,11 @@
     "check:types": "tsc --noEmit",
     "prepare": "husky",
     "release": "changeset publish",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
     "version": "changeset version && bun run scripts/ensure-unreleased.ts"
   },
+  "sideEffects": false,
   "type": "module",
   "version": "0.1.0"
 }

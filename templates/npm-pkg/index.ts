@@ -1,4 +1,14 @@
-import { defineTemplate, rule } from "@/template-api/index.ts";
+import { defineTemplate, domain } from "@/conform-api/index.ts";
+
+const style = domain("Style & Validation");
+const build = domain("Build & Tasks");
+const testing = domain("Testing");
+const documentation = domain("Documentation");
+const devEnv = domain("Dev Environment");
+const codeQuality = domain("Code Quality");
+const observability = domain("Observability");
+const security = domain("Security & Governance");
+const github = domain("GitHub Configuration");
 
 type JsrConfig = {
   name?: string;
@@ -33,44 +43,6 @@ function getExportPaths(ctx: {
   if (!exports) return [];
   if (typeof exports === "string") return [exports];
   return Object.values(exports);
-}
-
-const FENCED_CODE_RE = /```|~~~/;
-const INDENTED_CODE_RE = /\n\s*?\n( {4}|\t)[^\S\n]*\S/;
-
-function hasCodeBlock(content: string): boolean {
-  return FENCED_CODE_RE.test(content) || INDENTED_CODE_RE.test(content);
-}
-
-const EXPORTED_SYMBOL_RE =
-  /export\s+(?:function|class|const|let|var|interface|type|enum)\s+(\w+)/g;
-const JSDOC_PRECEDING_RE = /\*\/\s*$/;
-
-function countDocumentedSymbols(content: string): {
-  total: number;
-  documented: number;
-} {
-  let total = 0;
-  let documented = 0;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  const textBefore = (idx: number) =>
-    content.slice(Math.max(0, idx - 200), idx);
-
-  match = EXPORTED_SYMBOL_RE.exec(content);
-  while (match !== null) {
-    if (match.index >= lastIndex) {
-      lastIndex = match.index;
-      total++;
-      const before = textBefore(match.index);
-      if (JSDOC_PRECEDING_RE.test(before)) {
-        documented++;
-      }
-    }
-    match = EXPORTED_SYMBOL_RE.exec(content);
-  }
-  return { documented, total };
 }
 
 const SLOW_TYPE_PATTERNS: {
@@ -118,11 +90,169 @@ const SLOW_TYPE_PATTERNS: {
   },
 ];
 
+const CI_WORKFLOW_CANDIDATES = [
+  ".github/workflows/ci.yml",
+  ".github/workflows/ci.yaml",
+  ".github/workflows/test.yml",
+  ".github/workflows/test.yaml",
+  ".github/workflows/build.yml",
+  ".github/workflows/build.yaml",
+  ".github/workflows/check.yml",
+  ".github/workflows/check.yaml",
+];
+
+const RELEASE_WORKFLOW_CANDIDATES = [
+  ".github/workflows/release.yml",
+  ".github/workflows/release.yaml",
+  ".github/workflows/publish.yml",
+  ".github/workflows/publish.yaml",
+  ".github/workflows/deploy.yml",
+  ".github/workflows/deploy.yaml",
+];
+
+function findWorkflowFile(
+  ctx: { readFile: (p: string) => string | null },
+  candidates: string[],
+): string | null {
+  for (const path of candidates) {
+    if (ctx.readFile(path) !== null) return path;
+  }
+  return null;
+}
+
+function getBinPaths(pkg: { bin?: unknown }): string[] {
+  if (!pkg.bin) return [];
+  if (typeof pkg.bin === "string") return [pkg.bin];
+  if (typeof pkg.bin === "object" && pkg.bin !== null) {
+    return Object.values(pkg.bin as Record<string, string>);
+  }
+  return [];
+}
+
+function hasHeading(content: string, ...titles: string[]): boolean {
+  const headingRe = /^#{1,4}\s+(.+)$/gm;
+  const matches = [...content.matchAll(headingRe)];
+  for (const m of matches) {
+    const heading = m[1]?.toLowerCase().trim();
+    if (heading && titles.some((t) => heading.includes(t))) return true;
+  }
+  return false;
+}
+
 export default defineTemplate({
   description: "Conformance rules for publishing an NPM package",
   name: "npm-publish",
   rules: [
-    rule({
+    // ── Style & Validation ──────────────────────────────────────────
+
+    style.rule({
+      check: (ctx) => {
+        if (ctx.packageJson?.type !== "module") {
+          return {
+            message: `type is "${ctx.packageJson?.type ?? "undefined"}", expected "module"`,
+            status: "fail",
+          };
+        }
+        return { status: "pass" };
+      },
+      description: "type is 'module'",
+      group: "package.json",
+      id: "package-json:type-module",
+      severity: "fail",
+    }),
+    style.rule({
+      check: (ctx) => {
+        const version = ctx.packageJson?.devDependencies?.["@biomejs/biome"];
+        if (version) {
+          return { message: version, status: "pass" };
+        }
+        return {
+          message: "@biomejs/biome not found in devDependencies",
+          status: "fail",
+        };
+      },
+      description: "@biomejs/biome in devDependencies",
+      group: "biome",
+      id: "biome:dev-deps",
+      severity: "fail",
+    }),
+    style.rule({
+      check: (ctx) => {
+        if (ctx.fileExists("biome.json")) {
+          return { message: "biome.json", status: "pass" };
+        }
+        if (ctx.fileExists("biome.jsonc")) {
+          return { message: "biome.jsonc", status: "pass" };
+        }
+        return {
+          message: "no biome.json or biome.jsonc found",
+          status: "warn",
+        };
+      },
+      description: "biome.json or biome.jsonc exists",
+      group: "biome",
+      id: "biome:config-file",
+      severity: "warn",
+    }),
+    style.rule({
+      check: (ctx) => {
+        const scripts = ctx.packageJson?.scripts ?? {};
+        const lintScript = scripts["lint"] ?? scripts["check"];
+        if (lintScript?.includes("biome")) {
+          return { message: lintScript, status: "pass" };
+        }
+        return {
+          message: "no script running biome check/lint found",
+          status: "fail",
+        };
+      },
+      description: "lint or check script runs biome",
+      group: "biome",
+      id: "biome:lint-script",
+      severity: "fail",
+    }),
+    style.rule({
+      check: (ctx) => {
+        if (ctx.packageJson?.sideEffects !== undefined) {
+          const val = ctx.packageJson.sideEffects;
+          return {
+            message: `sideEffects: ${typeof val === "boolean" ? val : "array"}`,
+            status: "pass",
+          };
+        }
+        return {
+          message:
+            "sideEffects field is missing — bundlers cannot tree-shake without it (set sideEffects: false or an array of files with side effects)",
+          status: "warn",
+        };
+      },
+      description: "sideEffects field is defined in package.json",
+      group: "package.json",
+      id: "package-json:side-effects",
+      severity: "warn",
+    }),
+    style.rule({
+      check: (ctx) => {
+        const scripts = ctx.packageJson?.scripts ?? {};
+        const formatScript =
+          scripts["format"] ?? scripts["check:format"] ?? scripts["check:lint"];
+        if (formatScript?.includes("biome")) {
+          return { message: formatScript, status: "pass" };
+        }
+        return {
+          message:
+            "no format script running biome format found — add a format script to enforce consistent style",
+          status: "warn",
+        };
+      },
+      description: "format script runs biome",
+      group: "biome",
+      id: "biome:format-script",
+      severity: "warn",
+    }),
+    // ── Build & Tasks ───────────────────────────────────────────────
+
+    build.rule({
       check: (ctx) => {
         if (!ctx.packageJson?.name) {
           return { message: "name field is missing", status: "fail" };
@@ -134,7 +264,7 @@ export default defineTemplate({
       id: "package-json:name",
       severity: "fail",
     }),
-    rule({
+    build.rule({
       check: (ctx) => {
         if (!ctx.packageJson?.version) {
           return { message: "version field is missing", status: "fail" };
@@ -146,31 +276,7 @@ export default defineTemplate({
       id: "package-json:version",
       severity: "fail",
     }),
-    rule({
-      check: (ctx) => {
-        if (!ctx.packageJson?.description) {
-          return { message: "description field is missing", status: "warn" };
-        }
-        return { status: "pass" };
-      },
-      description: "description field is present in package.json",
-      group: "package.json",
-      id: "package-json:description",
-      severity: "warn",
-    }),
-    rule({
-      check: (ctx) => {
-        if (!ctx.packageJson?.license) {
-          return { message: "license field is missing", status: "fail" };
-        }
-        return { message: ctx.packageJson.license, status: "pass" };
-      },
-      description: "license field is present in package.json",
-      group: "package.json",
-      id: "package-json:license",
-      severity: "fail",
-    }),
-    rule({
+    build.rule({
       check: (ctx) => {
         const pkg = ctx.packageJson;
         const entries = [
@@ -191,7 +297,23 @@ export default defineTemplate({
       id: "package-json:entry-point",
       severity: "fail",
     }),
-    rule({
+    build.rule({
+      check: (ctx) => {
+        const scripts = ctx.packageJson?.scripts;
+        if (scripts?.["prepare"]) {
+          return { message: "prepare", status: "pass" };
+        }
+        if (scripts?.["build"]) {
+          return { message: "build", status: "pass" };
+        }
+        return { message: "no prepare or build script found", status: "fail" };
+      },
+      description: "scripts.prepare or scripts.build exists",
+      group: "package.json",
+      id: "package-json:build-script",
+      severity: "fail",
+    }),
+    build.rule({
       check: (ctx) => {
         if (ctx.packageJson?.files) {
           return { message: "files field defined", status: "pass" };
@@ -209,82 +331,9 @@ export default defineTemplate({
       id: "package-json:files-or-npmignore",
       severity: "warn",
     }),
-    rule({
+    build.rule({
       check: (ctx) => {
-        if (!ctx.packageJson?.repository) {
-          return { message: "repository field is missing", status: "warn" };
-        }
-        return { status: "pass" };
-      },
-      description: "repository field is present in package.json",
-      group: "package.json",
-      id: "package-json:repository",
-      severity: "warn",
-    }),
-    rule({
-      check: (ctx) => {
-        if (ctx.packageJson?.type !== "module") {
-          return {
-            message: `type is "${ctx.packageJson?.type ?? "undefined"}", expected "module"`,
-            status: "fail",
-          };
-        }
-        return { status: "pass" };
-      },
-      description: "type is 'module'",
-      group: "package.json",
-      id: "package-json:type-module",
-      severity: "fail",
-    }),
-    rule({
-      check: (ctx) => {
-        const scripts = ctx.packageJson?.scripts;
-        if (scripts?.prepare) {
-          return { message: "prepare", status: "pass" };
-        }
-        if (scripts?.build) {
-          return { message: "build", status: "pass" };
-        }
-        return { message: "no prepare or build script found", status: "fail" };
-      },
-      description: "scripts.prepare or scripts.build exists",
-      group: "package.json",
-      id: "package-json:build-script",
-      severity: "fail",
-    }),
-    rule({
-      check: (ctx) => {
-        if (ctx.packageJson?.devDependencies?.husky) {
-          return {
-            message: ctx.packageJson.devDependencies.husky,
-            status: "pass",
-          };
-        }
-        return {
-          message: "husky not found in devDependencies",
-          status: "fail",
-        };
-      },
-      description: "husky in devDependencies",
-      group: "husky",
-      id: "husky:dev-deps",
-      severity: "fail",
-    }),
-    rule({
-      check: (ctx) => {
-        if (ctx.fileExists(".husky")) {
-          return { status: "pass" };
-        }
-        return { message: ".husky/ directory not found", status: "fail" };
-      },
-      description: ".husky/ directory exists",
-      group: "husky",
-      id: "husky:hooks-dir",
-      severity: "fail",
-    }),
-    rule({
-      check: (ctx) => {
-        const prepare = ctx.packageJson?.scripts?.prepare;
+        const prepare = ctx.packageJson?.scripts?.["prepare"];
         if (prepare?.includes("husky")) {
           return { message: prepare, status: "pass" };
         }
@@ -301,7 +350,329 @@ export default defineTemplate({
       id: "husky:prepare-script",
       severity: "fail",
     }),
-    rule({
+    build.rule({
+      check: (ctx) => {
+        const scripts = ctx.packageJson?.scripts ?? {};
+        const typecheckScript =
+          scripts["typecheck"] ?? scripts["check:types"] ?? scripts["types"];
+        if (typecheckScript) {
+          return { message: typecheckScript, status: "pass" };
+        }
+        return {
+          message:
+            "no typecheck script found — add a typecheck or check:types script running tsc --noEmit",
+          status: "warn",
+        };
+      },
+      description: "typecheck script exists",
+      group: "scripts",
+      id: "scripts:typecheck",
+      severity: "warn",
+    }),
+    build.rule({
+      check: (ctx) => {
+        const scripts = ctx.packageJson?.scripts;
+        if (scripts?.["prepublish"]) {
+          return {
+            message:
+              'prepublish script is deprecated — it runs on both "npm install" and "npm publish". Use prepublishOnly instead.',
+            status: "fail",
+          };
+        }
+        return { status: "pass" };
+      },
+      description: "deprecated prepublish script is not used",
+      group: "scripts",
+      id: "scripts:no-prepublish",
+      severity: "fail",
+    }),
+    build.rule({
+      check: (ctx) => {
+        const binPaths = getBinPaths(ctx.packageJson ?? {});
+        if (binPaths.length === 0) {
+          return {
+            message: "no bin field — skipping bin file check",
+            status: "pass",
+          };
+        }
+        const missing = binPaths.filter((p) => !ctx.fileExists(p));
+        if (missing.length > 0) {
+          return {
+            message: `bin path(s) not found on disk: ${missing.join(", ")}`,
+            status: "fail",
+          };
+        }
+        return { status: "pass" };
+      },
+      description: "bin field references files that exist",
+      group: "bin",
+      id: "bin:file-exists",
+      severity: "fail",
+    }),
+    build.rule({
+      check: (ctx) => {
+        const binPaths = getBinPaths(ctx.packageJson ?? {});
+        if (binPaths.length === 0) {
+          return {
+            message: "no bin field — skipping shebang check",
+            status: "pass",
+          };
+        }
+        const missingShebang: string[] = [];
+        for (const binPath of binPaths) {
+          const content = ctx.readFile(binPath);
+          if (content === null) continue;
+          const firstLine = content.split("\n")[0];
+          if (!firstLine?.startsWith("#!")) {
+            missingShebang.push(binPath);
+          }
+        }
+        if (missingShebang.length > 0) {
+          return {
+            message: `bin file(s) missing shebang (#!/usr/bin/env node or bun): ${missingShebang.join(", ")}`,
+            status: "fail",
+          };
+        }
+        return { status: "pass" };
+      },
+      description: "bin entry files have a shebang line",
+      group: "bin",
+      id: "bin:shebang",
+      severity: "fail",
+    }),
+
+    // ── Testing ─────────────────────────────────────────────────────
+
+    testing.rule({
+      check: (ctx) => {
+        const testScript = ctx.packageJson?.scripts?.["test"];
+        if (testScript) {
+          return { message: testScript, status: "pass" };
+        }
+        return {
+          message:
+            'no test script found — add "test" to scripts (e.g. "bun test" or "vitest")',
+          status: "fail",
+        };
+      },
+      description: "scripts.test exists in package.json",
+      group: "package.json",
+      id: "testing:test-script",
+      severity: "fail",
+    }),
+    testing.rule({
+      check: (ctx) => {
+        const testScript = ctx.packageJson?.scripts?.["test"];
+        if (!testScript) {
+          return {
+            message: "no test script — skipping runner check",
+            status: "pass",
+          };
+        }
+        const isNoOp =
+          testScript.includes("echo") || testScript.trim() === "exit 0";
+        if (isNoOp) {
+          return {
+            message: `test script appears to be a placeholder: "${testScript}"`,
+            status: "warn",
+          };
+        }
+        const knownRunners =
+          /bun\s+test|vitest|jest|mocha|ava|tape|uvu|node\s+--test/;
+        if (knownRunners.test(testScript)) {
+          return { status: "pass" };
+        }
+        return {
+          message: `test script "${testScript}" does not reference a known test runner`,
+          status: "warn",
+        };
+      },
+      description: "test script invokes a known test runner",
+      group: "package.json",
+      id: "testing:test-runner",
+      severity: "warn",
+    }),
+
+    // ── Documentation ───────────────────────────────────────────────
+
+    documentation.rule({
+      check: (ctx) => {
+        if (!ctx.packageJson?.description) {
+          return { message: "description field is missing", status: "warn" };
+        }
+        return { status: "pass" };
+      },
+      description: "description field is present in package.json",
+      group: "package.json",
+      id: "package-json:description",
+      severity: "warn",
+    }),
+    documentation.rule({
+      check: (ctx) => {
+        const content = ctx.readFile("README.md");
+        if (content === null) {
+          return { message: "README.md not found", status: "fail" };
+        }
+        if (content.trim().length === 0) {
+          return { message: "README.md is empty", status: "fail" };
+        }
+        return { status: "pass" };
+      },
+      description: "README.md exists and is non-empty (JSR: has_readme — 2pts)",
+      group: "files",
+      id: "files:readme",
+      severity: "fail",
+    }),
+    documentation.rule({
+      check: (ctx) => {
+        const config = resolveJsrConfig(ctx);
+        const description =
+          config.jsr?.description ?? ctx.packageJson?.description;
+        if (description && description.trim().length > 0) {
+          return {
+            message: `description found in ${config.jsr ? config.source : "package.json"}`,
+            status: "pass",
+          };
+        }
+        return {
+          message: `no description found in ${config.source} or package.json — JSR requires a description for discoverability`,
+          status: "fail",
+        };
+      },
+      description:
+        "package has a description for discoverability (JSR: has_description — 1pt)",
+      group: "jsr:discoverability",
+      id: "jsr:has-description",
+      severity: "fail",
+    }),
+    documentation.rule({
+      check: (ctx) => {
+        const changelogPaths = ["CHANGELOG.md", "CHANGELOG", "HISTORY.md"];
+        for (const path of changelogPaths) {
+          if (ctx.fileExists(path)) {
+            return { message: path, status: "pass" };
+          }
+        }
+        return {
+          message:
+            "no CHANGELOG.md found — users and consumers need to see what changed between versions",
+          status: "warn",
+        };
+      },
+      description: "CHANGELOG.md exists",
+      group: "files",
+      id: "docs:changelog",
+      severity: "warn",
+    }),
+    documentation.rule({
+      check: (ctx) => {
+        if (ctx.fileExists("CONTRIBUTING.md")) {
+          return { status: "pass" };
+        }
+        if (ctx.fileExists(".github/CONTRIBUTING.md")) {
+          return { message: ".github/CONTRIBUTING.md", status: "pass" };
+        }
+        return {
+          message:
+            "no CONTRIBUTING.md found — open source packages should tell contributors how to participate",
+          status: "warn",
+        };
+      },
+      description: "CONTRIBUTING.md exists",
+      group: "files",
+      id: "docs:contributing",
+      severity: "warn",
+    }),
+    documentation.rule({
+      check: (ctx) => {
+        const readme = ctx.readFile("README.md");
+        if (!readme) {
+          return {
+            message: "README.md not found — skipping install section check",
+            status: "pass",
+          };
+        }
+        if (
+          hasHeading(
+            readme,
+            "install",
+            "installation",
+            "getting started",
+            "setup",
+          )
+        ) {
+          return { status: "pass" };
+        }
+        return {
+          message:
+            "README.md has no Installation section — add ## Install or ## Getting Started",
+          status: "warn",
+        };
+      },
+      description: "README has an Installation section",
+      group: "readme",
+      id: "docs:readme-install",
+      severity: "warn",
+    }),
+    documentation.rule({
+      check: (ctx) => {
+        const readme = ctx.readFile("README.md");
+        if (!readme) {
+          return {
+            message: "README.md not found — skipping usage section check",
+            status: "pass",
+          };
+        }
+        if (
+          hasHeading(readme, "usage", "quick start", "example", "basic usage")
+        ) {
+          return { status: "pass" };
+        }
+        return {
+          message:
+            "README.md has no Usage section — add ## Usage or ## Quick Start",
+          status: "warn",
+        };
+      },
+      description: "README has a Usage section",
+      group: "readme",
+      id: "docs:readme-usage",
+      severity: "warn",
+    }),
+
+    // ── Dev Environment ─────────────────────────────────────────────
+
+    devEnv.rule({
+      check: (ctx) => {
+        if (ctx.packageJson?.devDependencies?.["husky"]) {
+          return {
+            message: ctx.packageJson.devDependencies["husky"],
+            status: "pass",
+          };
+        }
+        return {
+          message: "husky not found in devDependencies",
+          status: "fail",
+        };
+      },
+      description: "husky in devDependencies",
+      group: "husky",
+      id: "husky:dev-deps",
+      severity: "fail",
+    }),
+    devEnv.rule({
+      check: (ctx) => {
+        if (ctx.fileExists(".husky")) {
+          return { status: "pass" };
+        }
+        return { message: ".husky/ directory not found", status: "fail" };
+      },
+      description: ".husky/ directory exists",
+      group: "husky",
+      id: "husky:hooks-dir",
+      severity: "fail",
+    }),
+    devEnv.rule({
       check: (ctx) => {
         if (ctx.fileExists(".husky/pre-commit")) {
           return { status: "pass" };
@@ -313,7 +684,7 @@ export default defineTemplate({
       id: "husky:pre-commit-hook",
       severity: "warn",
     }),
-    rule({
+    devEnv.rule({
       check: (ctx) => {
         if (ctx.fileExists(".husky/commit-msg")) {
           return { status: "pass" };
@@ -325,62 +696,97 @@ export default defineTemplate({
       id: "husky:commit-msg-hook",
       severity: "warn",
     }),
-    rule({
+    devEnv.rule({
       check: (ctx) => {
-        const version = ctx.packageJson?.devDependencies?.["@biomejs/biome"];
-        if (version) {
-          return { message: version, status: "pass" };
+        if (ctx.fileExists(".gitignore")) {
+          return { status: "pass" };
+        }
+        return { message: ".gitignore not found", status: "fail" };
+      },
+      description: ".gitignore exists",
+      group: "files",
+      id: "files:gitignore",
+      severity: "fail",
+    }),
+    devEnv.rule({
+      check: (ctx) => {
+        const lockfiles = [
+          "bun.lock",
+          "bun.lockb",
+          "package-lock.json",
+          "pnpm-lock.yaml",
+          "yarn.lock",
+        ];
+        for (const lf of lockfiles) {
+          if (ctx.fileExists(lf)) {
+            return { message: lf, status: "pass" };
+          }
         }
         return {
-          message: "@biomejs/biome not found in devDependencies",
+          message:
+            "no lockfile found — committed lockfiles ensure reproducible installs across environments",
           status: "fail",
         };
       },
-      description: "@biomejs/biome in devDependencies",
-      group: "biome",
-      id: "biome:dev-deps",
+      description: "lockfile exists (bun.lock, package-lock.json, etc.)",
+      group: "lockfile",
+      id: "lockfile:exists",
       severity: "fail",
     }),
-    rule({
+    devEnv.rule({
       check: (ctx) => {
-        if (ctx.fileExists("biome.json")) {
-          return { message: "biome.json", status: "pass" };
+        const gitignore = ctx.readFile(".gitignore");
+        if (!gitignore) {
+          return {
+            message: ".gitignore not found — skipping content check",
+            status: "pass",
+          };
         }
-        if (ctx.fileExists("biome.jsonc")) {
-          return { message: "biome.jsonc", status: "pass" };
+        if (gitignore.includes("node_modules")) {
+          return { status: "pass" };
         }
         return {
-          message: "no biome.json or biome.jsonc found",
-          status: "warn",
-        };
-      },
-      description: "biome.json or biome.jsonc exists",
-      group: "biome",
-      id: "biome:config-file",
-      severity: "warn",
-    }),
-    rule({
-      check: (ctx) => {
-        const scripts = ctx.packageJson?.scripts ?? {};
-        const lintScript = scripts.lint ?? scripts.check;
-        if (lintScript?.includes("biome")) {
-          return { message: lintScript, status: "pass" };
-        }
-        return {
-          message: "no script running biome check/lint found",
+          message:
+            '.gitignore does not include "node_modules" — accidentally committing it is catastrophic',
           status: "fail",
         };
       },
-      description: "lint or check script runs biome",
-      group: "biome",
-      id: "biome:lint-script",
+      description: '.gitignore contains "node_modules"',
+      group: "gitignore",
+      id: "gitignore:node-modules",
       severity: "fail",
     }),
-    rule({
+    devEnv.rule({
+      check: (ctx) => {
+        const gitignore = ctx.readFile(".gitignore");
+        if (!gitignore) {
+          return {
+            message: ".gitignore not found — skipping content check",
+            status: "pass",
+          };
+        }
+        if (/^\.env/m.test(gitignore) || /\.env\*/m.test(gitignore)) {
+          return { status: "pass" };
+        }
+        return {
+          message:
+            '.gitignore does not include ".env" — secrets must never be committed',
+          status: "fail",
+        };
+      },
+      description: '.gitignore contains ".env"',
+      group: "gitignore",
+      id: "gitignore:env",
+      severity: "fail",
+    }),
+
+    // ── Code Quality ────────────────────────────────────────────────
+
+    codeQuality.rule({
       check: (ctx) => {
         const version =
-          ctx.packageJson?.devDependencies?.typescript ??
-          ctx.packageJson?.peerDependencies?.typescript;
+          ctx.packageJson?.devDependencies?.["typescript"] ??
+          ctx.packageJson?.peerDependencies?.["typescript"];
         if (version) {
           return { message: version, status: "pass" };
         }
@@ -395,7 +801,7 @@ export default defineTemplate({
       id: "typescript:deps",
       severity: "fail",
     }),
-    rule({
+    codeQuality.rule({
       check: (ctx) => {
         if (ctx.fileExists("tsconfig.json")) {
           return { status: "pass" };
@@ -407,7 +813,7 @@ export default defineTemplate({
       id: "typescript:tsconfig",
       severity: "fail",
     }),
-    rule({
+    codeQuality.rule({
       check: (ctx) => {
         const tsconfig = ctx.readJson<{
           compilerOptions?: { strict?: boolean };
@@ -425,159 +831,64 @@ export default defineTemplate({
       id: "typescript:strict",
       severity: "fail",
     }),
-    rule({
+    codeQuality.rule({
       check: (ctx) => {
-        if (
-          ctx.fileExists("LICENSE") ||
-          ctx.fileExists("LICENSE.md") ||
-          ctx.fileExists("LICENSE.txt")
-        ) {
+        const tsconfig = ctx.readJson<{
+          compilerOptions?: { noUncheckedIndexedAccess?: boolean };
+        }>("tsconfig.json");
+        if (tsconfig?.compilerOptions?.noUncheckedIndexedAccess === true) {
           return { status: "pass" };
-        }
-        return { message: "no LICENSE file found", status: "fail" };
-      },
-      description: "LICENSE file exists",
-      group: "files",
-      id: "files:license",
-      severity: "fail",
-    }),
-    rule({
-      check: (ctx) => {
-        const content = ctx.readFile("README.md");
-        if (content === null) {
-          return { message: "README.md not found", status: "fail" };
-        }
-        if (content.trim().length === 0) {
-          return { message: "README.md is empty", status: "fail" };
-        }
-        return { status: "pass" };
-      },
-      description: "README.md exists and is non-empty (JSR: has_readme — 2pts)",
-      group: "files",
-      id: "files:readme",
-      severity: "fail",
-    }),
-    rule({
-      check: (ctx) => {
-        if (ctx.fileExists(".gitignore")) {
-          return { status: "pass" };
-        }
-        return { message: ".gitignore not found", status: "fail" };
-      },
-      description: ".gitignore exists",
-      group: "files",
-      id: "files:gitignore",
-      severity: "fail",
-    }),
-    rule({
-      check: (ctx) => {
-        const readme = ctx.readFile("README.md");
-        if (readme && hasCodeBlock(readme)) {
-          return { message: "README contains code examples", status: "pass" };
         }
         return {
           message:
-            "README.md does not contain fenced (``` or ~~~) or indented code blocks — JSR requires examples for full documentation score",
+            "noUncheckedIndexedAccess is not enabled — array/object index access should return T | undefined to catch runtime errors",
           status: "fail",
         };
       },
-      description:
-        "README contains code examples (JSR: has_readme_examples — 1pt)",
-      group: "jsr:documentation",
-      id: "jsr:readme-examples",
+      description: "noUncheckedIndexedAccess: true in tsconfig",
+      group: "typescript",
+      id: "typescript:no-unchecked-indexed-access",
       severity: "fail",
     }),
-    rule({
+    codeQuality.rule({
       check: (ctx) => {
-        const config = resolveJsrConfig(ctx);
-        const exportPaths = getExportPaths(ctx);
-        if (exportPaths.length === 0) {
-          return {
-            message: "no exports defined — skipping entrypoint doc check",
-            status: "pass",
-          };
-        }
-        const readmeExists = ctx.readFile("README.md") !== null;
-        const missing: string[] = [];
-        const mainExport =
-          typeof config.jsr?.exports === "string"
-            ? config.jsr.exports
-            : config.jsr?.exports?.["."];
-        for (const expPath of exportPaths) {
-          if (expPath === mainExport && readmeExists) continue;
-          const content = ctx.readFile(expPath);
-          if (content === null) continue;
-          const hasModuleDoc = /^\s*\/\*\*[\s\S]*?\*\//.test(content);
-          if (!hasModuleDoc) {
-            missing.push(expPath);
-          }
-        }
-        if (missing.length === 0) {
-          return {
-            message: "all entrypoints have module docs",
-            status: "pass",
-          };
+        const tsconfig = ctx.readJson<{
+          compilerOptions?: { isolatedModules?: boolean };
+        }>("tsconfig.json");
+        if (tsconfig?.compilerOptions?.isolatedModules === true) {
+          return { status: "pass" };
         }
         return {
-          message: `entrypoints missing JSDoc module documentation: ${missing.join(", ")}`,
+          message:
+            "isolatedModules is not enabled — required for Bun, esbuild, and SWC which transpile files individually",
           status: "fail",
         };
       },
-      description:
-        "all exported entrypoints have JSDoc module documentation (JSR: all_entrypoints_docs — 1pt)",
-      group: "jsr:documentation",
-      id: "jsr:entrypoint-module-docs",
+      description: "isolatedModules: true in tsconfig",
+      group: "typescript",
+      id: "typescript:isolated-modules",
       severity: "fail",
     }),
-    rule({
+    codeQuality.rule({
       check: (ctx) => {
-        const exportPaths = getExportPaths(ctx);
-        if (exportPaths.length === 0) {
-          return {
-            message: "no exports defined — skipping symbol doc check",
-            status: "pass",
-          };
-        }
-        let total = 0;
-        let documented = 0;
-        const filesUnderThreshold: string[] = [];
-        for (const expPath of exportPaths) {
-          const content = ctx.readFile(expPath);
-          if (content === null) continue;
-          const result = countDocumentedSymbols(content);
-          total += result.total;
-          documented += result.documented;
-          if (result.total > 0 && result.documented / result.total < 0.8) {
-            filesUnderThreshold.push(
-              `${expPath} (${result.documented}/${result.total})`,
-            );
-          }
-        }
-        if (total === 0) {
-          return {
-            message: "no exported symbols found — nothing to document",
-            status: "pass",
-          };
-        }
-        const pct = Math.round((documented / total) * 100);
-        if (pct >= 80) {
-          return {
-            message: `${pct}% of exported symbols are documented (${documented}/${total})`,
-            status: "pass",
-          };
+        const tsconfig = ctx.readJson<{
+          compilerOptions?: { verbatimModuleSyntax?: boolean };
+        }>("tsconfig.json");
+        if (tsconfig?.compilerOptions?.verbatimModuleSyntax === true) {
+          return { status: "pass" };
         }
         return {
-          message: `only ${pct}% of exported symbols are documented (${documented}/${total}) — JSR requires ≥80% for full score. Files below threshold: ${filesUnderThreshold.join(", ")}`,
+          message:
+            "verbatimModuleSyntax is not enabled — prevents CJS/ESM mismatches by preserving import/export syntax exactly",
           status: "warn",
         };
       },
-      description:
-        "≥80% of exported symbols have JSDoc documentation (JSR: percentage_documented_symbols — 5pts)",
-      group: "jsr:documentation",
-      id: "jsr:documented-symbols",
+      description: "verbatimModuleSyntax: true in tsconfig",
+      group: "typescript",
+      id: "typescript:verbatim-module-syntax",
       severity: "warn",
     }),
-    rule({
+    codeQuality.rule({
       check: (ctx) => {
         const exportPaths = getExportPaths(ctx);
         if (exportPaths.length === 0) {
@@ -610,7 +921,170 @@ export default defineTemplate({
       id: "jsr:no-slow-types",
       severity: "fail",
     }),
-    rule({
+
+    // ── Observability ───────────────────────────────────────────────
+
+    observability.rule({
+      check: (ctx) => {
+        if (ctx.packageJson?.bugs) {
+          return { status: "pass" };
+        }
+        return {
+          message:
+            "bugs field is missing — users need an issue tracker URL to report problems (set bugs.url or bugs as a string)",
+          status: "fail",
+        };
+      },
+      description: "bugs field is present in package.json",
+      group: "package.json",
+      id: "package-json:bugs",
+      severity: "fail",
+    }),
+    observability.rule({
+      check: (ctx) => {
+        if (ctx.packageJson?.homepage) {
+          return { message: ctx.packageJson.homepage, status: "pass" };
+        }
+        return {
+          message:
+            "homepage field is missing — helps users find project documentation and support",
+          status: "warn",
+        };
+      },
+      description: "homepage field is present in package.json",
+      group: "package.json",
+      id: "package-json:homepage",
+      severity: "warn",
+    }),
+    observability.rule({
+      check: (ctx) => {
+        const tsconfig = ctx.readJson<{
+          compilerOptions?: {
+            noEmit?: boolean;
+            sourceMap?: boolean;
+          };
+        }>("tsconfig.json");
+        if (!tsconfig?.compilerOptions) {
+          return {
+            message: "no tsconfig.json found — skipping source map check",
+            status: "pass",
+          };
+        }
+        if (tsconfig.compilerOptions.noEmit === true) {
+          return {
+            message:
+              "noEmit is true — source maps not applicable for raw TS publishing",
+            status: "pass",
+          };
+        }
+        if (tsconfig.compilerOptions.sourceMap === true) {
+          return { status: "pass" };
+        }
+        return {
+          message:
+            "sourceMap is not enabled — without source maps, production stack traces point to compiled output and are nearly impossible to debug",
+          status: "warn",
+        };
+      },
+      description: "sourceMap: true in tsconfig (when not noEmit)",
+      group: "typescript",
+      id: "typescript:source-map",
+      severity: "warn",
+    }),
+
+    // ── Security & Governance ───────────────────────────────────────
+
+    security.rule({
+      check: (ctx) => {
+        if (!ctx.packageJson?.license) {
+          return { message: "license field is missing", status: "fail" };
+        }
+        return { message: ctx.packageJson.license, status: "pass" };
+      },
+      description: "license field is present in package.json",
+      group: "package.json",
+      id: "package-json:license",
+      severity: "fail",
+    }),
+    security.rule({
+      check: (ctx) => {
+        if (
+          ctx.fileExists("LICENSE") ||
+          ctx.fileExists("LICENSE.md") ||
+          ctx.fileExists("LICENSE.txt")
+        ) {
+          return { status: "pass" };
+        }
+        return { message: "no LICENSE file found", status: "fail" };
+      },
+      description: "LICENSE file exists",
+      group: "files",
+      id: "files:license",
+      severity: "fail",
+    }),
+    security.rule({
+      check: (ctx) => {
+        const scripts = ctx.packageJson?.scripts;
+        const dangerousScripts = ["preinstall", "postinstall", "install"];
+        const found: string[] = [];
+        for (const name of dangerousScripts) {
+          if (scripts?.[name]) {
+            found.push(name);
+          }
+        }
+        if (found.length > 0) {
+          return {
+            message: `install lifecycle scripts found: ${found.join(", ")} — these are the #1 supply chain attack vector in npm`,
+            status: "fail",
+          };
+        }
+        return { status: "pass" };
+      },
+      description: "no preinstall/postinstall/install lifecycle scripts",
+      group: "package.json",
+      id: "package-json:no-install-hooks",
+      severity: "fail",
+    }),
+    security.rule({
+      check: (ctx) => {
+        if (ctx.packageJson?.engines) {
+          const entries = Object.entries(ctx.packageJson.engines);
+          return {
+            message: entries.map(([k, v]) => `${k}: ${v}`).join(", "),
+            status: "pass",
+          };
+        }
+        return {
+          message:
+            "engines field is missing — declare supported Node/Bun versions to prevent installation on incompatible runtimes",
+          status: "warn",
+        };
+      },
+      description: "engines field is present in package.json",
+      group: "package.json",
+      id: "package-json:engines",
+      severity: "warn",
+    }),
+    security.rule({
+      check: (ctx) => {
+        if (ctx.fileExists("SECURITY.md")) {
+          return { status: "pass" };
+        }
+        if (ctx.fileExists(".github/SECURITY.md")) {
+          return { message: ".github/SECURITY.md", status: "pass" };
+        }
+        return {
+          message:
+            "no SECURITY.md found — provides a responsible disclosure path for vulnerability reports",
+          status: "warn",
+        };
+      },
+      description: "SECURITY.md exists",
+      group: "files",
+      id: "files:security-md",
+      severity: "warn",
+    }),
+    security.rule({
       check: (ctx) => {
         const ghDir = ctx.fileExists(".github");
         if (!ghDir) {
@@ -667,96 +1141,149 @@ export default defineTemplate({
       id: "jsr:provenance",
       severity: "warn",
     }),
-    rule({
+
+    // ── GitHub Configuration ────────────────────────────────────────
+
+    github.rule({
       check: (ctx) => {
-        const config = resolveJsrConfig(ctx);
-        const description =
-          config.jsr?.description ?? ctx.packageJson?.description;
-        if (description && description.trim().length > 0) {
-          return {
-            message: `description found in ${config.jsr ? config.source : "package.json"}`,
-            status: "pass",
-          };
+        if (!ctx.packageJson?.repository) {
+          return { message: "repository field is missing", status: "warn" };
+        }
+        return { status: "pass" };
+      },
+      description: "repository field is present in package.json",
+      group: "package.json",
+      id: "package-json:repository",
+      severity: "warn",
+    }),
+    github.rule({
+      check: (ctx) => {
+        const ciFile = findWorkflowFile(ctx, CI_WORKFLOW_CANDIDATES);
+        if (ciFile) {
+          return { message: ciFile, status: "pass" };
         }
         return {
-          message: `no description found in ${config.source} or package.json — JSR requires a description for discoverability`,
+          message:
+            "no CI workflow found — expected .github/workflows/{ci,test,build,check}.{yml,yaml}",
           status: "fail",
         };
       },
-      description:
-        "package has a description for discoverability (JSR: has_description — 1pt)",
-      group: "jsr:discoverability",
-      id: "jsr:has-description",
+      description: "CI workflow file exists",
+      group: "github:ci",
+      id: "github:ci-workflow",
       severity: "fail",
     }),
-    rule({
+    github.rule({
       check: (ctx) => {
-        const config = resolveJsrConfig(ctx);
-        const compat = config.jsr?.runtimeCompat;
-        if (!compat) {
-          return {
-            message:
-              "no runtimeCompat field found in jsr.json or deno.json — mark at least one runtime as compatible",
-            status: "fail",
-          };
-        }
-        const runtimes = ["deno", "node", "bun", "browser", "workerd"] as const;
-        const compatible: string[] = [];
-        for (const rt of runtimes) {
-          if (compat[rt] === true) {
-            compatible.push(rt);
-          }
-        }
-        if (compatible.length === 0) {
-          return {
-            message:
-              "no runtimes marked as compatible in runtimeCompat — mark at least one",
-            status: "fail",
-          };
+        const releaseFile = findWorkflowFile(ctx, RELEASE_WORKFLOW_CANDIDATES);
+        if (releaseFile) {
+          return { message: releaseFile, status: "pass" };
         }
         return {
-          message: `compatible runtimes: ${compatible.join(", ")}`,
-          status: "pass",
-        };
-      },
-      description:
-        "at least one runtime marked as compatible (JSR: at_least_one_runtime_compatible — 1pt)",
-      group: "jsr:compatibility",
-      id: "jsr:runtime-compat",
-      severity: "fail",
-    }),
-    rule({
-      check: (ctx) => {
-        const config = resolveJsrConfig(ctx);
-        const compat = config.jsr?.runtimeCompat;
-        if (!compat) {
-          return {
-            message: "no runtimeCompat field found",
-            status: "warn",
-          };
-        }
-        const runtimes = ["deno", "node", "bun", "browser", "workerd"] as const;
-        const compatible: string[] = [];
-        for (const rt of runtimes) {
-          if (compat[rt] === true) {
-            compatible.push(rt);
-          }
-        }
-        if (compatible.length >= 2) {
-          return {
-            message: `compatible runtimes: ${compatible.join(", ")}`,
-            status: "pass",
-          };
-        }
-        return {
-          message: `only ${compatible.length} runtime(s) marked compatible — JSR rewards ≥2 for full compatibility score`,
+          message:
+            "no release/publish workflow found — expected .github/workflows/{release,publish,deploy}.{yml,yaml}",
           status: "warn",
         };
       },
-      description:
-        "multiple runtimes marked as compatible (JSR: multiple_runtimes_compatible — 1pt)",
-      group: "jsr:compatibility",
-      id: "jsr:runtime-compat-multiple",
+      description: "Release/publish workflow file exists",
+      group: "github:release",
+      id: "github:release-workflow",
+      severity: "warn",
+    }),
+    github.rule({
+      check: (ctx) => {
+        const ciFile = findWorkflowFile(ctx, CI_WORKFLOW_CANDIDATES);
+        if (!ciFile) {
+          return {
+            message: "no CI workflow found — skipping content checks",
+            status: "pass",
+          };
+        }
+        const content = ctx.readFile(ciFile);
+        if (!content) {
+          return {
+            message: "could not read CI workflow — skipping content checks",
+            status: "pass",
+          };
+        }
+        if (
+          content.includes("biome") ||
+          content.includes("lint") ||
+          content.includes("check:lint")
+        ) {
+          return { status: "pass" };
+        }
+        return {
+          message:
+            "CI workflow does not appear to run lint — add a lint step to catch style issues in CI",
+          status: "warn",
+        };
+      },
+      description: "CI workflow runs lint",
+      group: "github:ci",
+      id: "github:ci-lint",
+      severity: "warn",
+    }),
+    github.rule({
+      check: (ctx) => {
+        const ciFile = findWorkflowFile(ctx, CI_WORKFLOW_CANDIDATES);
+        if (!ciFile) {
+          return {
+            message: "no CI workflow found — skipping content checks",
+            status: "pass",
+          };
+        }
+        const content = ctx.readFile(ciFile);
+        if (!content) {
+          return {
+            message: "could not read CI workflow — skipping content checks",
+            status: "pass",
+          };
+        }
+        if (
+          content.includes("tsc") ||
+          content.includes("typecheck") ||
+          content.includes("check:types")
+        ) {
+          return { status: "pass" };
+        }
+        return {
+          message:
+            "CI workflow does not appear to run typecheck — add a typecheck step to catch type errors in CI",
+          status: "warn",
+        };
+      },
+      description: "CI workflow runs typecheck",
+      group: "github:ci",
+      id: "github:ci-typecheck",
+      severity: "warn",
+    }),
+    github.rule({
+      check: (ctx) => {
+        if (ctx.fileExists(".github/dependabot.yml")) {
+          return { message: ".github/dependabot.yml", status: "pass" };
+        }
+        if (ctx.fileExists(".github/dependabot.yaml")) {
+          return { message: ".github/dependabot.yaml", status: "pass" };
+        }
+        if (ctx.fileExists("renovate.json")) {
+          return { message: "renovate.json", status: "pass" };
+        }
+        if (ctx.fileExists(".renovaterc")) {
+          return { message: ".renovaterc", status: "pass" };
+        }
+        if (ctx.fileExists(".renovaterc.json")) {
+          return { message: ".renovaterc.json", status: "pass" };
+        }
+        return {
+          message:
+            "no Dependabot or Renovate config found — automated dependency updates prevent security drift",
+          status: "warn",
+        };
+      },
+      description: "Dependabot or Renovate config exists",
+      group: "github:automation",
+      id: "github:dependabot",
       severity: "warn",
     }),
   ],

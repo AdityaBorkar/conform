@@ -2,6 +2,8 @@ export type Severity = "pass" | "warn" | "fail";
 
 export type RuleSeverity = "warn" | "fail";
 
+export type GroupBy = "domains" | "files";
+
 export interface CheckResult {
   status: Severity;
   message?: string;
@@ -22,6 +24,11 @@ export interface PackageJson {
   devDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
   dependencies?: Record<string, string>;
+  bin?: unknown;
+  bugs?: unknown;
+  homepage?: string;
+  engines?: Record<string, string>;
+  sideEffects?: boolean | string[];
 }
 
 export interface CheckContext {
@@ -34,6 +41,7 @@ export interface CheckContext {
 
 export interface Rule {
   id: string;
+  domain: string;
   group: string;
   description: string;
   severity: RuleSeverity;
@@ -48,6 +56,7 @@ export interface Template {
 
 export interface RuleResult {
   id: string;
+  domain: string;
   group: string;
   description: string;
   severity: RuleSeverity;
@@ -62,6 +71,7 @@ export interface ConformConfig {
 export interface ConformOutput {
   template: string;
   path: string;
+  groupBy?: GroupBy;
   results: RuleResult[];
   summary: {
     pass: number;
