@@ -1,5 +1,5 @@
-import { defineConfig } from "./src/template-api.ts";
+import { defineConfig } from "@/template-api/index.ts";
 
 export default defineConfig({
-	template: "npm-pkg",
+  template: "npm-pkg",
 });
