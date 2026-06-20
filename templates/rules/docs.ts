@@ -1,118 +1,103 @@
-import { defineRule } from "@/conform-api/index.ts";
-import type { Rule } from "@/types.ts";
+import { RuleSet, Status } from "@/conform-api/index.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
 import { hasHeading } from "./utils/markdown.ts";
 
-export const docsRules: Rule[] = [
-  defineRule({
-    check: (ctx) => {
-      const content = ctx.readFile("README.md");
-      if (content === null) {
-        return { message: "README.md not found", status: "fail" };
-      }
-      if (content.trim().length === 0) {
-        return { message: "README.md is empty", status: "fail" };
-      }
-      return { status: "pass" };
-    },
-    description: "README.md exists and is non-empty (JSR: has_readme — 2pts)",
-    domain: DOMAIN.DOCUMENTATION,
-    files: ["README.md"],
-    id: "files:readme",
+const _docs = new RuleSet<{
+  fileExists: (path: string) => boolean;
+  readFile: (path: string) => string | null;
+}>({
+  context: (target) => ({
+    fileExists: (path: string) => target.fileExists(path),
+    readFile: (path: string) => target.readFile(path),
   }),
-  defineRule({
-    check: (ctx) => {
-      const changelogPaths = ["CHANGELOG.md", "CHANGELOG", "HISTORY.md"];
-      for (const path of changelogPaths) {
-        if (ctx.fileExists(path)) {
-          return { message: path, status: "pass" };
-        }
+  domain: DOMAIN.DOCUMENTATION,
+  id: "docs",
+});
+
+_docs.defineRule({
+  id: "readme",
+  name: "README.md exists and is non-empty (JSR: has_readme — 2pts)",
+  test({ context }) {
+    const content = context.readFile("README.md");
+    if (content === null) {
+      return Status.fail("README.md not found");
+    }
+    if (content.trim().length === 0) {
+      return Status.fail("README.md is empty");
+    }
+    return Status.pass();
+  },
+});
+
+_docs.defineRule({
+  id: "changelog",
+  name: "CHANGELOG.md exists",
+  test({ context }) {
+    const changelogPaths = ["CHANGELOG.md", "CHANGELOG", "HISTORY.md"];
+    for (const path of changelogPaths) {
+      if (context.fileExists(path)) {
+        return Status.pass(path);
       }
-      return {
-        message:
-          "no CHANGELOG.md found — users and consumers need to see what changed between versions",
-        status: "warn",
-      };
-    },
-    description: "CHANGELOG.md exists",
-    domain: DOMAIN.DOCUMENTATION,
-    files: ["CHANGELOG.md", "CHANGELOG", "HISTORY.md"],
-    id: "docs:changelog",
-  }),
-  defineRule({
-    check: (ctx) => {
-      if (ctx.fileExists("CONTRIBUTING.md")) {
-        return { status: "pass" };
-      }
-      if (ctx.fileExists(".github/CONTRIBUTING.md")) {
-        return { message: ".github/CONTRIBUTING.md", status: "pass" };
-      }
-      return {
-        message:
-          "no CONTRIBUTING.md found — open source packages should tell contributors how to participate",
-        status: "warn",
-      };
-    },
-    description: "CONTRIBUTING.md exists",
-    domain: DOMAIN.DOCUMENTATION,
-    files: ["CONTRIBUTING.md", ".github/CONTRIBUTING.md"],
-    id: "docs:contributing",
-  }),
-  defineRule({
-    check: (ctx) => {
-      const readme = ctx.readFile("README.md");
-      if (!readme) {
-        return {
-          message: "README.md not found — skipping install section check",
-          status: "pass",
-        };
-      }
-      if (
-        hasHeading(
-          readme,
-          "install",
-          "installation",
-          "getting started",
-          "setup",
-        )
-      ) {
-        return { status: "pass" };
-      }
-      return {
-        message:
-          "README.md has no Installation section — add ## Install or ## Getting Started",
-        status: "warn",
-      };
-    },
-    description: "README has an Installation section",
-    domain: DOMAIN.DOCUMENTATION,
-    files: ["README.md"],
-    id: "docs:readme-install",
-  }),
-  defineRule({
-    check: (ctx) => {
-      const readme = ctx.readFile("README.md");
-      if (!readme) {
-        return {
-          message: "README.md not found — skipping usage section check",
-          status: "pass",
-        };
-      }
-      if (
-        hasHeading(readme, "usage", "quick start", "example", "basic usage")
-      ) {
-        return { status: "pass" };
-      }
-      return {
-        message:
-          "README.md has no Usage section — add ## Usage or ## Quick Start",
-        status: "warn",
-      };
-    },
-    description: "README has a Usage section",
-    domain: DOMAIN.DOCUMENTATION,
-    files: ["README.md"],
-    id: "docs:readme-usage",
-  }),
-];
+    }
+    return Status.warn(
+      "no CHANGELOG.md found — users and consumers need to see what changed between versions",
+    );
+  },
+});
+
+_docs.defineRule({
+  id: "contributing",
+  name: "CONTRIBUTING.md exists",
+  test({ context }) {
+    if (context.fileExists("CONTRIBUTING.md")) {
+      return Status.pass();
+    }
+    if (context.fileExists(".github/CONTRIBUTING.md")) {
+      return Status.pass(".github/CONTRIBUTING.md");
+    }
+    return Status.warn(
+      "no CONTRIBUTING.md found — open source packages should tell contributors how to participate",
+    );
+  },
+});
+
+_docs.defineRule({
+  id: "readme-install",
+  name: "README has an Installation section",
+  test({ context }) {
+    const readme = context.readFile("README.md");
+    if (!readme) {
+      return Status.pass(
+        "README.md not found — skipping install section check",
+      );
+    }
+    if (
+      hasHeading(readme, "install", "installation", "getting started", "setup")
+    ) {
+      return Status.pass();
+    }
+    return Status.warn(
+      "README.md has no Installation section — add ## Install or ## Getting Started",
+    );
+  },
+});
+
+_docs.defineRule({
+  id: "readme-usage",
+  name: "README has a Usage section",
+  test({ context }) {
+    const readme = context.readFile("README.md");
+    if (!readme) {
+      return Status.pass("README.md not found — skipping usage section check");
+    }
+    if (hasHeading(readme, "usage", "quick start", "example", "basic usage")) {
+      return Status.pass();
+    }
+    return Status.warn(
+      "README.md has no Usage section — add ## Usage or ## Quick Start",
+    );
+  },
+});
+
+export const docs = _docs;

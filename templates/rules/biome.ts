@@ -1,77 +1,75 @@
-import { defineRule } from "@/conform-api/index.ts";
-import type { Rule } from "@/types.ts";
+import { RuleSet, Status } from "@/conform-api/index.ts";
+import type { PackageJson } from "@/types.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
 
-export const biomeRules: Rule[] = [
-  defineRule({
-    check: (ctx) => {
-      const version = ctx.packageJson()?.devDependencies?.["@biomejs/biome"];
-      if (version) {
-        return { message: version, status: "pass" };
-      }
-      return {
-        message: "@biomejs/biome not found in devDependencies",
-        status: "fail",
-      };
-    },
-    description: "@biomejs/biome in devDependencies",
-    domain: DOMAIN.STYLE,
-    files: ["package.json"],
-    id: "biome:dev-deps",
+const _biome = new RuleSet<{
+  fileExists: (path: string) => boolean;
+  packageJson: () => PackageJson | null;
+}>({
+  context: (target) => ({
+    fileExists: (path: string) => target.fileExists(path),
+    packageJson: () => target.packageJson(),
   }),
-  defineRule({
-    check: (ctx) => {
-      if (ctx.fileExists("biome.json")) {
-        return { message: "biome.json", status: "pass" };
-      }
-      if (ctx.fileExists("biome.jsonc")) {
-        return { message: "biome.jsonc", status: "pass" };
-      }
-      return {
-        message: "no biome.json or biome.jsonc found",
-        status: "warn",
-      };
-    },
-    description: "biome.json or biome.jsonc exists",
-    domain: DOMAIN.STYLE,
-    files: ["biome.json", "biome.jsonc"],
-    id: "biome:config-file",
-  }),
-  defineRule({
-    check: (ctx) => {
-      const scripts = ctx.packageJson()?.scripts ?? {};
-      const lintScript = scripts.lint ?? scripts.check;
-      if (lintScript?.includes("biome")) {
-        return { message: lintScript, status: "pass" };
-      }
-      return {
-        message: "no script running biome check/lint found",
-        status: "fail",
-      };
-    },
-    description: "lint or check script runs biome",
-    domain: DOMAIN.STYLE,
-    files: ["package.json"],
-    id: "biome:lint-script",
-  }),
-  defineRule({
-    check: (ctx) => {
-      const scripts = ctx.packageJson()?.scripts ?? {};
-      const formatScript =
-        scripts.format ?? scripts["check:format"] ?? scripts["check:lint"];
-      if (formatScript?.includes("biome")) {
-        return { message: formatScript, status: "pass" };
-      }
-      return {
-        message:
-          "no format script running biome format found — add a format script to enforce consistent style",
-        status: "warn",
-      };
-    },
-    description: "format script runs biome",
-    domain: DOMAIN.STYLE,
-    files: ["package.json"],
-    id: "biome:format-script",
-  }),
-];
+  domain: DOMAIN.STYLE,
+  id: "biome",
+});
+
+_biome.defineRule({
+  id: "dev-deps",
+  name: "@biomejs/biome in devDependencies",
+  test({ context }) {
+    const version = context.packageJson()?.devDependencies?.["@biomejs/biome"];
+    if (version) {
+      return Status.pass(version);
+    }
+    return Status.fail("@biomejs/biome not found in devDependencies");
+  },
+});
+
+_biome.defineRule({
+  id: "config-file",
+  name: "biome.json or biome.jsonc exists",
+  test({ context }) {
+    if (context.fileExists("biome.json")) {
+      return Status.pass("biome.json");
+    }
+    if (context.fileExists("biome.jsonc")) {
+      return Status.pass("biome.jsonc");
+    }
+    return Status.warn("no biome.json or biome.jsonc found");
+  },
+});
+
+_biome.defineRule({
+  id: "lint-script",
+  name: "lint or check script runs biome",
+  test({ context }) {
+    const scripts = context.packageJson()?.scripts ?? {};
+    // biome-ignore lint/complexity/useLiteralKeys: noPropertyAccessFromIndexSignature
+    const lintScript = scripts["lint"] ?? scripts["check"];
+    if (typeof lintScript === "string" && lintScript.includes("biome")) {
+      return Status.pass(lintScript);
+    }
+    return Status.fail("no script running biome check/lint found");
+  },
+});
+
+_biome.defineRule({
+  id: "format-script",
+  name: "format script runs biome",
+  test({ context }) {
+    const scripts = context.packageJson()?.scripts ?? {};
+    const formatScript =
+      // biome-ignore lint/complexity/useLiteralKeys: noPropertyAccessFromIndexSignature
+      scripts["format"] ?? scripts["check:format"] ?? scripts["check:lint"];
+    if (typeof formatScript === "string" && formatScript.includes("biome")) {
+      return Status.pass(formatScript);
+    }
+    return Status.warn(
+      "no format script running biome format found — add a format script to enforce consistent style",
+    );
+  },
+});
+
+export const biome = _biome;

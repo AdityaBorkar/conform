@@ -1,5 +1,5 @@
-import { defineRule } from "@/conform-api/index.ts";
-import type { Rule } from "@/types.ts";
+import { RuleSet, Status } from "@/conform-api/index.ts";
+import type { Target } from "@/types.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
 import {
@@ -8,141 +8,128 @@ import {
   RELEASE_WORKFLOW_CANDIDATES,
 } from "./utils/workflows.ts";
 
-export const githubRules: Rule[] = [
-  defineRule({
-    check: (ctx) => {
-      const ciFile = findWorkflowFile(ctx, CI_WORKFLOW_CANDIDATES);
-      if (ciFile) {
-        return { message: ciFile, status: "pass" };
-      }
-      return {
-        message:
-          "no CI workflow found — expected .github/workflows/{ci,test,build,check}.{yml,yaml}",
-        status: "fail",
-      };
-    },
-    description: "CI workflow file exists",
-    domain: DOMAIN.GITHUB_CONFIG,
-    files: [".github/workflows/"],
-    id: "github:ci-workflow",
+const _github = new RuleSet<{
+  fileExists: (path: string) => boolean;
+  readFile: (path: string) => string | null;
+  target: Target;
+}>({
+  context: (target) => ({
+    fileExists: (path: string) => target.fileExists(path),
+    readFile: (path: string) => target.readFile(path),
+    target,
   }),
-  defineRule({
-    check: (ctx) => {
-      const releaseFile = findWorkflowFile(ctx, RELEASE_WORKFLOW_CANDIDATES);
-      if (releaseFile) {
-        return { message: releaseFile, status: "pass" };
-      }
-      return {
-        message:
-          "no release/publish workflow found — expected .github/workflows/{release,publish,deploy}.{yml,yaml}",
-        status: "warn",
-      };
-    },
-    description: "Release/publish workflow file exists",
-    domain: DOMAIN.GITHUB_CONFIG,
-    files: [".github/workflows/"],
-    id: "github:release-workflow",
-  }),
-  defineRule({
-    check: (ctx) => {
-      const ciFile = findWorkflowFile(ctx, CI_WORKFLOW_CANDIDATES);
-      if (!ciFile) {
-        return {
-          message: "no CI workflow found — skipping content checks",
-          status: "pass",
-        };
-      }
-      const content = ctx.readFile(ciFile);
-      if (!content) {
-        return {
-          message: "could not read CI workflow — skipping content checks",
-          status: "pass",
-        };
-      }
-      if (
-        content.includes("biome") ||
-        content.includes("lint") ||
-        content.includes("check:lint")
-      ) {
-        return { status: "pass" };
-      }
-      return {
-        message:
-          "CI workflow does not appear to run lint — add a lint step to catch style issues in CI",
-        status: "warn",
-      };
-    },
-    description: "CI workflow runs lint",
-    domain: DOMAIN.GITHUB_CONFIG,
-    files: [".github/workflows/"],
-    id: "github:ci-lint",
-  }),
-  defineRule({
-    check: (ctx) => {
-      const ciFile = findWorkflowFile(ctx, CI_WORKFLOW_CANDIDATES);
-      if (!ciFile) {
-        return {
-          message: "no CI workflow found — skipping content checks",
-          status: "pass",
-        };
-      }
-      const content = ctx.readFile(ciFile);
-      if (!content) {
-        return {
-          message: "could not read CI workflow — skipping content checks",
-          status: "pass",
-        };
-      }
-      if (
-        content.includes("tsc") ||
-        content.includes("typecheck") ||
-        content.includes("check:types")
-      ) {
-        return { status: "pass" };
-      }
-      return {
-        message:
-          "CI workflow does not appear to run typecheck — add a typecheck step to catch type errors in CI",
-        status: "warn",
-      };
-    },
-    description: "CI workflow runs typecheck",
-    domain: DOMAIN.GITHUB_CONFIG,
-    files: [".github/workflows/"],
-    id: "github:ci-typecheck",
-  }),
-  defineRule({
-    check: (ctx) => {
-      if (ctx.fileExists(".github/dependabot.yml")) {
-        return { message: ".github/dependabot.yml", status: "pass" };
-      }
-      if (ctx.fileExists(".github/dependabot.yaml")) {
-        return { message: ".github/dependabot.yaml", status: "pass" };
-      }
-      if (ctx.fileExists("renovate.json")) {
-        return { message: "renovate.json", status: "pass" };
-      }
-      if (ctx.fileExists(".renovaterc")) {
-        return { message: ".renovaterc", status: "pass" };
-      }
-      if (ctx.fileExists(".renovaterc.json")) {
-        return { message: ".renovaterc.json", status: "pass" };
-      }
-      return {
-        message:
-          "no Dependabot or Renovate config found — automated dependency updates prevent security drift",
-        status: "warn",
-      };
-    },
-    description: "Dependabot or Renovate config exists",
-    domain: DOMAIN.GITHUB_CONFIG,
-    files: [
-      ".github/dependabot.yml",
-      ".github/dependabot.yaml",
-      "renovate.json",
-      ".renovaterc",
-      ".renovaterc.json",
-    ],
-    id: "github:dependabot",
-  }),
-];
+  domain: DOMAIN.GITHUB_CONFIG,
+  id: "github",
+});
+
+_github.defineRule({
+  id: "ci-workflow",
+  name: "CI workflow file exists",
+  test({ context }) {
+    const ciFile = findWorkflowFile(context.target, CI_WORKFLOW_CANDIDATES);
+    if (ciFile) {
+      return Status.pass(ciFile);
+    }
+    return Status.fail(
+      "no CI workflow found — expected .github/workflows/{ci,test,build,check}.{yml,yaml}",
+    );
+  },
+});
+
+_github.defineRule({
+  id: "release-workflow",
+  name: "Release/publish workflow file exists",
+  test({ context }) {
+    const releaseFile = findWorkflowFile(
+      context.target,
+      RELEASE_WORKFLOW_CANDIDATES,
+    );
+    if (releaseFile) {
+      return Status.pass(releaseFile);
+    }
+    return Status.warn(
+      "no release/publish workflow found — expected .github/workflows/{release,publish,deploy}.{yml,yaml}",
+    );
+  },
+});
+
+_github.defineRule({
+  id: "ci-lint",
+  name: "CI workflow runs lint",
+  test({ context }) {
+    const ciFile = findWorkflowFile(context.target, CI_WORKFLOW_CANDIDATES);
+    if (!ciFile) {
+      return Status.pass("no CI workflow found — skipping content checks");
+    }
+    const content = context.readFile(ciFile);
+    if (!content) {
+      return Status.pass(
+        "could not read CI workflow — skipping content checks",
+      );
+    }
+    if (
+      content.includes("biome") ||
+      content.includes("lint") ||
+      content.includes("check:lint")
+    ) {
+      return Status.pass();
+    }
+    return Status.warn(
+      "CI workflow does not appear to run lint — add a lint step to catch style issues in CI",
+    );
+  },
+});
+
+_github.defineRule({
+  id: "ci-typecheck",
+  name: "CI workflow runs typecheck",
+  test({ context }) {
+    const ciFile = findWorkflowFile(context.target, CI_WORKFLOW_CANDIDATES);
+    if (!ciFile) {
+      return Status.pass("no CI workflow found — skipping content checks");
+    }
+    const content = context.readFile(ciFile);
+    if (!content) {
+      return Status.pass(
+        "could not read CI workflow — skipping content checks",
+      );
+    }
+    if (
+      content.includes("tsc") ||
+      content.includes("typecheck") ||
+      content.includes("check:types")
+    ) {
+      return Status.pass();
+    }
+    return Status.warn(
+      "CI workflow does not appear to run typecheck — add a typecheck step to catch type errors in CI",
+    );
+  },
+});
+
+_github.defineRule({
+  id: "dependabot",
+  name: "Dependabot or Renovate config exists",
+  test({ context }) {
+    if (context.fileExists(".github/dependabot.yml")) {
+      return Status.pass(".github/dependabot.yml");
+    }
+    if (context.fileExists(".github/dependabot.yaml")) {
+      return Status.pass(".github/dependabot.yaml");
+    }
+    if (context.fileExists("renovate.json")) {
+      return Status.pass("renovate.json");
+    }
+    if (context.fileExists(".renovaterc")) {
+      return Status.pass(".renovaterc");
+    }
+    if (context.fileExists(".renovaterc.json")) {
+      return Status.pass(".renovaterc.json");
+    }
+    return Status.warn(
+      "no Dependabot or Renovate config found — automated dependency updates prevent security drift",
+    );
+  },
+});
+
+export const github = _github;

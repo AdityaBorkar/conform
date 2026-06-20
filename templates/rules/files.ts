@@ -1,73 +1,70 @@
-import { defineRule } from "@/conform-api/index.ts";
-import type { Rule } from "@/types.ts";
+import { RuleSet, Status } from "@/conform-api/index.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
 
-export const filesRules: Rule[] = [
-  defineRule({
-    check: (ctx) => {
-      const lockfiles = [
-        "bun.lock",
-        "bun.lockb",
-        "package-lock.json",
-        "pnpm-lock.yaml",
-        "yarn.lock",
-      ];
-      for (const lf of lockfiles) {
-        if (ctx.fileExists(lf)) {
-          return { message: lf, status: "pass" };
-        }
-      }
-      return {
-        message:
-          "no lockfile found — committed lockfiles ensure reproducible installs across environments",
-        status: "fail",
-      };
-    },
-    description: "lockfile exists (bun.lock, package-lock.json, etc.)",
-    domain: DOMAIN.DEV_ENVIRONMENT,
-    files: [
+const _files = new RuleSet<{
+  fileExists: (path: string) => boolean;
+}>({
+  context: (target) => ({
+    fileExists: (path: string) => target.fileExists(path),
+  }),
+  id: "files",
+});
+
+_files.defineRule({
+  domain: DOMAIN.DEV_ENVIRONMENT,
+  id: "lockfile",
+  name: "lockfile exists (bun.lock, package-lock.json, etc.)",
+  test({ context }) {
+    const lockfiles = [
       "bun.lock",
       "bun.lockb",
       "package-lock.json",
       "pnpm-lock.yaml",
       "yarn.lock",
-    ],
-    id: "lockfile:exists",
-  }),
-  defineRule({
-    check: (ctx) => {
-      if (
-        ctx.fileExists("LICENSE") ||
-        ctx.fileExists("LICENSE.md") ||
-        ctx.fileExists("LICENSE.txt")
-      ) {
-        return { status: "pass" };
+    ];
+    for (const lf of lockfiles) {
+      if (context.fileExists(lf)) {
+        return Status.pass(lf);
       }
-      return { message: "no LICENSE file found", status: "fail" };
-    },
-    description: "LICENSE file exists",
-    domain: DOMAIN.SECURITY,
-    files: ["LICENSE", "LICENSE.md", "LICENSE.txt"],
-    id: "files:license",
-  }),
-  defineRule({
-    check: (ctx) => {
-      if (ctx.fileExists("SECURITY.md")) {
-        return { status: "pass" };
-      }
-      if (ctx.fileExists(".github/SECURITY.md")) {
-        return { message: ".github/SECURITY.md", status: "pass" };
-      }
-      return {
-        message:
-          "no SECURITY.md found — provides a responsible disclosure path for vulnerability reports",
-        status: "warn",
-      };
-    },
-    description: "SECURITY.md exists",
-    domain: DOMAIN.SECURITY,
-    files: ["SECURITY.md", ".github/SECURITY.md"],
-    id: "files:security-md",
-  }),
-];
+    }
+    return Status.fail(
+      "no lockfile found — committed lockfiles ensure reproducible installs across environments",
+    );
+  },
+});
+
+_files.defineRule({
+  domain: DOMAIN.SECURITY,
+  id: "license",
+  name: "LICENSE file exists",
+  test({ context }) {
+    if (
+      context.fileExists("LICENSE") ||
+      context.fileExists("LICENSE.md") ||
+      context.fileExists("LICENSE.txt")
+    ) {
+      return Status.pass();
+    }
+    return Status.fail("no LICENSE file found");
+  },
+});
+
+_files.defineRule({
+  domain: DOMAIN.SECURITY,
+  id: "security-md",
+  name: "SECURITY.md exists",
+  test({ context }) {
+    if (context.fileExists("SECURITY.md")) {
+      return Status.pass();
+    }
+    if (context.fileExists(".github/SECURITY.md")) {
+      return Status.pass(".github/SECURITY.md");
+    }
+    return Status.warn(
+      "no SECURITY.md found — provides a responsible disclosure path for vulnerability reports",
+    );
+  },
+});
+
+export const files = _files;

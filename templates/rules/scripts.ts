@@ -1,43 +1,48 @@
-import { defineRule } from "@/conform-api/index.ts";
-import type { Rule } from "@/types.ts";
+import { RuleSet, Status } from "@/conform-api/index.ts";
+import type { PackageJson } from "@/types.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
 
-export const scriptsRules: Rule[] = [
-  defineRule({
-    check: (ctx) => {
-      const scripts = ctx.packageJson()?.scripts ?? {};
-      const typecheckScript =
-        scripts.typecheck ?? scripts["check:types"] ?? scripts.types;
-      if (typecheckScript) {
-        return { message: typecheckScript, status: "pass" };
-      }
-      return {
-        message:
-          "no typecheck script found — add a typecheck or check:types script running tsc --noEmit",
-        status: "warn",
-      };
-    },
-    description: "typecheck script exists",
-    domain: DOMAIN.BUILD,
-    files: ["package.json"],
-    id: "scripts:typecheck",
+const _scripts = new RuleSet<{
+  packageJson: () => PackageJson | null;
+}>({
+  context: (target) => ({
+    packageJson: () => target.packageJson(),
   }),
-  defineRule({
-    check: (ctx) => {
-      const scripts = ctx.packageJson()?.scripts;
-      if (scripts?.prepublish) {
-        return {
-          message:
-            'prepublish script is deprecated — it runs on both "npm install" and "npm publish". Use prepublishOnly instead.',
-          status: "fail",
-        };
-      }
-      return { status: "pass" };
-    },
-    description: "deprecated prepublish script is not used",
-    domain: DOMAIN.BUILD,
-    files: ["package.json"],
-    id: "scripts:no-prepublish",
-  }),
-];
+  domain: DOMAIN.BUILD,
+  id: "scripts",
+});
+
+_scripts.defineRule({
+  id: "typecheck",
+  name: "typecheck script exists",
+  test({ context }) {
+    const scripts = context.packageJson()?.scripts ?? {};
+    const typecheckScript =
+      // biome-ignore lint/complexity/useLiteralKeys: noPropertyAccessFromIndexSignature
+      scripts["typecheck"] ?? scripts["check:types"] ?? scripts["types"];
+    if (typecheckScript) {
+      return Status.pass(typecheckScript);
+    }
+    return Status.warn(
+      "no typecheck script found — add a typecheck or check:types script running tsc --noEmit",
+    );
+  },
+});
+
+_scripts.defineRule({
+  id: "no-prepublish",
+  name: "deprecated prepublish script is not used",
+  test({ context }) {
+    const scripts = context.packageJson()?.scripts;
+    // biome-ignore lint/complexity/useLiteralKeys: noPropertyAccessFromIndexSignature
+    if (scripts?.["prepublish"]) {
+      return Status.fail(
+        'prepublish script is deprecated — it runs on both "npm install" and "npm publish". Use prepublishOnly instead.',
+      );
+    }
+    return Status.pass();
+  },
+});
+
+export const scripts = _scripts;

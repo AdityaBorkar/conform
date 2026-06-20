@@ -1,8 +1,8 @@
 // biome-ignore lint/correctness/noUnresolvedImports: arktype re-exports `type` via a non-standard "ark-ts" exports condition Biome cannot statically resolve; the export exists and tsc validates it
 import { type } from "arktype";
 
-import { defineRule } from "@/conform-api/index.ts";
-import type { Rule } from "@/types.ts";
+import { RuleSet, Status } from "@/conform-api/index.ts";
+import type { PackageJson } from "@/types.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
 
@@ -28,107 +28,109 @@ function summarize(errors: type.errors): string {
     .join("; ");
 }
 
-export const packageJsonRules: Rule[] = [
-  defineRule({
-    check: (ctx) => {
-      const pkg = ctx.packageJson();
-      if (!pkg) {
-        return { message: "package.json not found", status: "fail" };
-      }
+const _packageJson = new RuleSet<{
+  fileExists: (path: string) => boolean;
+  packageJson: () => PackageJson | null;
+}>({
+  context: (target) => ({
+    fileExists: (path: string) => target.fileExists(path),
+    packageJson: () => target.packageJson(),
+  }),
+  domain: DOMAIN.BUILD,
+  id: "package-json",
+});
 
-      const required = requiredStructure(pkg);
-      if (required instanceof type.errors) {
-        return { message: summarize(required), status: "fail" };
-      }
+_packageJson.defineRule({
+  id: "structure",
+  name: "package.json structure: required & recommended fields",
+  test({ context }) {
+    const pkg = context.packageJson();
+    if (!pkg) {
+      return Status.fail("package.json not found");
+    }
 
-      const recommended = recommendedStructure(required);
-      if (recommended instanceof type.errors) {
-        return { message: summarize(recommended), status: "warn" };
-      }
+    const required = requiredStructure(pkg);
+    if (required instanceof type.errors) {
+      return Status.fail(summarize(required));
+    }
 
-      return { status: "pass" };
-    },
-    description: "package.json structure: required & recommended fields",
-    domain: "BUILD",
-    files: ["package.json"],
-    id: "package-json:structure",
-  }),
-  defineRule({
-    check: (ctx) => {
-      const pkg = ctx.packageJson();
-      const entries = [
-        pkg?.main && "main",
-        pkg?.module && "module",
-        pkg?.exports && "exports",
-      ].filter(Boolean);
-      if (entries.length > 0) {
-        return { message: entries.join(", "), status: "pass" };
+    const recommended = recommendedStructure(required);
+    if (recommended instanceof type.errors) {
+      return Status.warn(summarize(recommended));
+    }
+
+    return Status.pass();
+  },
+});
+
+_packageJson.defineRule({
+  id: "entry-point",
+  name: "main, module, or exports entry defined",
+  test({ context }) {
+    const pkg = context.packageJson();
+    const entries = [
+      pkg?.main && "main",
+      pkg?.module && "module",
+      pkg?.exports && "exports",
+    ].filter(Boolean);
+    if (entries.length > 0) {
+      return Status.pass(entries.join(", "));
+    }
+    return Status.fail("no main, module, or exports field defined");
+  },
+});
+
+_packageJson.defineRule({
+  id: "build-script",
+  name: "scripts.prepare or scripts.build exists",
+  test({ context }) {
+    const scripts = context.packageJson()?.scripts;
+    // biome-ignore lint/complexity/useLiteralKeys: noPropertyAccessFromIndexSignature
+    if (scripts?.["prepare"]) {
+      return Status.pass("prepare");
+    }
+    // biome-ignore lint/complexity/useLiteralKeys: noPropertyAccessFromIndexSignature
+    if (scripts?.["build"]) {
+      return Status.pass("build");
+    }
+    return Status.fail("no prepare or build script found");
+  },
+});
+
+_packageJson.defineRule({
+  id: "files-or-npmignore",
+  name: "files field or .npmignore exists",
+  test({ context }) {
+    if (context.packageJson()?.files) {
+      return Status.pass("files field defined");
+    }
+    if (context.fileExists(".npmignore")) {
+      return Status.pass(".npmignore exists");
+    }
+    return Status.warn("no files field or .npmignore found");
+  },
+});
+
+_packageJson.defineRule({
+  domain: DOMAIN.SECURITY,
+  id: "no-install-hooks",
+  name: "no preinstall/postinstall/install lifecycle scripts",
+  test({ context }) {
+    const scripts = context.packageJson()?.scripts;
+    const dangerousScripts = ["preinstall", "postinstall", "install"];
+    const found: string[] = [];
+    for (const name of dangerousScripts) {
+      if (scripts?.[name]) {
+        found.push(name);
       }
-      return {
-        message: "no main, module, or exports field defined",
-        status: "fail",
-      };
-    },
-    description: "main, module, or exports entry defined",
-    domain: DOMAIN.BUILD,
-    files: ["package.json"],
-    id: "package-json:entry-point",
-  }),
-  defineRule({
-    check: (ctx) => {
-      const scripts = ctx.packageJson()?.scripts;
-      if (scripts?.prepare) {
-        return { message: "prepare", status: "pass" };
-      }
-      if (scripts?.build) {
-        return { message: "build", status: "pass" };
-      }
-      return { message: "no prepare or build script found", status: "fail" };
-    },
-    description: "scripts.prepare or scripts.build exists",
-    domain: DOMAIN.BUILD,
-    files: ["package.json"],
-    id: "package-json:build-script",
-  }),
-  defineRule({
-    check: (ctx) => {
-      if (ctx.packageJson()?.files) {
-        return { message: "files field defined", status: "pass" };
-      }
-      if (ctx.fileExists(".npmignore")) {
-        return { message: ".npmignore exists", status: "pass" };
-      }
-      return {
-        message: "no files field or .npmignore found",
-        status: "warn",
-      };
-    },
-    description: "files field or .npmignore exists",
-    domain: DOMAIN.BUILD,
-    files: ["package.json", ".npmignore"],
-    id: "package-json:files-or-npmignore",
-  }),
-  defineRule({
-    check: (ctx) => {
-      const scripts = ctx.packageJson()?.scripts;
-      const dangerousScripts = ["preinstall", "postinstall", "install"];
-      const found: string[] = [];
-      for (const name of dangerousScripts) {
-        if (scripts?.[name]) {
-          found.push(name);
-        }
-      }
-      if (found.length > 0) {
-        return {
-          message: `install lifecycle scripts found: ${found.join(", ")} — these are the #1 supply chain attack vector in npm`,
-          status: "fail",
-        };
-      }
-      return { status: "pass" };
-    },
-    description: "no preinstall/postinstall/install lifecycle scripts",
-    domain: DOMAIN.SECURITY,
-    files: ["package.json"],
-    id: "package-json:no-install-hooks",
-  }),
-];
+    }
+    if (found.length > 0) {
+      return Status.fail(
+        `install lifecycle scripts found: ${found.join(", ")} — these are the #1 supply chain attack vector in npm`,
+      );
+    }
+    return Status.pass();
+  },
+});
+
+export const packageJson = _packageJson;

@@ -1,8 +1,12 @@
 import { RuleSet, Status } from "@/conform-api/index.ts";
+import type { PackageJson } from "@/types.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
 
-export const husky = new RuleSet({
+const _husky = new RuleSet<{
+  fileExists: (path: string) => boolean;
+  packageJson: () => PackageJson | null;
+}>({
   context: (target) => ({
     fileExists: (path: string) => target.fileExists(path),
     packageJson: () => target.packageJson(),
@@ -11,7 +15,7 @@ export const husky = new RuleSet({
   id: "husky",
 });
 
-husky.defineRule({
+_husky.defineRule({
   id: "dev-deps",
   name: "husky in devDependencies",
   test({ context }) {
@@ -24,7 +28,7 @@ husky.defineRule({
   },
 });
 
-husky.defineRule({
+_husky.defineRule({
   id: "hooks-dir",
   name: ".husky/ directory exists",
   test({ context }) {
@@ -35,7 +39,7 @@ husky.defineRule({
   },
 });
 
-husky.defineRule({
+_husky.defineRule({
   id: "prepare-script",
   name: "prepare script calls husky",
   test({ context }) {
@@ -51,7 +55,7 @@ husky.defineRule({
   },
 });
 
-husky.defineRule({
+_husky.defineRule({
   id: "pre-commit",
   name: "pre-commit hook exists",
   test({ context }) {
@@ -62,7 +66,7 @@ husky.defineRule({
   },
 });
 
-husky.defineRule({
+_husky.defineRule({
   id: "commit-msg",
   name: "commit-msg hook exists",
   test({ context }) {
@@ -72,3 +76,5 @@ husky.defineRule({
     return Status.fail("no commit-msg hook found");
   },
 });
+
+export const husky = _husky;

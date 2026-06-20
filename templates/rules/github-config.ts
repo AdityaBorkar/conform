@@ -1,3 +1,8 @@
-import type { Rule } from "@/types.ts";
+import { RuleSet } from "@/conform-api/index.ts";
 
-export const githubConfigRules: Rule[] = [];
+const _githubConfig = new RuleSet({
+  context: () => ({}),
+  id: "github-config",
+});
+
+export const githubConfig = _githubConfig;

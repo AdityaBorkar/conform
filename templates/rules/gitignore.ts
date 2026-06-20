@@ -1,65 +1,62 @@
-import { defineRule } from "@/conform-api/index.ts";
-import type { Rule } from "@/types.ts";
+import { RuleSet, Status } from "@/conform-api/index.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
 
-export const gitignoreRules: Rule[] = [
-  defineRule({
-    check: (ctx) => {
-      if (ctx.fileExists(".gitignore")) {
-        return { status: "pass" };
-      }
-      return { message: ".gitignore not found", status: "fail" };
-    },
-    description: ".gitignore exists",
-    domain: DOMAIN.DEV_ENVIRONMENT,
-    files: [".gitignore"],
-    id: "files:gitignore",
+const _gitignore = new RuleSet<{
+  fileExists: (path: string) => boolean;
+  readFile: (path: string) => string | null;
+}>({
+  context: (target) => ({
+    fileExists: (path: string) => target.fileExists(path),
+    readFile: (path: string) => target.readFile(path),
   }),
-  defineRule({
-    check: (ctx) => {
-      const gitignore = ctx.readFile(".gitignore");
-      if (!gitignore) {
-        return {
-          message: ".gitignore not found — skipping content check",
-          status: "pass",
-        };
-      }
-      if (gitignore.includes("node_modules")) {
-        return { status: "pass" };
-      }
-      return {
-        message:
-          '.gitignore does not include "node_modules" — accidentally committing it is catastrophic',
-        status: "fail",
-      };
-    },
-    description: '.gitignore contains "node_modules"',
-    domain: DOMAIN.DEV_ENVIRONMENT,
-    files: [".gitignore"],
-    id: "gitignore:node-modules",
-  }),
-  defineRule({
-    check: (ctx) => {
-      const gitignore = ctx.readFile(".gitignore");
-      if (!gitignore) {
-        return {
-          message: ".gitignore not found — skipping content check",
-          status: "pass",
-        };
-      }
-      if (/^\.env/m.test(gitignore) || /\.env\*/m.test(gitignore)) {
-        return { status: "pass" };
-      }
-      return {
-        message:
-          '.gitignore does not include ".env" — secrets must never be committed',
-        status: "fail",
-      };
-    },
-    description: '.gitignore contains ".env"',
-    domain: DOMAIN.DEV_ENVIRONMENT,
-    files: [".gitignore"],
-    id: "gitignore:env",
-  }),
-];
+  domain: DOMAIN.DEV_ENVIRONMENT,
+  id: "gitignore",
+});
+
+_gitignore.defineRule({
+  id: "exists",
+  name: ".gitignore exists",
+  test({ context }) {
+    if (context.fileExists(".gitignore")) {
+      return Status.pass();
+    }
+    return Status.fail(".gitignore not found");
+  },
+});
+
+_gitignore.defineRule({
+  id: "node-modules",
+  name: '.gitignore contains "node_modules"',
+  test({ context }) {
+    const gitignore = context.readFile(".gitignore");
+    if (!gitignore) {
+      return Status.pass(".gitignore not found — skipping content check");
+    }
+    if (gitignore.includes("node_modules")) {
+      return Status.pass();
+    }
+    return Status.fail(
+      '.gitignore does not include "node_modules" — accidentally committing it is catastrophic',
+    );
+  },
+});
+
+_gitignore.defineRule({
+  id: "env",
+  name: '.gitignore contains ".env"',
+  test({ context }) {
+    const gitignore = context.readFile(".gitignore");
+    if (!gitignore) {
+      return Status.pass(".gitignore not found — skipping content check");
+    }
+    if (/^\.env/m.test(gitignore) || /\.env\*/m.test(gitignore)) {
+      return Status.pass();
+    }
+    return Status.fail(
+      '.gitignore does not include ".env" — secrets must never be committed',
+    );
+  },
+});
+
+export const gitignore = _gitignore;

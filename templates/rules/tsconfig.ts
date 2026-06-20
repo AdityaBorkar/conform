@@ -1,147 +1,137 @@
-import { defineRule } from "@/conform-api/index.ts";
-import type { Rule } from "@/types.ts";
+import { RuleSet, Status } from "@/conform-api/index.ts";
+import type { PackageJson } from "@/types.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
 
-export const tsconfigRules: Rule[] = [
-  defineRule({
-    check: (ctx) => {
-      const version =
-        ctx.packageJson()?.devDependencies?.typescript ??
-        ctx.packageJson()?.peerDependencies?.typescript;
-      if (version) {
-        return { message: version, status: "pass" };
-      }
-      return {
-        message: "typescript not found in devDependencies or peerDependencies",
-        status: "fail",
+const _tsconfig = new RuleSet<{
+  fileExists: (path: string) => boolean;
+  packageJson: () => PackageJson | null;
+  readJson: <T = unknown>(path: string) => T | null;
+}>({
+  context: (target) => ({
+    fileExists: (path: string) => target.fileExists(path),
+    packageJson: () => target.packageJson(),
+    readJson: <T = unknown>(path: string) => target.readJson<T>(path),
+  }),
+  domain: DOMAIN.CODE_QUALITY,
+  id: "typescript",
+});
+
+_tsconfig.defineRule({
+  id: "deps",
+  name: "typescript in devDependencies or peerDependencies",
+  test({ context }) {
+    const version =
+      context.packageJson()?.devDependencies?.["typescript"] ??
+      context.packageJson()?.peerDependencies?.["typescript"];
+    if (version) {
+      return Status.pass(version);
+    }
+    return Status.fail(
+      "typescript not found in devDependencies or peerDependencies",
+    );
+  },
+});
+
+_tsconfig.defineRule({
+  id: "tsconfig",
+  name: "tsconfig.json exists",
+  test({ context }) {
+    if (context.fileExists("tsconfig.json")) {
+      return Status.pass();
+    }
+    return Status.fail("tsconfig.json not found");
+  },
+});
+
+_tsconfig.defineRule({
+  id: "strict",
+  name: "strict: true in tsconfig",
+  test({ context }) {
+    const tsconfig = context.readJson<{
+      compilerOptions?: { strict?: boolean };
+    }>("tsconfig.json");
+    if (tsconfig?.compilerOptions?.strict === true) {
+      return Status.pass();
+    }
+    return Status.fail("strict mode not enabled in tsconfig.json");
+  },
+});
+
+_tsconfig.defineRule({
+  id: "no-unchecked-indexed-access",
+  name: "noUncheckedIndexedAccess: true in tsconfig",
+  test({ context }) {
+    const tsconfig = context.readJson<{
+      compilerOptions?: { noUncheckedIndexedAccess?: boolean };
+    }>("tsconfig.json");
+    if (tsconfig?.compilerOptions?.noUncheckedIndexedAccess === true) {
+      return Status.pass();
+    }
+    return Status.fail(
+      "noUncheckedIndexedAccess is not enabled — array/object index access should return T | undefined to catch runtime errors",
+    );
+  },
+});
+
+_tsconfig.defineRule({
+  id: "isolated-modules",
+  name: "isolatedModules: true in tsconfig",
+  test({ context }) {
+    const tsconfig = context.readJson<{
+      compilerOptions?: { isolatedModules?: boolean };
+    }>("tsconfig.json");
+    if (tsconfig?.compilerOptions?.isolatedModules === true) {
+      return Status.pass();
+    }
+    return Status.fail(
+      "isolatedModules is not enabled — required for Bun, esbuild, and SWC which transpile files individually",
+    );
+  },
+});
+
+_tsconfig.defineRule({
+  id: "verbatim-module-syntax",
+  name: "verbatimModuleSyntax: true in tsconfig",
+  test({ context }) {
+    const tsconfig = context.readJson<{
+      compilerOptions?: { verbatimModuleSyntax?: boolean };
+    }>("tsconfig.json");
+    if (tsconfig?.compilerOptions?.verbatimModuleSyntax === true) {
+      return Status.pass();
+    }
+    return Status.warn(
+      "verbatimModuleSyntax is not enabled — prevents CJS/ESM mismatches by preserving import/export syntax exactly",
+    );
+  },
+});
+
+_tsconfig.defineRule({
+  domain: DOMAIN.OBSERVABILITY,
+  id: "source-map",
+  name: "sourceMap: true in tsconfig (when not noEmit)",
+  test({ context }) {
+    const tsconfig = context.readJson<{
+      compilerOptions?: {
+        noEmit?: boolean;
+        sourceMap?: boolean;
       };
-    },
-    description: "typescript in devDependencies or peerDependencies",
-    domain: DOMAIN.CODE_QUALITY,
-    files: ["package.json"],
-    id: "typescript:deps",
-  }),
-  defineRule({
-    check: (ctx) => {
-      if (ctx.fileExists("tsconfig.json")) {
-        return { status: "pass" };
-      }
-      return { message: "tsconfig.json not found", status: "fail" };
-    },
-    description: "tsconfig.json exists",
-    domain: DOMAIN.CODE_QUALITY,
-    files: ["tsconfig.json"],
-    id: "typescript:tsconfig",
-  }),
-  defineRule({
-    check: (ctx) => {
-      const tsconfig = ctx.readJson<{
-        compilerOptions?: { strict?: boolean };
-      }>("tsconfig.json");
-      if (tsconfig?.compilerOptions?.strict === true) {
-        return { status: "pass" };
-      }
-      return {
-        message: "strict mode not enabled in tsconfig.json",
-        status: "fail",
-      };
-    },
-    description: "strict: true in tsconfig",
-    domain: DOMAIN.CODE_QUALITY,
-    files: ["tsconfig.json"],
-    id: "typescript:strict",
-  }),
-  defineRule({
-    check: (ctx) => {
-      const tsconfig = ctx.readJson<{
-        compilerOptions?: { noUncheckedIndexedAccess?: boolean };
-      }>("tsconfig.json");
-      if (tsconfig?.compilerOptions?.noUncheckedIndexedAccess === true) {
-        return { status: "pass" };
-      }
-      return {
-        message:
-          "noUncheckedIndexedAccess is not enabled — array/object index access should return T | undefined to catch runtime errors",
-        status: "fail",
-      };
-    },
-    description: "noUncheckedIndexedAccess: true in tsconfig",
-    domain: DOMAIN.CODE_QUALITY,
-    files: ["tsconfig.json"],
-    id: "typescript:no-unchecked-indexed-access",
-  }),
-  defineRule({
-    check: (ctx) => {
-      const tsconfig = ctx.readJson<{
-        compilerOptions?: { isolatedModules?: boolean };
-      }>("tsconfig.json");
-      if (tsconfig?.compilerOptions?.isolatedModules === true) {
-        return { status: "pass" };
-      }
-      return {
-        message:
-          "isolatedModules is not enabled — required for Bun, esbuild, and SWC which transpile files individually",
-        status: "fail",
-      };
-    },
-    description: "isolatedModules: true in tsconfig",
-    domain: DOMAIN.CODE_QUALITY,
-    files: ["tsconfig.json"],
-    id: "typescript:isolated-modules",
-  }),
-  defineRule({
-    check: (ctx) => {
-      const tsconfig = ctx.readJson<{
-        compilerOptions?: { verbatimModuleSyntax?: boolean };
-      }>("tsconfig.json");
-      if (tsconfig?.compilerOptions?.verbatimModuleSyntax === true) {
-        return { status: "pass" };
-      }
-      return {
-        message:
-          "verbatimModuleSyntax is not enabled — prevents CJS/ESM mismatches by preserving import/export syntax exactly",
-        status: "warn",
-      };
-    },
-    description: "verbatimModuleSyntax: true in tsconfig",
-    domain: DOMAIN.CODE_QUALITY,
-    files: ["tsconfig.json"],
-    id: "typescript:verbatim-module-syntax",
-  }),
-  defineRule({
-    check: (ctx) => {
-      const tsconfig = ctx.readJson<{
-        compilerOptions?: {
-          noEmit?: boolean;
-          sourceMap?: boolean;
-        };
-      }>("tsconfig.json");
-      if (!tsconfig?.compilerOptions) {
-        return {
-          message: "no tsconfig.json found — skipping source map check",
-          status: "pass",
-        };
-      }
-      if (tsconfig.compilerOptions.noEmit === true) {
-        return {
-          message:
-            "noEmit is true — source maps not applicable for raw TS publishing",
-          status: "pass",
-        };
-      }
-      if (tsconfig.compilerOptions.sourceMap === true) {
-        return { status: "pass" };
-      }
-      return {
-        message:
-          "sourceMap is not enabled — without source maps, production stack traces point to compiled output and are nearly impossible to debug",
-        status: "warn",
-      };
-    },
-    description: "sourceMap: true in tsconfig (when not noEmit)",
-    domain: DOMAIN.OBSERVABILITY,
-    files: ["tsconfig.json"],
-    id: "typescript:source-map",
-  }),
-];
+    }>("tsconfig.json");
+    if (!tsconfig?.compilerOptions) {
+      return Status.pass("no tsconfig.json found — skipping source map check");
+    }
+    if (tsconfig.compilerOptions.noEmit === true) {
+      return Status.pass(
+        "noEmit is true — source maps not applicable for raw TS publishing",
+      );
+    }
+    if (tsconfig.compilerOptions.sourceMap === true) {
+      return Status.pass();
+    }
+    return Status.warn(
+      "sourceMap is not enabled — without source maps, production stack traces point to compiled output and are nearly impossible to debug",
+    );
+  },
+});
+
+export const tsconfig = _tsconfig;
