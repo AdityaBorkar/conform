@@ -37,9 +37,10 @@ function renderByDomains(visible: RuleResult[], maxIdLen: number): string[] {
       domains.set(result.domain, domainGroups);
       domainOrder.push(result.domain);
     }
-    const group = domainGroups.get(result.group) ?? [];
+    const groupKey = result.files.join(", ");
+    const group = domainGroups.get(groupKey) ?? [];
     group.push(result);
-    domainGroups.set(result.group, group);
+    domainGroups.set(groupKey, group);
   }
 
   for (const domainName of domainOrder) {
@@ -71,12 +72,13 @@ function renderByFiles(visible: RuleResult[], maxIdLen: number): string[] {
   const groups = new Map<string, RuleResult[]>();
   const groupOrder: string[] = [];
   for (const result of visible) {
-    const list = groups.get(result.group);
+    const groupKey = result.files.join(", ");
+    const list = groups.get(groupKey);
     if (list) {
       list.push(result);
     } else {
-      groups.set(result.group, [result]);
-      groupOrder.push(result.group);
+      groups.set(groupKey, [result]);
+      groupOrder.push(groupKey);
     }
   }
 

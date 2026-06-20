@@ -1,3 +1,5 @@
+update the repo context and glossary
+
 - Check for /docs/CONTEXT.md /plans /adr glossary.md USER-TODO.md
 
 - husky with conventional-commits

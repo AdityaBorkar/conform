@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 
 import {
   defineConfig,
@@ -40,13 +40,12 @@ describe("rule", () => {
       check: () => ({ status: "pass" }),
       description: "A test rule",
       domain: "test",
-      group: "unit",
+      files: ["package.json"],
       id: "test:check",
-      severity: "warn",
     });
     expect(result.id).toBe("test:check");
     expect(result.domain).toBe("test");
-    expect(result.severity).toBe("warn");
+    expect(result.files).toEqual(["package.json"]);
   });
 });
 
@@ -56,9 +55,8 @@ describe("domain", () => {
     const r = d.rule({
       check: () => ({ message: "nope", status: "fail" }),
       description: "Scoped rule",
-      group: "unit",
+      files: ["package.json"],
       id: "scoped:rule",
-      severity: "fail",
     });
     expect(r.domain).toBe("my-domain");
     expect(r.id).toBe("scoped:rule");
@@ -72,9 +70,8 @@ describe("domain", () => {
         return { status: "pass" };
       },
       description: "Check test",
-      group: "unit",
+      files: ["package.json"],
       id: "check:test",
-      severity: "warn",
     });
     const result = await r.check(mockCtx);
     expect(result.status).toBe("pass");

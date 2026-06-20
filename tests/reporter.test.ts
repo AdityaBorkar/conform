@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 
 import { renderJson } from "@/reporter/json.ts";
 import { renderTui } from "@/reporter/tui.ts";
@@ -8,9 +8,8 @@ function makeResult(overrides: Partial<RuleResult>): RuleResult {
   return {
     description: "Test rule",
     domain: "test-domain",
-    group: "test-group",
+    files: ["package.json"],
     id: "test:rule",
-    severity: "warn",
     status: "pass",
     ...overrides,
   };

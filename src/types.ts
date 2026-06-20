@@ -1,7 +1,5 @@
 export type Severity = "pass" | "warn" | "fail";
 
-export type RuleSeverity = "warn" | "fail";
-
 export type GroupBy = "domains" | "files";
 
 export interface CheckResult {
@@ -43,9 +41,8 @@ export interface Rule {
   check: (ctx: CheckContext) => CheckResult | Promise<CheckResult>;
   description: string;
   domain: string;
-  group: string;
+  files: string[];
   id: string;
-  severity: RuleSeverity;
 }
 
 export interface Template {
@@ -57,10 +54,9 @@ export interface Template {
 export interface RuleResult {
   description: string;
   domain: string;
-  group: string;
+  files: string[];
   id: string;
   message?: string;
-  severity: RuleSeverity;
   status: Severity;
 }
 

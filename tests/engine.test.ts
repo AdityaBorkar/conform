@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 
 import { runChecks } from "@/engine/index.ts";
 import type { CheckContext, Rule, Template } from "@/types.ts";
@@ -23,9 +23,8 @@ function makeRule(
     check: () => ({ status, ...(message ? { message } : {}) }),
     description: `Rule ${id}`,
     domain: "test",
-    group: "unit",
+    files: ["package.json"],
     id,
-    severity: status === "pass" ? "warn" : status,
   };
 }
 
@@ -59,7 +58,7 @@ describe("runChecks", () => {
     const result = results[0];
     expect(result?.id).toBe("group:id");
     expect(result?.domain).toBe("test");
-    expect(result?.group).toBe("unit");
+    expect(result?.files).toEqual(["package.json"]);
     expect(result?.description).toBe("Rule group:id");
     expect(result?.message).toBe("something broke");
   });
@@ -87,9 +86,8 @@ describe("runChecks", () => {
           },
           description: "Async rule",
           domain: "test",
-          group: "async",
+          files: ["package.json"],
           id: "async:check",
-          severity: "warn",
         },
       ],
     };

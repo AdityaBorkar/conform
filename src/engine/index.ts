@@ -11,9 +11,8 @@ export async function runChecks(
     const entry: RuleResult = {
       description: rule.description,
       domain: rule.domain,
-      group: rule.group,
+      files: rule.files,
       id: rule.id,
-      severity: rule.severity,
       status: result.status,
     };
     if (result.message !== undefined) {

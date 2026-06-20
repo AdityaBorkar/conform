@@ -13,7 +13,6 @@ export type {
   PackageJson,
   Rule,
   RuleResult,
-  RuleSeverity,
   Severity,
   Template,
 } from "./types.ts";

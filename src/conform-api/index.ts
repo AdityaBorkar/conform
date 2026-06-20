@@ -3,7 +3,6 @@ import type {
   CheckResult,
   ConformConfig,
   Rule,
-  RuleSeverity,
   Template,
 } from "@/types.ts";
 
@@ -14,9 +13,8 @@ export function defineTemplate(template: Template): Template {
 export function rule(def: {
   id: string;
   domain: string;
-  group: string;
+  files: string[];
   description: string;
-  severity: RuleSeverity;
   check: (ctx: CheckContext) => CheckResult | Promise<CheckResult>;
 }): Rule {
   return def;
@@ -31,9 +29,8 @@ export function domain(name: string) {
     domain: name,
     rule(def: {
       id: string;
-      group: string;
+      files: string[];
       description: string;
-      severity: RuleSeverity;
       check: (ctx: CheckContext) => CheckResult | Promise<CheckResult>;
     }): Rule {
       return { ...def, domain: name };
