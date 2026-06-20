@@ -8,16 +8,22 @@ import { runChecks } from "@/engine/index.ts";
 
 export async function CheckCommand({
   path,
-  //   json,
-  //   verbose,
-  // group,
+  json,
+  verbose: _verbose,
+  group,
 }: {
   path: string;
   json: boolean;
   verbose: boolean;
-  group: string;
+  group: string | undefined;
 }) {
-  // const groupBy = group === "files" ? "files" : ("domains" as GroupBy);
+  if (json && group !== undefined) {
+    process.stderr.write(
+      "Error: --group is not supported with --json output.\n",
+    );
+    process.exit(1);
+  }
+
   const targetPath = resolve(path);
 
   const config = await loadConfig(targetPath);

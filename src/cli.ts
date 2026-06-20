@@ -27,7 +27,7 @@ program
     "-v, --verbose",
     "Show passed checks (default: only errors and warnings)",
   )
-  .option("--group <mode>", "Group results by: domains or files", "domains")
+  .option("--group <mode>", "Group results by: domains or files")
   .action(CheckCommand);
 
 program.parse();
