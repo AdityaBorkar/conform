@@ -4,6 +4,7 @@
   },
   "bugs": "https://github.com/adityab/conform/issues",
   "dependencies": {
+    "bun": "^1.3.14",
     "commander": "^15.0.0"
   },
   "description": "CLI tool that checks repositories against conformance templates",
@@ -34,7 +35,7 @@
   },
   "scripts": {
     "changeset": "changeset",
-    "check:lint": "biome check --fix .",
+    "check:lint": "biome check . --fix",
     "check:types": "tsc --noEmit",
     "prepare": "husky",
     "release": "changeset publish",

@@ -8,14 +8,16 @@ const BOLD = "\x1b[1m";
 const DIM = "\x1b[2m";
 
 function icon(status: Severity): string {
-  switch (status) {
-    case "pass":
-      return `${GREEN}✓${RESET}`;
-    case "fail":
-      return `${RED}✗${RESET}`;
-    case "warn":
-      return `${YELLOW}⚠${RESET}`;
+  if (status === "pass") {
+    return `${GREEN}✓${RESET}`;
   }
+  if (status === "fail") {
+    return `${RED}✗${RESET}`;
+  }
+  if (status === "warn") {
+    return `${YELLOW}⚠${RESET}`;
+  }
+  return "";
 }
 
 function shortId(id: string): string {
@@ -42,7 +44,9 @@ function renderByDomains(visible: RuleResult[], maxIdLen: number): string[] {
 
   for (const domainName of domainOrder) {
     const domainGroups = domains.get(domainName);
-    if (!domainGroups) continue;
+    if (!domainGroups) {
+      continue;
+    }
 
     lines.push(`${BOLD}${domainName}${RESET}`);
 
@@ -78,7 +82,9 @@ function renderByFiles(visible: RuleResult[], maxIdLen: number): string[] {
 
   for (const groupName of groupOrder) {
     const groupResults = groups.get(groupName);
-    if (!groupResults) continue;
+    if (!groupResults) {
+      continue;
+    }
 
     lines.push(`${BOLD}${groupName}${RESET}`);
     for (const result of groupResults) {

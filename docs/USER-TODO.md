@@ -31,3 +31,10 @@
 - components.json
 - Pulumi.dev and Pulumi.production and Pulumi.staging
 - vite.config.ts
+
+---
+
+- Manual Research:
+  - JSR Scoring Factors
+  - NPM Package
+-

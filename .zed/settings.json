@@ -1,0 +1,22 @@
+{
+  "file_scan_exclusions": [
+    "**/.git",
+    "**/.output",
+    "**/node_modules",
+    "codedb.snapshot"
+  ],
+  "format_on_save": "on",
+  "formatter": {
+    "external": {
+      "arguments": ["format", "--stdin-file-path", "{buffer_path}"],
+      "command": "biome"
+    }
+  },
+  "language_servers": [
+    "!eslint",
+    "!typescript-language-server",
+    "!vtsls",
+    "!markdownlint",
+    "..."
+  ]
+}

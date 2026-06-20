@@ -3,6 +3,7 @@
   "assist": {
     "actions": {
       "source": {
+        "noDuplicateClasses": "off",
         "organizeImports": {
           "level": "on",
           "options": {
@@ -19,9 +20,8 @@
             ]
           }
         },
-        "useSortedAttributes": "on",
-        "useSortedKeys": "on",
-        "useSortedProperties": "on"
+        "preset": "all",
+        "useSortedPackageJson": "off"
       }
     }
   },
@@ -68,7 +68,35 @@
     },
     "enabled": true,
     "rules": {
-      "preset": "recommended"
+      "a11y": {
+        "preset": "all"
+      },
+      "complexity": {
+        "preset": "all"
+      },
+      "correctness": {
+        "noNodejsModules": "off",
+        "preset": "all"
+      },
+      "nursery": {
+        "preset": "recommended"
+      },
+      "performance": {
+        "noBarrelFile": "off",
+        "preset": "all",
+        "useTopLevelRegex": "off"
+      },
+      "security": {
+        "preset": "all"
+      },
+      "style": {
+        "noDefaultExport": "off",
+        "preset": "all"
+      },
+      "suspicious": {
+        "noEmptySource": "off",
+        "preset": "all"
+      }
     }
   },
   "vcs": {

@@ -5,63 +5,63 @@ export type RuleSeverity = "warn" | "fail";
 export type GroupBy = "domains" | "files";
 
 export interface CheckResult {
-  status: Severity;
   message?: string;
+  status: Severity;
 }
 
 export interface PackageJson {
-  name?: string;
-  version?: string;
+  bin?: unknown;
+  bugs?: unknown;
+  dependencies?: Record<string, string>;
   description?: string;
+  devDependencies?: Record<string, string>;
+  engines?: Record<string, string>;
+  exports?: unknown;
+  files?: string[];
+  homepage?: string;
   license?: string;
   main?: string;
   module?: string;
-  exports?: unknown;
-  files?: string[];
-  repository?: unknown;
-  type?: string;
-  scripts?: Record<string, string>;
-  devDependencies?: Record<string, string>;
+  name?: string;
   peerDependencies?: Record<string, string>;
-  dependencies?: Record<string, string>;
-  bin?: unknown;
-  bugs?: unknown;
-  homepage?: string;
-  engines?: Record<string, string>;
+  repository?: unknown;
+  scripts?: Record<string, string>;
   sideEffects?: boolean | string[];
+  type?: string;
+  version?: string;
 }
 
 export interface CheckContext {
-  targetPath: string;
-  fileExists(relPath: string): boolean;
-  readFile(relPath: string): string | null;
-  readJson<T = unknown>(relPath: string): T | null;
+  fileExists: (relPath: string) => boolean;
   packageJson: PackageJson | null;
+  readFile: (relPath: string) => string | null;
+  readJson: <T = unknown>(relPath: string) => T | null;
+  targetPath: string;
 }
 
 export interface Rule {
-  id: string;
+  check: (ctx: CheckContext) => CheckResult | Promise<CheckResult>;
+  description: string;
   domain: string;
   group: string;
-  description: string;
+  id: string;
   severity: RuleSeverity;
-  check: (ctx: CheckContext) => CheckResult | Promise<CheckResult>;
 }
 
 export interface Template {
-  name: string;
   description: string;
+  name: string;
   rules: Rule[];
 }
 
 export interface RuleResult {
-  id: string;
+  description: string;
   domain: string;
   group: string;
-  description: string;
+  id: string;
+  message?: string;
   severity: RuleSeverity;
   status: Severity;
-  message?: string;
 }
 
 export interface ConformConfig {
@@ -69,13 +69,13 @@ export interface ConformConfig {
 }
 
 export interface ConformOutput {
-  template: string;
-  path: string;
   groupBy?: GroupBy;
+  path: string;
   results: RuleResult[];
   summary: {
     pass: number;
     warn: number;
     fail: number;
   };
+  template: string;
 }

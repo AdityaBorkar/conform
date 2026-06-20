@@ -1,50 +1,37 @@
 import { resolve } from "node:path";
+import process from "node:process";
 
 import { loadConfig } from "@/config/load.ts";
 import { resolver } from "@/conform-api/resolver.ts";
 import { createCheckContext } from "@/context.ts";
 import { runChecks } from "@/engine/index.ts";
-import { renderJson } from "@/reporter/json.ts";
-import { renderTui } from "@/reporter/tui.ts";
-import type { GroupBy } from "@/types.ts";
 
 export async function CheckCommand({
   path,
-  json,
-  verbose,
-  group,
+  //   json,
+  //   verbose,
+  // group,
 }: {
   path: string;
   json: boolean;
   verbose: boolean;
   group: string;
 }) {
-  const groupBy = group === "files" ? "files" : ("domains" as GroupBy);
+  // const groupBy = group === "files" ? "files" : ("domains" as GroupBy);
   const targetPath = resolve(path);
 
   const config = await loadConfig(targetPath);
   if (!config) {
-    console.error(`Error: no conform.config.ts found in ${targetPath}`);
-    console.error(
-      "Create one with: export default { template: 'npm-publish' };",
-    );
     process.exit(2);
   }
 
   const template = await resolver(config.template);
   if (!template) {
-    console.error(`Error: template "${config.template}" not found`);
     process.exit(2);
   }
 
   const ctx = createCheckContext(targetPath);
   const results = await runChecks(template, ctx);
-
-  console.log(
-    json
-      ? renderJson(template.name, targetPath, results, { groupBy, verbose })
-      : renderTui(template.name, results, { groupBy, verbose }),
-  );
 
   const hasFail = results.some((r) => r.status === "fail");
   const hasWarn = results.some((r) => r.status === "warn");

@@ -1,8 +1,9 @@
 import { describe, expect, it } from "bun:test";
+import { spawn } from "bun";
 
 describe("e2e: check command", () => {
   it("runs against this repo and produces JSON output", async () => {
-    const proc = Bun.spawn(
+    const proc = spawn(
       ["bun", "run", "src/cli.ts", "check", "--path", ".", "--json"],
       {
         stderr: "pipe",
@@ -25,7 +26,7 @@ describe("e2e: check command", () => {
   });
 
   it("exits with code 2 when no config found", async () => {
-    const proc = Bun.spawn(
+    const proc = spawn(
       ["bun", "run", "src/cli.ts", "check", "--path", "/tmp", "--json"],
       {
         stderr: "pipe",

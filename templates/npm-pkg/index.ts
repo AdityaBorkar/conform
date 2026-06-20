@@ -10,11 +10,10 @@ const observability = domain("Observability");
 const security = domain("Security & Governance");
 const github = domain("GitHub Configuration");
 
-type JsrConfig = {
-  name?: string;
-  version?: string;
-  exports?: Record<string, string> | string;
+interface JsrConfig {
   description?: string;
+  exports?: Record<string, string> | string;
+  name?: string;
   runtimeCompat?: {
     deno?: boolean;
     node?: boolean;
@@ -22,16 +21,21 @@ type JsrConfig = {
     browser?: boolean;
     workerd?: boolean;
   };
-};
+  version?: string;
+}
 
 function resolveJsrConfig(ctx: {
   readJson: <T = unknown>(relPath: string) => T | null;
   packageJson?: { description?: string } | null;
 }): { jsr: JsrConfig | null; source: string } {
   const jsr = ctx.readJson<JsrConfig>("jsr.json");
-  if (jsr) return { jsr, source: "jsr.json" };
+  if (jsr) {
+    return { jsr, source: "jsr.json" };
+  }
   const deno = ctx.readJson<JsrConfig>("deno.json");
-  if (deno) return { jsr: deno, source: "deno.json" };
+  if (deno) {
+    return { jsr: deno, source: "deno.json" };
+  }
   return { jsr: null, source: "package.json" };
 }
 
@@ -40,8 +44,12 @@ function getExportPaths(ctx: {
 }): string[] {
   const config = resolveJsrConfig(ctx);
   const exports = config.jsr?.exports;
-  if (!exports) return [];
-  if (typeof exports === "string") return [exports];
+  if (!exports) {
+    return [];
+  }
+  if (typeof exports === "string") {
+    return [exports];
+  }
   return Object.values(exports);
 }
 
@@ -115,14 +123,20 @@ function findWorkflowFile(
   candidates: string[],
 ): string | null {
   for (const path of candidates) {
-    if (ctx.readFile(path) !== null) return path;
+    if (ctx.readFile(path) !== null) {
+      return path;
+    }
   }
   return null;
 }
 
 function getBinPaths(pkg: { bin?: unknown }): string[] {
-  if (!pkg.bin) return [];
-  if (typeof pkg.bin === "string") return [pkg.bin];
+  if (!pkg.bin) {
+    return [];
+  }
+  if (typeof pkg.bin === "string") {
+    return [pkg.bin];
+  }
   if (typeof pkg.bin === "object" && pkg.bin !== null) {
     return Object.values(pkg.bin as Record<string, string>);
   }
@@ -134,7 +148,9 @@ function hasHeading(content: string, ...titles: string[]): boolean {
   const matches = [...content.matchAll(headingRe)];
   for (const m of matches) {
     const heading = m[1]?.toLowerCase().trim();
-    if (heading && titles.some((t) => heading.includes(t))) return true;
+    if (heading && titles.some((t) => heading.includes(t))) {
+      return true;
+    }
   }
   return false;
 }
@@ -197,7 +213,7 @@ export default defineTemplate({
     style.rule({
       check: (ctx) => {
         const scripts = ctx.packageJson?.scripts ?? {};
-        const lintScript = scripts["lint"] ?? scripts["check"];
+        const lintScript = scripts.lint ?? scripts.check;
         if (lintScript?.includes("biome")) {
           return { message: lintScript, status: "pass" };
         }
@@ -235,7 +251,7 @@ export default defineTemplate({
       check: (ctx) => {
         const scripts = ctx.packageJson?.scripts ?? {};
         const formatScript =
-          scripts["format"] ?? scripts["check:format"] ?? scripts["check:lint"];
+          scripts.format ?? scripts["check:format"] ?? scripts["check:lint"];
         if (formatScript?.includes("biome")) {
           return { message: formatScript, status: "pass" };
         }
@@ -280,9 +296,9 @@ export default defineTemplate({
       check: (ctx) => {
         const pkg = ctx.packageJson;
         const entries = [
-          pkg?.main && `main`,
-          pkg?.module && `module`,
-          pkg?.exports && `exports`,
+          pkg?.main && "main",
+          pkg?.module && "module",
+          pkg?.exports && "exports",
         ].filter(Boolean);
         if (entries.length > 0) {
           return { message: entries.join(", "), status: "pass" };
@@ -300,10 +316,10 @@ export default defineTemplate({
     build.rule({
       check: (ctx) => {
         const scripts = ctx.packageJson?.scripts;
-        if (scripts?.["prepare"]) {
+        if (scripts?.prepare) {
           return { message: "prepare", status: "pass" };
         }
-        if (scripts?.["build"]) {
+        if (scripts?.build) {
           return { message: "build", status: "pass" };
         }
         return { message: "no prepare or build script found", status: "fail" };
@@ -333,7 +349,7 @@ export default defineTemplate({
     }),
     build.rule({
       check: (ctx) => {
-        const prepare = ctx.packageJson?.scripts?.["prepare"];
+        const prepare = ctx.packageJson?.scripts?.prepare;
         if (prepare?.includes("husky")) {
           return { message: prepare, status: "pass" };
         }
@@ -354,7 +370,7 @@ export default defineTemplate({
       check: (ctx) => {
         const scripts = ctx.packageJson?.scripts ?? {};
         const typecheckScript =
-          scripts["typecheck"] ?? scripts["check:types"] ?? scripts["types"];
+          scripts.typecheck ?? scripts["check:types"] ?? scripts.types;
         if (typecheckScript) {
           return { message: typecheckScript, status: "pass" };
         }
@@ -372,7 +388,7 @@ export default defineTemplate({
     build.rule({
       check: (ctx) => {
         const scripts = ctx.packageJson?.scripts;
-        if (scripts?.["prepublish"]) {
+        if (scripts?.prepublish) {
           return {
             message:
               'prepublish script is deprecated — it runs on both "npm install" and "npm publish". Use prepublishOnly instead.',
@@ -421,7 +437,9 @@ export default defineTemplate({
         const missingShebang: string[] = [];
         for (const binPath of binPaths) {
           const content = ctx.readFile(binPath);
-          if (content === null) continue;
+          if (content === null) {
+            continue;
+          }
           const firstLine = content.split("\n")[0];
           if (!firstLine?.startsWith("#!")) {
             missingShebang.push(binPath);
@@ -445,7 +463,7 @@ export default defineTemplate({
 
     testing.rule({
       check: (ctx) => {
-        const testScript = ctx.packageJson?.scripts?.["test"];
+        const testScript = ctx.packageJson?.scripts?.test;
         if (testScript) {
           return { message: testScript, status: "pass" };
         }
@@ -462,7 +480,7 @@ export default defineTemplate({
     }),
     testing.rule({
       check: (ctx) => {
-        const testScript = ctx.packageJson?.scripts?.["test"];
+        const testScript = ctx.packageJson?.scripts?.test;
         if (!testScript) {
           return {
             message: "no test script — skipping runner check",
@@ -644,9 +662,9 @@ export default defineTemplate({
 
     devEnv.rule({
       check: (ctx) => {
-        if (ctx.packageJson?.devDependencies?.["husky"]) {
+        if (ctx.packageJson?.devDependencies?.husky) {
           return {
-            message: ctx.packageJson.devDependencies["husky"],
+            message: ctx.packageJson.devDependencies.husky,
             status: "pass",
           };
         }
@@ -785,8 +803,8 @@ export default defineTemplate({
     codeQuality.rule({
       check: (ctx) => {
         const version =
-          ctx.packageJson?.devDependencies?.["typescript"] ??
-          ctx.packageJson?.peerDependencies?.["typescript"];
+          ctx.packageJson?.devDependencies?.typescript ??
+          ctx.packageJson?.peerDependencies?.typescript;
         if (version) {
           return { message: version, status: "pass" };
         }
@@ -900,7 +918,9 @@ export default defineTemplate({
         const violations: string[] = [];
         for (const expPath of exportPaths) {
           const content = ctx.readFile(expPath);
-          if (content === null) continue;
+          if (content === null) {
+            continue;
+          }
           for (const { pattern, message } of SLOW_TYPE_PATTERNS) {
             if (pattern.test(content)) {
               violations.push(`${expPath}: ${message}`);
@@ -1104,7 +1124,9 @@ export default defineTemplate({
         const found: string[] = [];
         for (const wf of workflowFiles) {
           const content = ctx.readFile(wf);
-          if (content === null) continue;
+          if (content === null) {
+            continue;
+          }
           if (
             content.includes("jsr publish") ||
             content.includes("deno publish")

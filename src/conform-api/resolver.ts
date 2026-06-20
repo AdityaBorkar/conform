@@ -8,7 +8,9 @@ const templatesDir = join(packageRoot, "templates");
 
 export async function resolver(name: string): Promise<Template | null> {
   const indexPath = join(templatesDir, name, "index.ts");
-  if (!existsSync(indexPath)) return null;
+  if (!existsSync(indexPath)) {
+    return null;
+  }
   try {
     const mod = await import(indexPath);
     const template: Template = mod.default ?? mod;

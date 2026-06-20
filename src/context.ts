@@ -12,7 +12,9 @@ export function createCheckContext(targetPath: string): CheckContext {
 
   function readFile(relPath: string): string | null {
     const cached = fileCache.get(relPath);
-    if (cached !== undefined) return cached;
+    if (cached !== undefined) {
+      return cached;
+    }
     try {
       const content = readFileSync(join(targetPath, relPath), "utf-8");
       fileCache.set(relPath, content);
@@ -29,7 +31,9 @@ export function createCheckContext(targetPath: string): CheckContext {
 
   function readJson<T = unknown>(relPath: string): T | null {
     const content = readFile(relPath);
-    if (content === null) return null;
+    if (content === null) {
+      return null;
+    }
     try {
       return JSON.parse(content) as T;
     } catch {
