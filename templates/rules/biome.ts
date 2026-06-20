@@ -46,7 +46,6 @@ _biome.defineRule({
   name: "lint or check script runs biome",
   test({ context }) {
     const scripts = context.packageJson()?.scripts ?? {};
-    // biome-ignore lint/complexity/useLiteralKeys: noPropertyAccessFromIndexSignature
     const lintScript = scripts["lint"] ?? scripts["check"];
     if (typeof lintScript === "string" && lintScript.includes("biome")) {
       return Status.pass(lintScript);
@@ -61,7 +60,6 @@ _biome.defineRule({
   test({ context }) {
     const scripts = context.packageJson()?.scripts ?? {};
     const formatScript =
-      // biome-ignore lint/complexity/useLiteralKeys: noPropertyAccessFromIndexSignature
       scripts["format"] ?? scripts["check:format"] ?? scripts["check:lint"];
     if (typeof formatScript === "string" && formatScript.includes("biome")) {
       return Status.pass(formatScript);

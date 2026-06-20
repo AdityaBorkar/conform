@@ -19,7 +19,6 @@ _scripts.defineRule({
   test({ context }) {
     const scripts = context.packageJson()?.scripts ?? {};
     const typecheckScript =
-      // biome-ignore lint/complexity/useLiteralKeys: noPropertyAccessFromIndexSignature
       scripts["typecheck"] ?? scripts["check:types"] ?? scripts["types"];
     if (typecheckScript) {
       return Status.pass(typecheckScript);
@@ -35,7 +34,6 @@ _scripts.defineRule({
   name: "deprecated prepublish script is not used",
   test({ context }) {
     const scripts = context.packageJson()?.scripts;
-    // biome-ignore lint/complexity/useLiteralKeys: noPropertyAccessFromIndexSignature
     if (scripts?.["prepublish"]) {
       return Status.fail(
         'prepublish script is deprecated — it runs on both "npm install" and "npm publish". Use prepublishOnly instead.',

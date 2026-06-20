@@ -85,11 +85,9 @@ _packageJson.defineRule({
   name: "scripts.prepare or scripts.build exists",
   test({ context }) {
     const scripts = context.packageJson()?.scripts;
-    // biome-ignore lint/complexity/useLiteralKeys: noPropertyAccessFromIndexSignature
     if (scripts?.["prepare"]) {
       return Status.pass("prepare");
     }
-    // biome-ignore lint/complexity/useLiteralKeys: noPropertyAccessFromIndexSignature
     if (scripts?.["build"]) {
       return Status.pass("build");
     }

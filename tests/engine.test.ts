@@ -55,7 +55,7 @@ describe("runChecks", () => {
     };
     const target = mockTarget();
     const results = await runChecks(template, target);
-    const result = results[0];
+    const [result] = results;
     expect(result?.id).toBe("group:id");
     expect(result?.domain).toBe("test");
     expect(result?.files).toEqual(["package.json"]);

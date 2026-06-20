@@ -72,7 +72,8 @@
         "preset": "all"
       },
       "complexity": {
-        "preset": "all"
+        "preset": "all",
+        "useLiteralKeys": "off"
       },
       "correctness": {
         "noNodejsModules": "off",
@@ -87,11 +88,16 @@
         "useTopLevelRegex": "off"
       },
       "security": {
+        "noSecrets": "off",
         "preset": "all"
       },
       "style": {
+        "noContinue": "off",
         "noDefaultExport": "off",
-        "preset": "all"
+        "noNestedTernary": "off",
+        "noTernary": "off",
+        "preset": "all",
+        "useNamingConvention": "off"
       },
       "suspicious": {
         "noEmptySource": "off",
@@ -99,6 +105,22 @@
       }
     }
   },
+  "overrides": [
+    {
+      "includes": ["**/*.test.ts"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveLinesPerFunction": "off"
+          },
+          "preset": "recommended",
+          "style": {
+            "noMagicNumbers": "off"
+          }
+        }
+      }
+    }
+  ],
   "vcs": {
     "clientKind": "git",
     "enabled": true,

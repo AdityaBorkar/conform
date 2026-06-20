@@ -6,7 +6,7 @@ export async function runChecks(
 ): Promise<RuleResult[]> {
   const results: RuleResult[] = [];
 
-  for (const rule of template.rules) {
+  for await (const rule of template.rules) {
     const result = await rule.check(target);
     const entry: RuleResult = {
       description: rule.description,

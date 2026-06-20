@@ -17,7 +17,6 @@ _testing.defineRule({
   id: "test-script",
   name: "scripts.test exists in package.json",
   test({ context }) {
-    // biome-ignore lint/complexity/useLiteralKeys: noPropertyAccessFromIndexSignature
     const testScript = context.packageJson()?.scripts?.["test"];
     if (testScript) {
       return Status.pass(testScript);
@@ -32,7 +31,6 @@ _testing.defineRule({
   id: "test-runner",
   name: "test script invokes a known test runner",
   test({ context }) {
-    // biome-ignore lint/complexity/useLiteralKeys: noPropertyAccessFromIndexSignature
     const testScript = context.packageJson()?.scripts?.["test"];
     if (!testScript) {
       return Status.pass("no test script — skipping runner check");

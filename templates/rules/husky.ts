@@ -19,7 +19,6 @@ _husky.defineRule({
   id: "dev-deps",
   name: "husky in devDependencies",
   test({ context }) {
-    // biome-ignore lint/complexity/useLiteralKeys: noPropertyAccessFromIndexSignature
     const huskyVersion = context.packageJson()?.devDependencies?.["husky"];
     if (huskyVersion) {
       return Status.pass(huskyVersion);
@@ -43,7 +42,6 @@ _husky.defineRule({
   id: "prepare-script",
   name: "prepare script calls husky",
   test({ context }) {
-    // biome-ignore lint/complexity/useLiteralKeys: noPropertyAccessFromIndexSignature
     const prepare = context.packageJson()?.scripts?.["prepare"];
     if (prepare?.includes("husky")) {
       return Status.pass(prepare);

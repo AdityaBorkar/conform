@@ -7,6 +7,8 @@ const YELLOW = "\x1b[33m";
 const BOLD = "\x1b[1m";
 const DIM = "\x1b[2m";
 
+const DIVIDER_WIDTH = 50;
+
 function icon(status: Severity): string {
   if (status === "pass") {
     return `${GREEN}✓${RESET}`;
@@ -127,7 +129,7 @@ export function renderTui(
   const warned = results.filter((r) => r.status === "warn").length;
   const failed = results.filter((r) => r.status === "fail").length;
 
-  lines.push("━".repeat(50));
+  lines.push("━".repeat(DIVIDER_WIDTH));
   lines.push(
     `  ${GREEN}${passed} passed${RESET}  ·  ${YELLOW}${warned} warned${RESET}  ·  ${RED}${failed} failed${RESET}`,
   );
