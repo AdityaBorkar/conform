@@ -4,7 +4,6 @@ import process from "node:process";
 import { loadConfig } from "@/config/load.ts";
 import { resolver } from "@/conform-api/resolver.ts";
 import { runChecks } from "@/engine/index.ts";
-import { createTarget } from "@/target.ts";
 
 export async function CheckCommand({
   path,
@@ -36,8 +35,7 @@ export async function CheckCommand({
     process.exit(2);
   }
 
-  const target = createTarget(targetPath);
-  const results = await runChecks(template, target);
+  const results = await runChecks(template, targetPath);
 
   const hasFail = results.some((r) => r.status === "fail");
   const hasWarn = results.some((r) => r.status === "warn");

@@ -1,12 +1,13 @@
 import { RuleSet, Status } from "@/conform-api/index.ts";
+import { fileExists } from "@/utils/fs.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
 
 const _files = new RuleSet<{
   fileExists: (path: string) => boolean;
 }>({
-  context: (target) => ({
-    fileExists: (path: string) => target.fileExists(path),
+  context: (targetPath) => ({
+    fileExists: (path: string) => fileExists(targetPath, path),
   }),
   id: "files",
 });

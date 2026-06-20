@@ -14,6 +14,5 @@ export type {
   Rule,
   RuleResult,
   Severity,
-  Target,
   Template,
 } from "./types.ts";

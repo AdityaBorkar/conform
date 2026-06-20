@@ -1,13 +1,13 @@
-import type { RuleResult, Target, Template } from "@/types.ts";
+import type { RuleResult, Template } from "@/types.ts";
 
 export async function runChecks(
   template: Template,
-  target: Target,
+  targetPath: string,
 ): Promise<RuleResult[]> {
   const results: RuleResult[] = [];
 
   for await (const rule of template.rules) {
-    const result = await rule.check(target);
+    const result = await rule.check(targetPath);
     const entry: RuleResult = {
       description: rule.description,
       domain: rule.domain,

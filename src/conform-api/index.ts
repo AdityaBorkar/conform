@@ -1,10 +1,4 @@
-import type {
-  CheckResult,
-  ConformConfig,
-  Rule,
-  Target,
-  Template,
-} from "@/types.ts";
+import type { CheckResult, ConformConfig, Rule, Template } from "@/types.ts";
 
 interface RuleSetRuleDef {
   domain?: string;
@@ -37,14 +31,14 @@ export const Status = {
 
 export class RuleSet<T = unknown> {
   private readonly config: {
-    context: (target: Target) => T;
+    context: (targetPath: string) => T;
     domain?: string;
     id: string;
   };
   private readonly ruleDefs: RuleSetRuleDef[] = [];
 
   constructor(config: {
-    context: (target: Target) => T;
+    context: (targetPath: string) => T;
     domain?: string;
     id: string;
   }) {
@@ -64,8 +58,8 @@ export class RuleSet<T = unknown> {
   get rules(): Rule[] {
     return this.ruleDefs.map(
       (ruleDef): Rule => ({
-        check: async (target: Target) => {
-          const ctx = this.config.context(target);
+        check: async (targetPath: string) => {
+          const ctx = this.config.context(targetPath);
           return await ruleDef.test({ context: ctx });
         },
         description: ruleDef.name,
@@ -82,7 +76,7 @@ export function defineTemplate(template: Template): Template {
 }
 
 export function defineRule(def: {
-  check: (ctx: Target) => CheckResult | Promise<CheckResult>;
+  check: (ctx: string) => CheckResult | Promise<CheckResult>;
   description: string;
   domain: string;
   files: string[];

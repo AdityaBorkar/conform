@@ -1,4 +1,4 @@
-import type { Target } from "@/types.ts";
+import { readFile } from "@/utils/fs.ts";
 
 export const CI_WORKFLOW_CANDIDATES = [
   ".github/workflows/ci.yml",
@@ -21,11 +21,11 @@ export const RELEASE_WORKFLOW_CANDIDATES = [
 ];
 
 export function findWorkflowFile(
-  target: Target,
+  targetPath: string,
   candidates: string[],
 ): string | null {
   for (const path of candidates) {
-    if (target.readFile(path) !== null) {
+    if (readFile(targetPath, path) !== null) {
       return path;
     }
   }

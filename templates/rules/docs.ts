@@ -1,4 +1,5 @@
 import { RuleSet, Status } from "@/conform-api/index.ts";
+import { fileExists, readFile } from "@/utils/fs.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
 import { hasHeading } from "./utils/markdown.ts";
@@ -7,9 +8,9 @@ const _docs = new RuleSet<{
   fileExists: (path: string) => boolean;
   readFile: (path: string) => string | null;
 }>({
-  context: (target) => ({
-    fileExists: (path: string) => target.fileExists(path),
-    readFile: (path: string) => target.readFile(path),
+  context: (targetPath) => ({
+    fileExists: (path: string) => fileExists(targetPath, path),
+    readFile: (path: string) => readFile(targetPath, path),
   }),
   domain: DOMAIN.DOCUMENTATION,
   id: "docs",

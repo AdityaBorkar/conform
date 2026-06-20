@@ -1,5 +1,6 @@
 import { RuleSet, Status } from "@/conform-api/index.ts";
 import type { PackageJson } from "@/types.ts";
+import { fileExists, packageJson } from "@/utils/fs.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
 
@@ -7,9 +8,9 @@ const _husky = new RuleSet<{
   fileExists: (path: string) => boolean;
   packageJson: () => PackageJson | null;
 }>({
-  context: (target) => ({
-    fileExists: (path: string) => target.fileExists(path),
-    packageJson: () => target.packageJson(),
+  context: (targetPath) => ({
+    fileExists: (path: string) => fileExists(targetPath, path),
+    packageJson: () => packageJson(targetPath),
   }),
   domain: DOMAIN.DEV_ENVIRONMENT,
   id: "husky",

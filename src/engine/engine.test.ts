@@ -1,18 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { runChecks } from "@/engine/index.ts";
-import type { Rule, Target, Template } from "@/types.ts";
-
-function mockTarget(overrides: Partial<Target> = {}): Target {
-  return {
-    fileExists: () => false,
-    packageJson: () => null,
-    readFile: () => null,
-    readJson: () => null,
-    targetPath: "/tmp/mock",
-    ...overrides,
-  };
-}
+import type { Rule, Template } from "@/types.ts";
 
 function makeRule(
   id: string,
@@ -39,8 +28,7 @@ describe("runChecks", () => {
         makeRule("a:3", "fail"),
       ],
     };
-    const target = mockTarget();
-    const results = await runChecks(template, target);
+    const results = await runChecks(template, "/tmp/mock");
     expect(results).toHaveLength(3);
     expect(results[0]?.status).toBe("pass");
     expect(results[1]?.status).toBe("warn");
@@ -53,8 +41,7 @@ describe("runChecks", () => {
       name: "meta-template",
       rules: [makeRule("group:id", "fail", "something broke")],
     };
-    const target = mockTarget();
-    const results = await runChecks(template, target);
+    const results = await runChecks(template, "/tmp/mock");
     const [result] = results;
     expect(result?.id).toBe("group:id");
     expect(result?.domain).toBe("test");
@@ -69,8 +56,7 @@ describe("runChecks", () => {
       name: "no-msg",
       rules: [makeRule("x:y", "pass")],
     };
-    const target = mockTarget();
-    const results = await runChecks(template, target);
+    const results = await runChecks(template, "/tmp/mock");
     expect(results[0]?.message).toBeUndefined();
   });
 
@@ -91,8 +77,7 @@ describe("runChecks", () => {
         },
       ],
     };
-    const target = mockTarget();
-    const results = await runChecks(template, target);
+    const results = await runChecks(template, "/tmp/mock");
     expect(results[0]?.status).toBe("pass");
   });
 
@@ -102,8 +87,7 @@ describe("runChecks", () => {
       name: "empty",
       rules: [],
     };
-    const target = mockTarget();
-    const results = await runChecks(template, target);
+    const results = await runChecks(template, "/tmp/mock");
     expect(results).toHaveLength(0);
   });
 });

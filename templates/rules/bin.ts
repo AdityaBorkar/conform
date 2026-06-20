@@ -1,5 +1,6 @@
 import { RuleSet, Status } from "@/conform-api/index.ts";
 import type { PackageJson } from "@/types.ts";
+import { fileExists, packageJson, readFile } from "@/utils/fs.ts";
 
 import { getBinPaths } from "./utils/bin.ts";
 import { DOMAIN } from "./utils/domain.ts";
@@ -9,10 +10,10 @@ const _bin = new RuleSet<{
   packageJson: () => PackageJson | null;
   readFile: (path: string) => string | null;
 }>({
-  context: (target) => ({
-    fileExists: (path: string) => target.fileExists(path),
-    packageJson: () => target.packageJson(),
-    readFile: (path: string) => target.readFile(path),
+  context: (targetPath) => ({
+    fileExists: (path: string) => fileExists(targetPath, path),
+    packageJson: () => packageJson(targetPath),
+    readFile: (path: string) => readFile(targetPath, path),
   }),
   domain: DOMAIN.BUILD,
   id: "bin",

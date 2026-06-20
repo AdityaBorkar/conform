@@ -29,16 +29,8 @@ export interface PackageJson {
   version?: string;
 }
 
-export interface Target {
-  fileExists: (relPath: string) => boolean;
-  packageJson: () => PackageJson | null;
-  readFile: (relPath: string) => string | null;
-  readJson: <T = unknown>(relPath: string) => T | null;
-  targetPath: string;
-}
-
 export interface Rule {
-  check: (ctx: Target) => CheckResult | Promise<CheckResult>;
+  check: (ctx: string) => CheckResult | Promise<CheckResult>;
   description: string;
   domain: string;
   files: string[];

@@ -5,15 +5,7 @@ import {
   defineRule,
   defineTemplate,
 } from "@/conform-api/index.ts";
-import type { ConformConfig, Target, Template } from "@/types.ts";
-
-const mockTarget: Target = {
-  fileExists: () => false,
-  packageJson: () => null,
-  readFile: () => null,
-  readJson: () => null,
-  targetPath: "/tmp",
-};
+import type { ConformConfig, Template } from "@/types.ts";
 
 describe("defineConfig", () => {
   it("returns the config as-is", () => {
@@ -48,9 +40,10 @@ describe("rule", () => {
   });
 
   it("rule check function works", async () => {
+    const targetPath = "/tmp/test-project";
     const r = defineRule({
       check: (ctx) => {
-        expect(ctx).toBe(mockTarget);
+        expect(ctx).toBe(targetPath);
         return { status: "pass" };
       },
       description: "Check test",
@@ -58,7 +51,7 @@ describe("rule", () => {
       files: ["package.json"],
       id: "check:test",
     });
-    const result = await r.check(mockTarget);
+    const result = await r.check(targetPath);
     expect(result.status).toBe("pass");
   });
 });

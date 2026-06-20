@@ -1,13 +1,14 @@
 import { RuleSet, Status } from "@/conform-api/index.ts";
 import type { PackageJson } from "@/types.ts";
+import { packageJson } from "@/utils/fs.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
 
 const _testing = new RuleSet<{
   packageJson: () => PackageJson | null;
 }>({
-  context: (target) => ({
-    packageJson: () => target.packageJson(),
+  context: (targetPath) => ({
+    packageJson: () => packageJson(targetPath),
   }),
   domain: DOMAIN.TESTING,
   id: "testing",
