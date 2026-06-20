@@ -1,11 +1,9 @@
 export {
   defineConfig,
+  defineRule as rule,
   defineTemplate,
-  domain,
-  rule,
 } from "./conform-api/index.ts";
 export type {
-  CheckContext,
   CheckResult,
   ConformConfig,
   ConformOutput,
@@ -14,5 +12,6 @@ export type {
   Rule,
   RuleResult,
   Severity,
+  Target,
   Template,
 } from "./types.ts";

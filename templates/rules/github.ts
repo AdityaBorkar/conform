@@ -1,6 +1,7 @@
+import { defineRule } from "@/conform-api/index.ts";
 import type { Rule } from "@/types.ts";
 
-import { github } from "./domains.ts";
+import { GITHUB } from "./utils/domains.ts";
 import {
   CI_WORKFLOW_CANDIDATES,
   findWorkflowFile,
@@ -8,7 +9,7 @@ import {
 } from "./utils/workflows.ts";
 
 export const githubRules: Rule[] = [
-  github.rule({
+  defineRule({
     check: (ctx) => {
       const ciFile = findWorkflowFile(ctx, CI_WORKFLOW_CANDIDATES);
       if (ciFile) {
@@ -21,10 +22,11 @@ export const githubRules: Rule[] = [
       };
     },
     description: "CI workflow file exists",
+    domain: GITHUB,
     files: [".github/workflows/"],
     id: "github:ci-workflow",
   }),
-  github.rule({
+  defineRule({
     check: (ctx) => {
       const releaseFile = findWorkflowFile(ctx, RELEASE_WORKFLOW_CANDIDATES);
       if (releaseFile) {
@@ -37,10 +39,11 @@ export const githubRules: Rule[] = [
       };
     },
     description: "Release/publish workflow file exists",
+    domain: GITHUB,
     files: [".github/workflows/"],
     id: "github:release-workflow",
   }),
-  github.rule({
+  defineRule({
     check: (ctx) => {
       const ciFile = findWorkflowFile(ctx, CI_WORKFLOW_CANDIDATES);
       if (!ciFile) {
@@ -70,10 +73,11 @@ export const githubRules: Rule[] = [
       };
     },
     description: "CI workflow runs lint",
+    domain: GITHUB,
     files: [".github/workflows/"],
     id: "github:ci-lint",
   }),
-  github.rule({
+  defineRule({
     check: (ctx) => {
       const ciFile = findWorkflowFile(ctx, CI_WORKFLOW_CANDIDATES);
       if (!ciFile) {
@@ -103,10 +107,11 @@ export const githubRules: Rule[] = [
       };
     },
     description: "CI workflow runs typecheck",
+    domain: GITHUB,
     files: [".github/workflows/"],
     id: "github:ci-typecheck",
   }),
-  github.rule({
+  defineRule({
     check: (ctx) => {
       if (ctx.fileExists(".github/dependabot.yml")) {
         return { message: ".github/dependabot.yml", status: "pass" };
@@ -130,6 +135,7 @@ export const githubRules: Rule[] = [
       };
     },
     description: "Dependabot or Renovate config exists",
+    domain: GITHUB,
     files: [
       ".github/dependabot.yml",
       ".github/dependabot.yaml",

@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createCheckContext } from "@/context.ts";
+import { createTarget } from "@/target.ts";
 
 let tempDir: string | null = null;
 
@@ -21,25 +21,25 @@ afterEach(() => {
   }
 });
 
-describe("createCheckContext", () => {
+describe("createTarget", () => {
   it("returns targetPath", () => {
     const dir = makeTempDir();
-    const ctx = createCheckContext(dir);
-    expect(ctx.targetPath).toBe(dir);
+    const target = createTarget(dir);
+    expect(target.targetPath).toBe(dir);
   });
 
   describe("fileExists", () => {
     it("returns true for existing file", () => {
       const dir = makeTempDir();
       writeFileSync(join(dir, "hello.txt"), "hi");
-      const ctx = createCheckContext(dir);
-      expect(ctx.fileExists("hello.txt")).toBe(true);
+      const target = createTarget(dir);
+      expect(target.fileExists("hello.txt")).toBe(true);
     });
 
     it("returns false for missing file", () => {
       const dir = makeTempDir();
-      const ctx = createCheckContext(dir);
-      expect(ctx.fileExists("nope.txt")).toBe(false);
+      const target = createTarget(dir);
+      expect(target.fileExists("nope.txt")).toBe(false);
     });
   });
 
@@ -47,23 +47,23 @@ describe("createCheckContext", () => {
     it("returns file content", () => {
       const dir = makeTempDir();
       writeFileSync(join(dir, "data.txt"), "hello world");
-      const ctx = createCheckContext(dir);
-      expect(ctx.readFile("data.txt")).toBe("hello world");
+      const target = createTarget(dir);
+      expect(target.readFile("data.txt")).toBe("hello world");
     });
 
     it("returns null for missing file", () => {
       const dir = makeTempDir();
-      const ctx = createCheckContext(dir);
-      expect(ctx.readFile("missing.txt")).toBeNull();
+      const target = createTarget(dir);
+      expect(target.readFile("missing.txt")).toBeNull();
     });
 
     it("caches reads", () => {
       const dir = makeTempDir();
       writeFileSync(join(dir, "cached.txt"), "original");
-      const ctx = createCheckContext(dir);
-      expect(ctx.readFile("cached.txt")).toBe("original");
+      const target = createTarget(dir);
+      expect(target.readFile("cached.txt")).toBe("original");
       writeFileSync(join(dir, "cached.txt"), "changed");
-      expect(ctx.readFile("cached.txt")).toBe("original");
+      expect(target.readFile("cached.txt")).toBe("original");
     });
   });
 
@@ -71,8 +71,8 @@ describe("createCheckContext", () => {
     it("parses valid JSON", () => {
       const dir = makeTempDir();
       writeFileSync(join(dir, "data.json"), '{"key":"value"}');
-      const ctx = createCheckContext(dir);
-      expect(ctx.readJson<{ key: string }>("data.json")).toEqual({
+      const target = createTarget(dir);
+      expect(target.readJson<{ key: string }>("data.json")).toEqual({
         key: "value",
       });
     });
@@ -80,48 +80,62 @@ describe("createCheckContext", () => {
     it("strips single-line comments", () => {
       const dir = makeTempDir();
       writeFileSync(join(dir, "commented.json"), '{\n  "a": 1 // inline\n}');
-      const ctx = createCheckContext(dir);
-      expect(ctx.readJson<{ a: number }>("commented.json")).toEqual({ a: 1 });
+      const target = createTarget(dir);
+      expect(target.readJson<{ a: number }>("commented.json")).toEqual({
+        a: 1,
+      });
     });
 
     it("strips block comments", () => {
       const dir = makeTempDir();
       writeFileSync(join(dir, "block.json"), '{\n  /* block */\n  "b": 2\n}');
-      const ctx = createCheckContext(dir);
-      expect(ctx.readJson<{ b: number }>("block.json")).toEqual({ b: 2 });
+      const target = createTarget(dir);
+      expect(target.readJson<{ b: number }>("block.json")).toEqual({ b: 2 });
     });
 
     it("returns null for invalid JSON", () => {
       const dir = makeTempDir();
       writeFileSync(join(dir, "bad.json"), "not json");
-      const ctx = createCheckContext(dir);
-      expect(ctx.readJson("bad.json")).toBeNull();
+      const target = createTarget(dir);
+      expect(target.readJson("bad.json")).toBeNull();
     });
 
     it("returns null for missing file", () => {
       const dir = makeTempDir();
-      const ctx = createCheckContext(dir);
-      expect(ctx.readJson("missing.json")).toBeNull();
+      const target = createTarget(dir);
+      expect(target.readJson("missing.json")).toBeNull();
     });
   });
 
   describe("packageJson", () => {
-    it("loads package.json automatically", () => {
+    it("loads package.json on demand", () => {
       const dir = makeTempDir();
       writeFileSync(
         join(dir, "package.json"),
         '{"name":"test-pkg","version":"1.0.0"}',
       );
-      const ctx = createCheckContext(dir);
-      expect(ctx.packageJson).not.toBeNull();
-      expect(ctx.packageJson?.name).toBe("test-pkg");
-      expect(ctx.packageJson?.version).toBe("1.0.0");
+      const target = createTarget(dir);
+      expect(target.packageJson()).not.toBeNull();
+      expect(target.packageJson()?.name).toBe("test-pkg");
+      expect(target.packageJson()?.version).toBe("1.0.0");
     });
 
     it("is null when no package.json exists", () => {
       const dir = makeTempDir();
-      const ctx = createCheckContext(dir);
-      expect(ctx.packageJson).toBeNull();
+      const target = createTarget(dir);
+      expect(target.packageJson()).toBeNull();
+    });
+
+    it("caches the result", () => {
+      const dir = makeTempDir();
+      writeFileSync(
+        join(dir, "package.json"),
+        '{"name":"test-pkg","version":"1.0.0"}',
+      );
+      const target = createTarget(dir);
+      const first = target.packageJson();
+      writeFileSync(join(dir, "package.json"), '{"name":"changed"}');
+      expect(target.packageJson()).toBe(first);
     });
   });
 });

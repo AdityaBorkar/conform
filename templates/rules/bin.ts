@@ -1,12 +1,13 @@
+import { defineRule } from "@/conform-api/index.ts";
 import type { Rule } from "@/types.ts";
 
-import { build } from "./domains.ts";
 import { getBinPaths } from "./utils/bin.ts";
+import { BUILD } from "./utils/domains.ts";
 
 export const binRules: Rule[] = [
-  build.rule({
+  defineRule({
     check: (ctx) => {
-      const binPaths = getBinPaths(ctx.packageJson ?? {});
+      const binPaths = getBinPaths(ctx.packageJson() ?? {});
       if (binPaths.length === 0) {
         return {
           message: "no bin field — skipping bin file check",
@@ -23,12 +24,13 @@ export const binRules: Rule[] = [
       return { status: "pass" };
     },
     description: "bin field references files that exist",
+    domain: BUILD,
     files: ["package.json"],
     id: "bin:file-exists",
   }),
-  build.rule({
+  defineRule({
     check: (ctx) => {
-      const binPaths = getBinPaths(ctx.packageJson ?? {});
+      const binPaths = getBinPaths(ctx.packageJson() ?? {});
       if (binPaths.length === 0) {
         return {
           message: "no bin field — skipping shebang check",
@@ -55,6 +57,7 @@ export const binRules: Rule[] = [
       return { status: "pass" };
     },
     description: "bin entry files have a shebang line",
+    domain: BUILD,
     files: ["package.json"],
     id: "bin:shebang",
   }),

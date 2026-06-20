@@ -60,7 +60,7 @@ Adding a template = create `templates/<name>.ts` with a `defineTemplate()` defau
 
 ## Toolchain
 
-- **Runtime:** Bun only (not Node). `@types/bun`; `import.meta.dir` for path resolution.
+- **Runtime:** Bun only (not Node). `import.meta.dir` for path resolution.
 - **Biome 2.x** with explicit `biome.json`: all-rule presets on for a11y/complexity/correctness/performance/security/style/suspicious; formatter = 2-space, double quotes, LF, width 80; `organizeImports` with custom groups; VCS git integration. No ESLint/Prettier.
 - **TypeScript** `^7.0.1-rc` (peer dep). Notable strict flags: `strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`, `exactOptionalPropertyTypes`, `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax`, `moduleResolution: bundler`, `allowImportingTsExtensions`, `composite` + `incremental` (emits `tsconfig.tsbuildinfo`), `noEmit: true`. Path alias `@/*` → `./src/*` (tsconfig + vitest config).
 - **Test runner:** Vitest (`vitest.config.ts`): alias `@` → `src`, includes `tests/**/*.test.ts`.

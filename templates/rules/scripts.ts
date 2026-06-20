@@ -1,11 +1,12 @@
+import { defineRule } from "@/conform-api/index.ts";
 import type { Rule } from "@/types.ts";
 
-import { build } from "./domains.ts";
+import { BUILD } from "./utils/domains.ts";
 
 export const scriptsRules: Rule[] = [
-  build.rule({
+  defineRule({
     check: (ctx) => {
-      const scripts = ctx.packageJson?.scripts ?? {};
+      const scripts = ctx.packageJson()?.scripts ?? {};
       const typecheckScript =
         scripts["typecheck"] ?? scripts["check:types"] ?? scripts["types"];
       if (typecheckScript) {
@@ -18,12 +19,13 @@ export const scriptsRules: Rule[] = [
       };
     },
     description: "typecheck script exists",
+    domain: BUILD,
     files: ["package.json"],
     id: "scripts:typecheck",
   }),
-  build.rule({
+  defineRule({
     check: (ctx) => {
-      const scripts = ctx.packageJson?.scripts;
+      const scripts = ctx.packageJson()?.scripts;
       if (scripts?.["prepublish"]) {
         return {
           message:
@@ -34,6 +36,7 @@ export const scriptsRules: Rule[] = [
       return { status: "pass" };
     },
     description: "deprecated prepublish script is not used",
+    domain: BUILD,
     files: ["package.json"],
     id: "scripts:no-prepublish",
   }),

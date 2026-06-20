@@ -1,3 +1,6 @@
+Change the domain syntax. attach domain to the rule itself and remove the code for creation of domains.
+Remove the "context" from engine and the code. Insted, fetch the file on demand.
+
 update the repo context and glossary
 
 - Check for /docs/CONTEXT.md /plans /adr glossary.md USER-TODO.md

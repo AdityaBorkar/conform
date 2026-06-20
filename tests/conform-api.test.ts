@@ -2,15 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   defineConfig,
+  defineRule,
   defineTemplate,
-  domain,
-  rule,
 } from "@/conform-api/index.ts";
-import type { CheckContext, ConformConfig, Template } from "@/types.ts";
+import type { ConformConfig, Target, Template } from "@/types.ts";
 
-const mockCtx: CheckContext = {
+const mockTarget: Target = {
   fileExists: () => false,
-  packageJson: null,
+  packageJson: () => null,
   readFile: () => null,
   readJson: () => null,
   targetPath: "/tmp",
@@ -36,7 +35,7 @@ describe("defineTemplate", () => {
 
 describe("rule", () => {
   it("returns the rule definition", () => {
-    const result = rule({
+    const result = defineRule({
       check: () => ({ status: "pass" }),
       description: "A test rule",
       domain: "test",
@@ -47,33 +46,19 @@ describe("rule", () => {
     expect(result.domain).toBe("test");
     expect(result.files).toEqual(["package.json"]);
   });
-});
-
-describe("domain", () => {
-  it("creates a scoped rule builder that injects domain", () => {
-    const d = domain("my-domain");
-    const r = d.rule({
-      check: () => ({ message: "nope", status: "fail" }),
-      description: "Scoped rule",
-      files: ["package.json"],
-      id: "scoped:rule",
-    });
-    expect(r.domain).toBe("my-domain");
-    expect(r.id).toBe("scoped:rule");
-  });
 
   it("rule check function works", async () => {
-    const d = domain("check-domain");
-    const r = d.rule({
+    const r = defineRule({
       check: (ctx) => {
-        expect(ctx).toBe(mockCtx);
+        expect(ctx).toBe(mockTarget);
         return { status: "pass" };
       },
       description: "Check test",
+      domain: "check-domain",
       files: ["package.json"],
       id: "check:test",
     });
-    const result = await r.check(mockCtx);
+    const result = await r.check(mockTarget);
     expect(result.status).toBe("pass");
   });
 });

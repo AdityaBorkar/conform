@@ -21,5 +21,13 @@
     "!vtsls",
     "!markdownlint",
     "..."
-  ]
+  ],
+  "lsp": {
+    "biome": {
+      "binary": {
+        "arguments": ["lsp-proxy"],
+        "path": "./node_modules/@biomejs/cli-linux-x64/biome"
+      }
+    }
+  }
 }

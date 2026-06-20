@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { runChecks } from "@/engine/index.ts";
-import type { CheckContext, Rule, Template } from "@/types.ts";
+import type { Rule, Target, Template } from "@/types.ts";
 
-function mockContext(overrides: Partial<CheckContext> = {}): CheckContext {
+function mockTarget(overrides: Partial<Target> = {}): Target {
   return {
     fileExists: () => false,
-    packageJson: null,
+    packageJson: () => null,
     readFile: () => null,
     readJson: () => null,
     targetPath: "/tmp/mock",
@@ -39,8 +39,8 @@ describe("runChecks", () => {
         makeRule("a:3", "fail"),
       ],
     };
-    const ctx = mockContext();
-    const results = await runChecks(template, ctx);
+    const target = mockTarget();
+    const results = await runChecks(template, target);
     expect(results).toHaveLength(3);
     expect(results[0]?.status).toBe("pass");
     expect(results[1]?.status).toBe("warn");
@@ -53,8 +53,8 @@ describe("runChecks", () => {
       name: "meta-template",
       rules: [makeRule("group:id", "fail", "something broke")],
     };
-    const ctx = mockContext();
-    const results = await runChecks(template, ctx);
+    const target = mockTarget();
+    const results = await runChecks(template, target);
     const result = results[0];
     expect(result?.id).toBe("group:id");
     expect(result?.domain).toBe("test");
@@ -69,8 +69,8 @@ describe("runChecks", () => {
       name: "no-msg",
       rules: [makeRule("x:y", "pass")],
     };
-    const ctx = mockContext();
-    const results = await runChecks(template, ctx);
+    const target = mockTarget();
+    const results = await runChecks(template, target);
     expect(results[0]?.message).toBeUndefined();
   });
 
@@ -91,8 +91,8 @@ describe("runChecks", () => {
         },
       ],
     };
-    const ctx = mockContext();
-    const results = await runChecks(template, ctx);
+    const target = mockTarget();
+    const results = await runChecks(template, target);
     expect(results[0]?.status).toBe("pass");
   });
 
@@ -102,8 +102,8 @@ describe("runChecks", () => {
       name: "empty",
       rules: [],
     };
-    const ctx = mockContext();
-    const results = await runChecks(template, ctx);
+    const target = mockTarget();
+    const results = await runChecks(template, target);
     expect(results).toHaveLength(0);
   });
 });

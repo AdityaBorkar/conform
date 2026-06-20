@@ -1,11 +1,12 @@
+import { defineRule } from "@/conform-api/index.ts";
 import type { Rule } from "@/types.ts";
 
-import { testing } from "./domains.ts";
+import { TESTING } from "./domains.ts";
 
 export const testingRules: Rule[] = [
-  testing.rule({
+  defineRule({
     check: (ctx) => {
-      const testScript = ctx.packageJson?.scripts?.["test"];
+      const testScript = ctx.packageJson()?.scripts?.["test"];
       if (testScript) {
         return { message: testScript, status: "pass" };
       }
@@ -16,12 +17,13 @@ export const testingRules: Rule[] = [
       };
     },
     description: "scripts.test exists in package.json",
+    domain: TESTING,
     files: ["package.json"],
     id: "testing:test-script",
   }),
-  testing.rule({
+  defineRule({
     check: (ctx) => {
-      const testScript = ctx.packageJson?.scripts?.["test"];
+      const testScript = ctx.packageJson()?.scripts?.["test"];
       if (!testScript) {
         return {
           message: "no test script — skipping runner check",
@@ -47,6 +49,7 @@ export const testingRules: Rule[] = [
       };
     },
     description: "test script invokes a known test runner",
+    domain: TESTING,
     files: ["package.json"],
     id: "testing:test-runner",
   }),

@@ -1,4 +1,4 @@
-import type { CheckContext } from "@/types.ts";
+import type { Target } from "@/types.ts";
 
 export interface JsrConfig {
   description?: string;
@@ -14,23 +14,23 @@ export interface JsrConfig {
   version?: string;
 }
 
-export function resolveJsrConfig(ctx: CheckContext): {
+export function resolveJsrConfig(target: Target): {
   jsr: JsrConfig | null;
   source: string;
 } {
-  const jsr = ctx.readJson<JsrConfig>("jsr.json");
+  const jsr = target.readJson<JsrConfig>("jsr.json");
   if (jsr) {
     return { jsr, source: "jsr.json" };
   }
-  const deno = ctx.readJson<JsrConfig>("deno.json");
+  const deno = target.readJson<JsrConfig>("deno.json");
   if (deno) {
     return { jsr: deno, source: "deno.json" };
   }
   return { jsr: null, source: "package.json" };
 }
 
-export function getExportPaths(ctx: CheckContext): string[] {
-  const config = resolveJsrConfig(ctx);
+export function getExportPaths(target: Target): string[] {
+  const config = resolveJsrConfig(target);
   const exports = config.jsr?.exports;
   if (!exports) {
     return [];

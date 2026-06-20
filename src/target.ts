@@ -1,14 +1,15 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import type { CheckContext, PackageJson } from "@/types.ts";
+import type { PackageJson, Target } from "@/types.ts";
 
 function stripJsonComments(text: string): string {
   return text.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
-export function createCheckContext(targetPath: string): CheckContext {
+export function createTarget(targetPath: string): Target {
   const fileCache = new Map<string, string | null>();
+  let pkgJsonCache: PackageJson | null | undefined;
 
   function readFile(relPath: string): string | null {
     const cached = fileCache.get(relPath);
@@ -45,11 +46,18 @@ export function createCheckContext(targetPath: string): CheckContext {
     }
   }
 
-  const packageJson = readJson<PackageJson>("package.json");
+  function packageJson(): PackageJson | null {
+    if (pkgJsonCache !== undefined) {
+      return pkgJsonCache;
+    }
+    const pkg = readJson<PackageJson>("package.json");
+    pkgJsonCache = pkg ?? null;
+    return pkgJsonCache;
+  }
 
   return {
     fileExists,
-    packageJson: packageJson ?? null,
+    packageJson,
     readFile,
     readJson,
     targetPath,

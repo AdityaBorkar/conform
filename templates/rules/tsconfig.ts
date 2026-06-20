@@ -1,13 +1,14 @@
+import { defineRule } from "@/conform-api/index.ts";
 import type { Rule } from "@/types.ts";
 
-import { codeQuality, observability } from "./domains.ts";
+import { CODE_QUALITY, OBSERVABILITY } from "./domains.ts";
 
 export const tsconfigRules: Rule[] = [
-  codeQuality.rule({
+  defineRule({
     check: (ctx) => {
       const version =
-        ctx.packageJson?.devDependencies?.["typescript"] ??
-        ctx.packageJson?.peerDependencies?.["typescript"];
+        ctx.packageJson()?.devDependencies?.["typescript"] ??
+        ctx.packageJson()?.peerDependencies?.["typescript"];
       if (version) {
         return { message: version, status: "pass" };
       }
@@ -17,10 +18,11 @@ export const tsconfigRules: Rule[] = [
       };
     },
     description: "typescript in devDependencies or peerDependencies",
+    domain: CODE_QUALITY,
     files: ["package.json"],
     id: "typescript:deps",
   }),
-  codeQuality.rule({
+  defineRule({
     check: (ctx) => {
       if (ctx.fileExists("tsconfig.json")) {
         return { status: "pass" };
@@ -28,10 +30,11 @@ export const tsconfigRules: Rule[] = [
       return { message: "tsconfig.json not found", status: "fail" };
     },
     description: "tsconfig.json exists",
+    domain: CODE_QUALITY,
     files: ["tsconfig.json"],
     id: "typescript:tsconfig",
   }),
-  codeQuality.rule({
+  defineRule({
     check: (ctx) => {
       const tsconfig = ctx.readJson<{
         compilerOptions?: { strict?: boolean };
@@ -45,10 +48,11 @@ export const tsconfigRules: Rule[] = [
       };
     },
     description: "strict: true in tsconfig",
+    domain: CODE_QUALITY,
     files: ["tsconfig.json"],
     id: "typescript:strict",
   }),
-  codeQuality.rule({
+  defineRule({
     check: (ctx) => {
       const tsconfig = ctx.readJson<{
         compilerOptions?: { noUncheckedIndexedAccess?: boolean };
@@ -63,10 +67,11 @@ export const tsconfigRules: Rule[] = [
       };
     },
     description: "noUncheckedIndexedAccess: true in tsconfig",
+    domain: CODE_QUALITY,
     files: ["tsconfig.json"],
     id: "typescript:no-unchecked-indexed-access",
   }),
-  codeQuality.rule({
+  defineRule({
     check: (ctx) => {
       const tsconfig = ctx.readJson<{
         compilerOptions?: { isolatedModules?: boolean };
@@ -81,10 +86,11 @@ export const tsconfigRules: Rule[] = [
       };
     },
     description: "isolatedModules: true in tsconfig",
+    domain: CODE_QUALITY,
     files: ["tsconfig.json"],
     id: "typescript:isolated-modules",
   }),
-  codeQuality.rule({
+  defineRule({
     check: (ctx) => {
       const tsconfig = ctx.readJson<{
         compilerOptions?: { verbatimModuleSyntax?: boolean };
@@ -99,10 +105,11 @@ export const tsconfigRules: Rule[] = [
       };
     },
     description: "verbatimModuleSyntax: true in tsconfig",
+    domain: CODE_QUALITY,
     files: ["tsconfig.json"],
     id: "typescript:verbatim-module-syntax",
   }),
-  observability.rule({
+  defineRule({
     check: (ctx) => {
       const tsconfig = ctx.readJson<{
         compilerOptions?: {
@@ -133,6 +140,7 @@ export const tsconfigRules: Rule[] = [
       };
     },
     description: "sourceMap: true in tsconfig (when not noEmit)",
+    domain: OBSERVABILITY,
     files: ["tsconfig.json"],
     id: "typescript:source-map",
   }),

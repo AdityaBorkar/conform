@@ -1,73 +1,61 @@
+// biome-ignore lint/correctness/noUnresolvedImports: arktype re-exports `type` via a non-standard "ark-ts" exports condition Biome cannot statically resolve; the export exists and tsc validates it
+import { type } from "arktype";
+
+import { defineRule } from "@/conform-api/index.ts";
 import type { Rule } from "@/types.ts";
 
-import {
-  build,
-  documentation,
-  github,
-  observability,
-  security,
-  style,
-} from "./domains.ts";
+import { BUILD, SECURITY } from "./utils/domains.ts";
+
+const requiredStructure = type({
+  bugs: "unknown",
+  license: "string",
+  name: "string",
+  type: "'module'",
+  version: "string",
+});
+
+const recommendedStructure = type({
+  description: "string",
+  engines: "Record<string, string>",
+  homepage: "string",
+  repository: "unknown",
+  sideEffects: "boolean | string[]",
+});
+
+function summarize(errors: type.errors): string {
+  return Object.entries(errors.flatProblemsByPath)
+    .map(([field, problems]) => `${field}: ${problems.join(", ")}`)
+    .join("; ");
+}
 
 export const packageJsonRules: Rule[] = [
-  style.rule({
+  defineRule({
     check: (ctx) => {
-      if (ctx.packageJson?.type !== "module") {
-        return {
-          message: `type is "${ctx.packageJson?.type ?? "undefined"}", expected "module"`,
-          status: "fail",
-        };
+      const pkg = ctx.packageJson();
+      if (!pkg) {
+        return { message: "package.json not found", status: "fail" };
       }
+
+      const required = requiredStructure(pkg);
+      if (required instanceof type.errors) {
+        return { message: summarize(required), status: "fail" };
+      }
+
+      const recommended = recommendedStructure(required);
+      if (recommended instanceof type.errors) {
+        return { message: summarize(recommended), status: "warn" };
+      }
+
       return { status: "pass" };
     },
-    description: "type is 'module'",
+    description: "package.json structure: required & recommended fields",
+    domain: "BUILD",
     files: ["package.json"],
-    id: "package-json:type-module",
+    id: "package-json:structure",
   }),
-  style.rule({
+  defineRule({
     check: (ctx) => {
-      if (ctx.packageJson?.sideEffects !== undefined) {
-        const val = ctx.packageJson.sideEffects;
-        return {
-          message: `sideEffects: ${typeof val === "boolean" ? val : "array"}`,
-          status: "pass",
-        };
-      }
-      return {
-        message:
-          "sideEffects field is missing — bundlers cannot tree-shake without it (set sideEffects: false or an array of files with side effects)",
-        status: "warn",
-      };
-    },
-    description: "sideEffects field is defined in package.json",
-    files: ["package.json"],
-    id: "package-json:side-effects",
-  }),
-  build.rule({
-    check: (ctx) => {
-      if (!ctx.packageJson?.name) {
-        return { message: "name field is missing", status: "fail" };
-      }
-      return { message: ctx.packageJson.name, status: "pass" };
-    },
-    description: "name field is present in package.json",
-    files: ["package.json"],
-    id: "package-json:name",
-  }),
-  build.rule({
-    check: (ctx) => {
-      if (!ctx.packageJson?.version) {
-        return { message: "version field is missing", status: "fail" };
-      }
-      return { message: ctx.packageJson.version, status: "pass" };
-    },
-    description: "version field is present in package.json",
-    files: ["package.json"],
-    id: "package-json:version",
-  }),
-  build.rule({
-    check: (ctx) => {
-      const pkg = ctx.packageJson;
+      const pkg = ctx.packageJson();
       const entries = [
         pkg?.main && "main",
         pkg?.module && "module",
@@ -82,12 +70,13 @@ export const packageJsonRules: Rule[] = [
       };
     },
     description: "main, module, or exports entry defined",
+    domain: BUILD,
     files: ["package.json"],
     id: "package-json:entry-point",
   }),
-  build.rule({
+  defineRule({
     check: (ctx) => {
-      const scripts = ctx.packageJson?.scripts;
+      const scripts = ctx.packageJson()?.scripts;
       if (scripts?.["prepare"]) {
         return { message: "prepare", status: "pass" };
       }
@@ -97,12 +86,13 @@ export const packageJsonRules: Rule[] = [
       return { message: "no prepare or build script found", status: "fail" };
     },
     description: "scripts.prepare or scripts.build exists",
+    domain: BUILD,
     files: ["package.json"],
     id: "package-json:build-script",
   }),
-  build.rule({
+  defineRule({
     check: (ctx) => {
-      if (ctx.packageJson?.files) {
+      if (ctx.packageJson()?.files) {
         return { message: "files field defined", status: "pass" };
       }
       if (ctx.fileExists(".npmignore")) {
@@ -114,64 +104,13 @@ export const packageJsonRules: Rule[] = [
       };
     },
     description: "files field or .npmignore exists",
+    domain: BUILD,
     files: ["package.json", ".npmignore"],
     id: "package-json:files-or-npmignore",
   }),
-  documentation.rule({
+  defineRule({
     check: (ctx) => {
-      if (!ctx.packageJson?.description) {
-        return { message: "description field is missing", status: "warn" };
-      }
-      return { status: "pass" };
-    },
-    description: "description field is present in package.json",
-    files: ["package.json"],
-    id: "package-json:description",
-  }),
-  observability.rule({
-    check: (ctx) => {
-      if (ctx.packageJson?.bugs) {
-        return { status: "pass" };
-      }
-      return {
-        message:
-          "bugs field is missing — users need an issue tracker URL to report problems (set bugs.url or bugs as a string)",
-        status: "fail",
-      };
-    },
-    description: "bugs field is present in package.json",
-    files: ["package.json"],
-    id: "package-json:bugs",
-  }),
-  observability.rule({
-    check: (ctx) => {
-      if (ctx.packageJson?.homepage) {
-        return { message: ctx.packageJson.homepage, status: "pass" };
-      }
-      return {
-        message:
-          "homepage field is missing — helps users find project documentation and support",
-        status: "warn",
-      };
-    },
-    description: "homepage field is present in package.json",
-    files: ["package.json"],
-    id: "package-json:homepage",
-  }),
-  security.rule({
-    check: (ctx) => {
-      if (!ctx.packageJson?.license) {
-        return { message: "license field is missing", status: "fail" };
-      }
-      return { message: ctx.packageJson.license, status: "pass" };
-    },
-    description: "license field is present in package.json",
-    files: ["package.json"],
-    id: "package-json:license",
-  }),
-  security.rule({
-    check: (ctx) => {
-      const scripts = ctx.packageJson?.scripts;
+      const scripts = ctx.packageJson()?.scripts;
       const dangerousScripts = ["preinstall", "postinstall", "install"];
       const found: string[] = [];
       for (const name of dangerousScripts) {
@@ -188,37 +127,8 @@ export const packageJsonRules: Rule[] = [
       return { status: "pass" };
     },
     description: "no preinstall/postinstall/install lifecycle scripts",
+    domain: SECURITY,
     files: ["package.json"],
     id: "package-json:no-install-hooks",
-  }),
-  security.rule({
-    check: (ctx) => {
-      if (ctx.packageJson?.engines) {
-        const entries = Object.entries(ctx.packageJson.engines);
-        return {
-          message: entries.map(([k, v]) => `${k}: ${v}`).join(", "),
-          status: "pass",
-        };
-      }
-      return {
-        message:
-          "engines field is missing — declare supported Node/Bun versions to prevent installation on incompatible runtimes",
-        status: "warn",
-      };
-    },
-    description: "engines field is present in package.json",
-    files: ["package.json"],
-    id: "package-json:engines",
-  }),
-  github.rule({
-    check: (ctx) => {
-      if (!ctx.packageJson?.repository) {
-        return { message: "repository field is missing", status: "warn" };
-      }
-      return { status: "pass" };
-    },
-    description: "repository field is present in package.json",
-    files: ["package.json"],
-    id: "package-json:repository",
   }),
 ];

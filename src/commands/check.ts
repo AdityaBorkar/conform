@@ -3,8 +3,8 @@ import process from "node:process";
 
 import { loadConfig } from "@/config/load.ts";
 import { resolver } from "@/conform-api/resolver.ts";
-import { createCheckContext } from "@/context.ts";
 import { runChecks } from "@/engine/index.ts";
+import { createTarget } from "@/target.ts";
 
 export async function CheckCommand({
   path,
@@ -36,8 +36,8 @@ export async function CheckCommand({
     process.exit(2);
   }
 
-  const ctx = createCheckContext(targetPath);
-  const results = await runChecks(template, ctx);
+  const target = createTarget(targetPath);
+  const results = await runChecks(template, target);
 
   const hasFail = results.some((r) => r.status === "fail");
   const hasWarn = results.some((r) => r.status === "warn");

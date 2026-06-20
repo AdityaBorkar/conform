@@ -1,9 +1,10 @@
+import { defineRule } from "@/conform-api/index.ts";
 import type { Rule } from "@/types.ts";
 
-import { devEnv } from "./domains.ts";
+import { DEV_ENV } from "./domains.ts";
 
 export const gitignoreRules: Rule[] = [
-  devEnv.rule({
+  defineRule({
     check: (ctx) => {
       if (ctx.fileExists(".gitignore")) {
         return { status: "pass" };
@@ -11,10 +12,11 @@ export const gitignoreRules: Rule[] = [
       return { message: ".gitignore not found", status: "fail" };
     },
     description: ".gitignore exists",
+    domain: DEV_ENV,
     files: [".gitignore"],
     id: "files:gitignore",
   }),
-  devEnv.rule({
+  defineRule({
     check: (ctx) => {
       const gitignore = ctx.readFile(".gitignore");
       if (!gitignore) {
@@ -33,10 +35,11 @@ export const gitignoreRules: Rule[] = [
       };
     },
     description: '.gitignore contains "node_modules"',
+    domain: DEV_ENV,
     files: [".gitignore"],
     id: "gitignore:node-modules",
   }),
-  devEnv.rule({
+  defineRule({
     check: (ctx) => {
       const gitignore = ctx.readFile(".gitignore");
       if (!gitignore) {
@@ -55,6 +58,7 @@ export const gitignoreRules: Rule[] = [
       };
     },
     description: '.gitignore contains ".env"',
+    domain: DEV_ENV,
     files: [".gitignore"],
     id: "gitignore:env",
   }),

@@ -29,16 +29,16 @@ export interface PackageJson {
   version?: string;
 }
 
-export interface CheckContext {
+export interface Target {
   fileExists: (relPath: string) => boolean;
-  packageJson: PackageJson | null;
+  packageJson: () => PackageJson | null;
   readFile: (relPath: string) => string | null;
   readJson: <T = unknown>(relPath: string) => T | null;
   targetPath: string;
 }
 
 export interface Rule {
-  check: (ctx: CheckContext) => CheckResult | Promise<CheckResult>;
+  check: (ctx: Target) => CheckResult | Promise<CheckResult>;
   description: string;
   domain: string;
   files: string[];

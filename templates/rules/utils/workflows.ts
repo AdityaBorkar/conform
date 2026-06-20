@@ -1,4 +1,4 @@
-import type { CheckContext } from "@/types.ts";
+import type { Target } from "@/types.ts";
 
 export const CI_WORKFLOW_CANDIDATES = [
   ".github/workflows/ci.yml",
@@ -21,11 +21,11 @@ export const RELEASE_WORKFLOW_CANDIDATES = [
 ];
 
 export function findWorkflowFile(
-  ctx: CheckContext,
+  target: Target,
   candidates: string[],
 ): string | null {
   for (const path of candidates) {
-    if (ctx.readFile(path) !== null) {
+    if (target.readFile(path) !== null) {
       return path;
     }
   }

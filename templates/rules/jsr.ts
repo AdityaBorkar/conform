@@ -1,15 +1,16 @@
+import { defineRule } from "@/conform-api/index.ts";
 import type { Rule } from "@/types.ts";
 
-import { codeQuality, documentation, security } from "./domains.ts";
+import { CODE_QUALITY, DOCUMENTATION, SECURITY } from "./utils/domains.ts";
 import { getExportPaths, resolveJsrConfig } from "./utils/jsr.ts";
 import { SLOW_TYPE_PATTERNS } from "./utils/slow_types.ts";
 
 export const jsrRules: Rule[] = [
-  documentation.rule({
+  defineRule({
     check: (ctx) => {
       const config = resolveJsrConfig(ctx);
       const description =
-        config.jsr?.description ?? ctx.packageJson?.description;
+        config.jsr?.description ?? ctx.packageJson()?.description;
       if (description && description.trim().length > 0) {
         return {
           message: `description found in ${config.jsr ? config.source : "package.json"}`,
@@ -23,10 +24,11 @@ export const jsrRules: Rule[] = [
     },
     description:
       "package has a description for discoverability (JSR: has_description — 1pt)",
+    domain: DOCUMENTATION,
     files: ["jsr.json", "deno.json", "package.json"],
     id: "jsr:has-description",
   }),
-  codeQuality.rule({
+  defineRule({
     check: (ctx) => {
       const exportPaths = getExportPaths(ctx);
       if (exportPaths.length === 0) {
@@ -57,10 +59,11 @@ export const jsrRules: Rule[] = [
     },
     description:
       "no slow types in exported symbols (JSR: all_fast_check — 5pts)",
+    domain: CODE_QUALITY,
     files: ["jsr.json", "deno.json"],
     id: "jsr:no-slow-types",
   }),
-  security.rule({
+  defineRule({
     check: (ctx) => {
       const ghDir = ctx.fileExists(".github");
       if (!ghDir) {
@@ -115,6 +118,7 @@ export const jsrRules: Rule[] = [
     },
     description:
       "publish workflow uses jsr publish with provenance (JSR: has_provenance — 1pt)",
+    domain: SECURITY,
     files: [".github/workflows/"],
     id: "jsr:provenance",
   }),

@@ -1,11 +1,12 @@
+import { defineRule } from "@/conform-api/index.ts";
 import type { Rule } from "@/types.ts";
 
-import { style } from "./domains.ts";
+import { STYLE } from "./utils/domains.ts";
 
 export const biomeRules: Rule[] = [
-  style.rule({
+  defineRule({
     check: (ctx) => {
-      const version = ctx.packageJson?.devDependencies?.["@biomejs/biome"];
+      const version = ctx.packageJson()?.devDependencies?.["@biomejs/biome"];
       if (version) {
         return { message: version, status: "pass" };
       }
@@ -15,10 +16,11 @@ export const biomeRules: Rule[] = [
       };
     },
     description: "@biomejs/biome in devDependencies",
+    domain: STYLE,
     files: ["package.json"],
     id: "biome:dev-deps",
   }),
-  style.rule({
+  defineRule({
     check: (ctx) => {
       if (ctx.fileExists("biome.json")) {
         return { message: "biome.json", status: "pass" };
@@ -32,12 +34,13 @@ export const biomeRules: Rule[] = [
       };
     },
     description: "biome.json or biome.jsonc exists",
+    domain: STYLE,
     files: ["biome.json", "biome.jsonc"],
     id: "biome:config-file",
   }),
-  style.rule({
+  defineRule({
     check: (ctx) => {
-      const scripts = ctx.packageJson?.scripts ?? {};
+      const scripts = ctx.packageJson()?.scripts ?? {};
       const lintScript = scripts["lint"] ?? scripts["check"];
       if (lintScript?.includes("biome")) {
         return { message: lintScript, status: "pass" };
@@ -48,12 +51,13 @@ export const biomeRules: Rule[] = [
       };
     },
     description: "lint or check script runs biome",
+    domain: STYLE,
     files: ["package.json"],
     id: "biome:lint-script",
   }),
-  style.rule({
+  defineRule({
     check: (ctx) => {
-      const scripts = ctx.packageJson?.scripts ?? {};
+      const scripts = ctx.packageJson()?.scripts ?? {};
       const formatScript =
         scripts["format"] ?? scripts["check:format"] ?? scripts["check:lint"];
       if (formatScript?.includes("biome")) {
@@ -66,6 +70,7 @@ export const biomeRules: Rule[] = [
       };
     },
     description: "format script runs biome",
+    domain: STYLE,
     files: ["package.json"],
     id: "biome:format-script",
   }),

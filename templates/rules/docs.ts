@@ -1,10 +1,11 @@
+import { defineRule } from "@/conform-api/index.ts";
 import type { Rule } from "@/types.ts";
 
-import { documentation } from "./domains.ts";
+import { DOCUMENTATION } from "./domains.ts";
 import { hasHeading } from "./utils/markdown.ts";
 
 export const docsRules: Rule[] = [
-  documentation.rule({
+  defineRule({
     check: (ctx) => {
       const content = ctx.readFile("README.md");
       if (content === null) {
@@ -16,10 +17,11 @@ export const docsRules: Rule[] = [
       return { status: "pass" };
     },
     description: "README.md exists and is non-empty (JSR: has_readme — 2pts)",
+    domain: DOCUMENTATION,
     files: ["README.md"],
     id: "files:readme",
   }),
-  documentation.rule({
+  defineRule({
     check: (ctx) => {
       const changelogPaths = ["CHANGELOG.md", "CHANGELOG", "HISTORY.md"];
       for (const path of changelogPaths) {
@@ -34,10 +36,11 @@ export const docsRules: Rule[] = [
       };
     },
     description: "CHANGELOG.md exists",
+    domain: DOCUMENTATION,
     files: ["CHANGELOG.md", "CHANGELOG", "HISTORY.md"],
     id: "docs:changelog",
   }),
-  documentation.rule({
+  defineRule({
     check: (ctx) => {
       if (ctx.fileExists("CONTRIBUTING.md")) {
         return { status: "pass" };
@@ -52,10 +55,11 @@ export const docsRules: Rule[] = [
       };
     },
     description: "CONTRIBUTING.md exists",
+    domain: DOCUMENTATION,
     files: ["CONTRIBUTING.md", ".github/CONTRIBUTING.md"],
     id: "docs:contributing",
   }),
-  documentation.rule({
+  defineRule({
     check: (ctx) => {
       const readme = ctx.readFile("README.md");
       if (!readme) {
@@ -82,10 +86,11 @@ export const docsRules: Rule[] = [
       };
     },
     description: "README has an Installation section",
+    domain: DOCUMENTATION,
     files: ["README.md"],
     id: "docs:readme-install",
   }),
-  documentation.rule({
+  defineRule({
     check: (ctx) => {
       const readme = ctx.readFile("README.md");
       if (!readme) {
@@ -106,6 +111,7 @@ export const docsRules: Rule[] = [
       };
     },
     description: "README has a Usage section",
+    domain: DOCUMENTATION,
     files: ["README.md"],
     id: "docs:readme-usage",
   }),

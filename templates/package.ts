@@ -15,7 +15,7 @@ import { tsconfigRules } from "./rules/tsconfig.ts";
 
 export default defineTemplate({
   description: "Conformance rules for publishing an NPM package",
-  name: "npm-publish",
+  name: "package",
   rules: [
     ...packageJsonRules,
     ...biomeRules,
