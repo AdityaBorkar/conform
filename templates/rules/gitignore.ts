@@ -1,7 +1,7 @@
 import { defineRule } from "@/conform-api/index.ts";
 import type { Rule } from "@/types.ts";
 
-import { DEV_ENV } from "./domains.ts";
+import { DOMAIN } from "./utils/domain.ts";
 
 export const gitignoreRules: Rule[] = [
   defineRule({
@@ -12,7 +12,7 @@ export const gitignoreRules: Rule[] = [
       return { message: ".gitignore not found", status: "fail" };
     },
     description: ".gitignore exists",
-    domain: DEV_ENV,
+    domain: DOMAIN.DEV_ENVIRONMENT,
     files: [".gitignore"],
     id: "files:gitignore",
   }),
@@ -35,7 +35,7 @@ export const gitignoreRules: Rule[] = [
       };
     },
     description: '.gitignore contains "node_modules"',
-    domain: DEV_ENV,
+    domain: DOMAIN.DEV_ENVIRONMENT,
     files: [".gitignore"],
     id: "gitignore:node-modules",
   }),
@@ -58,7 +58,7 @@ export const gitignoreRules: Rule[] = [
       };
     },
     description: '.gitignore contains ".env"',
-    domain: DEV_ENV,
+    domain: DOMAIN.DEV_ENVIRONMENT,
     files: [".gitignore"],
     id: "gitignore:env",
   }),

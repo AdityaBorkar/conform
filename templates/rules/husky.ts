@@ -1,82 +1,74 @@
-import { defineRule } from "@/conform-api/index.ts";
-import type { Rule } from "@/types.ts";
+import { RuleSet, Status } from "@/conform-api/index.ts";
 
-import { BUILD, DEV_ENV } from "./utils/domains.ts";
+import { DOMAIN } from "./utils/domain.ts";
 
-export const huskyRules: Rule[] = [
-  defineRule({
-    check: (ctx) => {
-      const prepare = ctx.packageJson()?.scripts?.["prepare"];
-      if (prepare?.includes("husky")) {
-        return { message: prepare, status: "pass" };
-      }
-      if (!prepare) {
-        return { message: "no prepare script found", status: "fail" };
-      }
-      s;
-      return {
-        message: `prepare is "${prepare}", expected to call husky`,
-        status: "fail",
-      };
-    },
-    description: "prepare script calls husky",
-    domain: BUILD,
-    files: ["package.json"],
-    id: "husky:prepare-script",
+export const husky = new RuleSet({
+  context: (target) => ({
+    fileExists: (path: string) => target.fileExists(path),
+    packageJson: () => target.packageJson(),
   }),
-  defineRule({
-    check: (ctx) => {
-      const huskyVersion = ctx.packageJson()?.devDependencies?.["husky"];
-      if (huskyVersion) {
-        return {
-          message: huskyVersion,
-          status: "pass",
-        };
-      }
-      return {
-        message: "husky not found in devDependencies",
-        status: "fail",
-      };
-    },
-    description: "husky in devDependencies",
-    domain: DEV_ENV,
-    files: ["package.json"],
-    id: "husky:dev-deps",
-  }),
-  defineRule({
-    check: (ctx) => {
-      if (ctx.fileExists(".husky")) {
-        return { status: "pass" };
-      }
-      return { message: ".husky/ directory not found", status: "fail" };
-    },
-    description: ".husky/ directory exists",
-    domain: DEV_ENV,
-    files: [".husky/"],
-    id: "husky:hooks-dir",
-  }),
-  defineRule({
-    check: (ctx) => {
-      if (ctx.fileExists(".husky/pre-commit")) {
-        return { status: "pass" };
-      }
-      return { message: "no pre-commit hook found", status: "warn" };
-    },
-    description: "pre-commit hook exists",
-    domain: DEV_ENV,
-    files: [".husky/pre-commit"],
-    id: "husky:pre-commit-hook",
-  }),
-  defineRule({
-    check: (ctx) => {
-      if (ctx.fileExists(".husky/commit-msg")) {
-        return { status: "pass" };
-      }
-      return { message: "no commit-msg hook found", status: "warn" };
-    },
-    description: "commit-msg hook exists",
-    domain: DEV_ENV,
-    files: [".husky/commit-msg"],
-    id: "husky:commit-msg-hook",
-  }),
-];
+  domain: DOMAIN.DEV_ENVIRONMENT,
+  id: "husky",
+});
+
+husky.defineRule({
+  id: "dev-deps",
+  name: "husky in devDependencies",
+  test({ context }) {
+    // biome-ignore lint/complexity/useLiteralKeys: noPropertyAccessFromIndexSignature
+    const huskyVersion = context.packageJson()?.devDependencies?.["husky"];
+    if (huskyVersion) {
+      return Status.pass(huskyVersion);
+    }
+    return Status.fail("husky not found in devDependencies");
+  },
+});
+
+husky.defineRule({
+  id: "hooks-dir",
+  name: ".husky/ directory exists",
+  test({ context }) {
+    if (context.fileExists(".husky")) {
+      return Status.pass();
+    }
+    return Status.fail(".husky/ directory not found");
+  },
+});
+
+husky.defineRule({
+  id: "prepare-script",
+  name: "prepare script calls husky",
+  test({ context }) {
+    // biome-ignore lint/complexity/useLiteralKeys: noPropertyAccessFromIndexSignature
+    const prepare = context.packageJson()?.scripts?.["prepare"];
+    if (prepare?.includes("husky")) {
+      return Status.pass(prepare);
+    }
+    if (!prepare) {
+      return Status.fail("no prepare script found");
+    }
+    return Status.fail(`prepare is "${prepare}", expected to call husky`);
+  },
+});
+
+husky.defineRule({
+  id: "pre-commit",
+  name: "pre-commit hook exists",
+  test({ context }) {
+    if (context.fileExists(".husky/pre-commit")) {
+      return Status.pass();
+    }
+    return Status.fail("no pre-commit hook found");
+  },
+});
+
+husky.defineRule({
+  id: "commit-msg",
+  name: "commit-msg hook exists",
+  test({ context }) {
+    if (context.fileExists(".husky/commit-msg")) {
+      return Status.pass();
+    }
+    return Status.fail("no commit-msg hook found");
+  },
+});

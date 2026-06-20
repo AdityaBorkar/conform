@@ -1,33 +1,33 @@
 import { defineTemplate } from "@/conform-api/index.ts";
 
-import { binRules } from "./rules/bin.ts";
-import { biomeRules } from "./rules/biome.ts";
-import { docsRules } from "./rules/docs.ts";
-import { filesRules } from "./rules/files.ts";
-import { githubRules } from "./rules/github.ts";
-import { gitignoreRules } from "./rules/gitignore.ts";
-import { huskyRules } from "./rules/husky.ts";
-import { jsrRules } from "./rules/jsr.ts";
-import { packageJsonRules } from "./rules/package_json.ts";
-import { scriptsRules } from "./rules/scripts.ts";
-import { testingRules } from "./rules/testing.ts";
-import { tsconfigRules } from "./rules/tsconfig.ts";
+import { binRules as bin } from "./rules/bin.ts";
+import { biomeRules as biome } from "./rules/biome.ts";
+import { docsRules as docs } from "./rules/docs.ts";
+import { filesRules as files } from "./rules/files.ts";
+import { githubRules as github } from "./rules/github.ts";
+import { gitignoreRules as gitignore } from "./rules/gitignore.ts";
+import { husky } from "./rules/husky.ts";
+import { jsrRules as jsr } from "./rules/jsr.ts";
+import { packageJsonRules as packageJson } from "./rules/package_json.ts";
+import { scriptsRules as scripts } from "./rules/scripts.ts";
+import { testingRules as testing } from "./rules/testing.ts";
+import { tsconfigRules as tsconfig } from "./rules/tsconfig.ts";
 
 export default defineTemplate({
   description: "Conformance rules for publishing an NPM package",
   name: "package",
   rules: [
-    ...packageJsonRules,
-    ...biomeRules,
-    ...tsconfigRules,
-    ...huskyRules,
-    ...scriptsRules,
-    ...binRules,
-    ...testingRules,
-    ...jsrRules,
-    ...docsRules,
-    ...gitignoreRules,
-    ...githubRules,
-    ...filesRules,
+    ...packageJson,
+    ...biome,
+    ...tsconfig,
+    ...husky.rules,
+    ...scripts,
+    ...bin,
+    ...testing,
+    ...jsr,
+    ...docs,
+    ...gitignore,
+    ...github,
+    ...files,
   ],
 });

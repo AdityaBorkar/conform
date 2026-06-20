@@ -2,7 +2,7 @@ import { defineRule } from "@/conform-api/index.ts";
 import type { Rule } from "@/types.ts";
 
 import { getBinPaths } from "./utils/bin.ts";
-import { BUILD } from "./utils/domains.ts";
+import { DOMAIN } from "./utils/domain.ts";
 
 export const binRules: Rule[] = [
   defineRule({
@@ -24,7 +24,7 @@ export const binRules: Rule[] = [
       return { status: "pass" };
     },
     description: "bin field references files that exist",
-    domain: BUILD,
+    domain: DOMAIN.BUILD,
     files: ["package.json"],
     id: "bin:file-exists",
   }),
@@ -57,7 +57,7 @@ export const binRules: Rule[] = [
       return { status: "pass" };
     },
     description: "bin entry files have a shebang line",
-    domain: BUILD,
+    domain: DOMAIN.BUILD,
     files: ["package.json"],
     id: "bin:shebang",
   }),

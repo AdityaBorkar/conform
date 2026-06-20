@@ -1,7 +1,7 @@
 import { defineRule } from "@/conform-api/index.ts";
 import type { Rule } from "@/types.ts";
 
-import { CODE_QUALITY, DOCUMENTATION, SECURITY } from "./utils/domains.ts";
+import { DOMAIN } from "./utils/domain.ts";
 import { getExportPaths, resolveJsrConfig } from "./utils/jsr.ts";
 import { SLOW_TYPE_PATTERNS } from "./utils/slow_types.ts";
 
@@ -24,7 +24,7 @@ export const jsrRules: Rule[] = [
     },
     description:
       "package has a description for discoverability (JSR: has_description — 1pt)",
-    domain: DOCUMENTATION,
+    domain: DOMAIN.DOCUMENTATION,
     files: ["jsr.json", "deno.json", "package.json"],
     id: "jsr:has-description",
   }),
@@ -59,7 +59,7 @@ export const jsrRules: Rule[] = [
     },
     description:
       "no slow types in exported symbols (JSR: all_fast_check — 5pts)",
-    domain: CODE_QUALITY,
+    domain: DOMAIN.CODE_QUALITY,
     files: ["jsr.json", "deno.json"],
     id: "jsr:no-slow-types",
   }),
@@ -118,7 +118,7 @@ export const jsrRules: Rule[] = [
     },
     description:
       "publish workflow uses jsr publish with provenance (JSR: has_provenance — 1pt)",
-    domain: SECURITY,
+    domain: DOMAIN.SECURITY,
     files: [".github/workflows/"],
     id: "jsr:provenance",
   }),

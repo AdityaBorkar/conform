@@ -1,7 +1,7 @@
 import { defineRule } from "@/conform-api/index.ts";
 import type { Rule } from "@/types.ts";
 
-import { GITHUB } from "./utils/domains.ts";
+import { DOMAIN } from "./utils/domain.ts";
 import {
   CI_WORKFLOW_CANDIDATES,
   findWorkflowFile,
@@ -22,7 +22,7 @@ export const githubRules: Rule[] = [
       };
     },
     description: "CI workflow file exists",
-    domain: GITHUB,
+    domain: DOMAIN.GITHUB_CONFIG,
     files: [".github/workflows/"],
     id: "github:ci-workflow",
   }),
@@ -39,7 +39,7 @@ export const githubRules: Rule[] = [
       };
     },
     description: "Release/publish workflow file exists",
-    domain: GITHUB,
+    domain: DOMAIN.GITHUB_CONFIG,
     files: [".github/workflows/"],
     id: "github:release-workflow",
   }),
@@ -73,7 +73,7 @@ export const githubRules: Rule[] = [
       };
     },
     description: "CI workflow runs lint",
-    domain: GITHUB,
+    domain: DOMAIN.GITHUB_CONFIG,
     files: [".github/workflows/"],
     id: "github:ci-lint",
   }),
@@ -107,7 +107,7 @@ export const githubRules: Rule[] = [
       };
     },
     description: "CI workflow runs typecheck",
-    domain: GITHUB,
+    domain: DOMAIN.GITHUB_CONFIG,
     files: [".github/workflows/"],
     id: "github:ci-typecheck",
   }),
@@ -135,7 +135,7 @@ export const githubRules: Rule[] = [
       };
     },
     description: "Dependabot or Renovate config exists",
-    domain: GITHUB,
+    domain: DOMAIN.GITHUB_CONFIG,
     files: [
       ".github/dependabot.yml",
       ".github/dependabot.yaml",

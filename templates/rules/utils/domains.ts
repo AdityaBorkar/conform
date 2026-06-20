@@ -1,9 +1,0 @@
-export const STYLE = "Style & Validation";
-export const BUILD = "Build & Tasks";
-export const TESTING = "Testing";
-export const DOCUMENTATION = "Documentation";
-export const DEV_ENV = "Dev Environment";
-export const CODE_QUALITY = "Code Quality";
-export const OBSERVABILITY = "Observability";
-export const SECURITY = "Security & Governance";
-export const GITHUB = "GitHub Configuration";

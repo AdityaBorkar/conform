@@ -1,14 +1,14 @@
 import { defineRule } from "@/conform-api/index.ts";
 import type { Rule } from "@/types.ts";
 
-import { CODE_QUALITY, OBSERVABILITY } from "./domains.ts";
+import { DOMAIN } from "./utils/domain.ts";
 
 export const tsconfigRules: Rule[] = [
   defineRule({
     check: (ctx) => {
       const version =
-        ctx.packageJson()?.devDependencies?.["typescript"] ??
-        ctx.packageJson()?.peerDependencies?.["typescript"];
+        ctx.packageJson()?.devDependencies?.typescript ??
+        ctx.packageJson()?.peerDependencies?.typescript;
       if (version) {
         return { message: version, status: "pass" };
       }
@@ -18,7 +18,7 @@ export const tsconfigRules: Rule[] = [
       };
     },
     description: "typescript in devDependencies or peerDependencies",
-    domain: CODE_QUALITY,
+    domain: DOMAIN.CODE_QUALITY,
     files: ["package.json"],
     id: "typescript:deps",
   }),
@@ -30,7 +30,7 @@ export const tsconfigRules: Rule[] = [
       return { message: "tsconfig.json not found", status: "fail" };
     },
     description: "tsconfig.json exists",
-    domain: CODE_QUALITY,
+    domain: DOMAIN.CODE_QUALITY,
     files: ["tsconfig.json"],
     id: "typescript:tsconfig",
   }),
@@ -48,7 +48,7 @@ export const tsconfigRules: Rule[] = [
       };
     },
     description: "strict: true in tsconfig",
-    domain: CODE_QUALITY,
+    domain: DOMAIN.CODE_QUALITY,
     files: ["tsconfig.json"],
     id: "typescript:strict",
   }),
@@ -67,7 +67,7 @@ export const tsconfigRules: Rule[] = [
       };
     },
     description: "noUncheckedIndexedAccess: true in tsconfig",
-    domain: CODE_QUALITY,
+    domain: DOMAIN.CODE_QUALITY,
     files: ["tsconfig.json"],
     id: "typescript:no-unchecked-indexed-access",
   }),
@@ -86,7 +86,7 @@ export const tsconfigRules: Rule[] = [
       };
     },
     description: "isolatedModules: true in tsconfig",
-    domain: CODE_QUALITY,
+    domain: DOMAIN.CODE_QUALITY,
     files: ["tsconfig.json"],
     id: "typescript:isolated-modules",
   }),
@@ -105,7 +105,7 @@ export const tsconfigRules: Rule[] = [
       };
     },
     description: "verbatimModuleSyntax: true in tsconfig",
-    domain: CODE_QUALITY,
+    domain: DOMAIN.CODE_QUALITY,
     files: ["tsconfig.json"],
     id: "typescript:verbatim-module-syntax",
   }),
@@ -140,7 +140,7 @@ export const tsconfigRules: Rule[] = [
       };
     },
     description: "sourceMap: true in tsconfig (when not noEmit)",
-    domain: OBSERVABILITY,
+    domain: DOMAIN.OBSERVABILITY,
     files: ["tsconfig.json"],
     id: "typescript:source-map",
   }),

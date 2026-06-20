@@ -4,7 +4,7 @@ import { type } from "arktype";
 import { defineRule } from "@/conform-api/index.ts";
 import type { Rule } from "@/types.ts";
 
-import { BUILD, SECURITY } from "./utils/domains.ts";
+import { DOMAIN } from "./utils/domain.ts";
 
 const requiredStructure = type({
   bugs: "unknown",
@@ -70,23 +70,23 @@ export const packageJsonRules: Rule[] = [
       };
     },
     description: "main, module, or exports entry defined",
-    domain: BUILD,
+    domain: DOMAIN.BUILD,
     files: ["package.json"],
     id: "package-json:entry-point",
   }),
   defineRule({
     check: (ctx) => {
       const scripts = ctx.packageJson()?.scripts;
-      if (scripts?.["prepare"]) {
+      if (scripts?.prepare) {
         return { message: "prepare", status: "pass" };
       }
-      if (scripts?.["build"]) {
+      if (scripts?.build) {
         return { message: "build", status: "pass" };
       }
       return { message: "no prepare or build script found", status: "fail" };
     },
     description: "scripts.prepare or scripts.build exists",
-    domain: BUILD,
+    domain: DOMAIN.BUILD,
     files: ["package.json"],
     id: "package-json:build-script",
   }),
@@ -104,7 +104,7 @@ export const packageJsonRules: Rule[] = [
       };
     },
     description: "files field or .npmignore exists",
-    domain: BUILD,
+    domain: DOMAIN.BUILD,
     files: ["package.json", ".npmignore"],
     id: "package-json:files-or-npmignore",
   }),
@@ -127,7 +127,7 @@ export const packageJsonRules: Rule[] = [
       return { status: "pass" };
     },
     description: "no preinstall/postinstall/install lifecycle scripts",
-    domain: SECURITY,
+    domain: DOMAIN.SECURITY,
     files: ["package.json"],
     id: "package-json:no-install-hooks",
   }),

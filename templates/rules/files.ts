@@ -1,7 +1,7 @@
 import { defineRule } from "@/conform-api/index.ts";
 import type { Rule } from "@/types.ts";
 
-import { DEV_ENV, SECURITY } from "./domains.ts";
+import { DOMAIN } from "./utils/domain.ts";
 
 export const filesRules: Rule[] = [
   defineRule({
@@ -25,7 +25,7 @@ export const filesRules: Rule[] = [
       };
     },
     description: "lockfile exists (bun.lock, package-lock.json, etc.)",
-    domain: DEV_ENV,
+    domain: DOMAIN.DEV_ENVIRONMENT,
     files: [
       "bun.lock",
       "bun.lockb",
@@ -47,7 +47,7 @@ export const filesRules: Rule[] = [
       return { message: "no LICENSE file found", status: "fail" };
     },
     description: "LICENSE file exists",
-    domain: SECURITY,
+    domain: DOMAIN.SECURITY,
     files: ["LICENSE", "LICENSE.md", "LICENSE.txt"],
     id: "files:license",
   }),
@@ -66,7 +66,7 @@ export const filesRules: Rule[] = [
       };
     },
     description: "SECURITY.md exists",
-    domain: SECURITY,
+    domain: DOMAIN.SECURITY,
     files: ["SECURITY.md", ".github/SECURITY.md"],
     id: "files:security-md",
   }),

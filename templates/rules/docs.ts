@@ -1,7 +1,7 @@
 import { defineRule } from "@/conform-api/index.ts";
 import type { Rule } from "@/types.ts";
 
-import { DOCUMENTATION } from "./domains.ts";
+import { DOMAIN } from "./utils/domain.ts";
 import { hasHeading } from "./utils/markdown.ts";
 
 export const docsRules: Rule[] = [
@@ -17,7 +17,7 @@ export const docsRules: Rule[] = [
       return { status: "pass" };
     },
     description: "README.md exists and is non-empty (JSR: has_readme — 2pts)",
-    domain: DOCUMENTATION,
+    domain: DOMAIN.DOCUMENTATION,
     files: ["README.md"],
     id: "files:readme",
   }),
@@ -36,7 +36,7 @@ export const docsRules: Rule[] = [
       };
     },
     description: "CHANGELOG.md exists",
-    domain: DOCUMENTATION,
+    domain: DOMAIN.DOCUMENTATION,
     files: ["CHANGELOG.md", "CHANGELOG", "HISTORY.md"],
     id: "docs:changelog",
   }),
@@ -55,7 +55,7 @@ export const docsRules: Rule[] = [
       };
     },
     description: "CONTRIBUTING.md exists",
-    domain: DOCUMENTATION,
+    domain: DOMAIN.DOCUMENTATION,
     files: ["CONTRIBUTING.md", ".github/CONTRIBUTING.md"],
     id: "docs:contributing",
   }),
@@ -86,7 +86,7 @@ export const docsRules: Rule[] = [
       };
     },
     description: "README has an Installation section",
-    domain: DOCUMENTATION,
+    domain: DOMAIN.DOCUMENTATION,
     files: ["README.md"],
     id: "docs:readme-install",
   }),
@@ -111,7 +111,7 @@ export const docsRules: Rule[] = [
       };
     },
     description: "README has a Usage section",
-    domain: DOCUMENTATION,
+    domain: DOMAIN.DOCUMENTATION,
     files: ["README.md"],
     id: "docs:readme-usage",
   }),
