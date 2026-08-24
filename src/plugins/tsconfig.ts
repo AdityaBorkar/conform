@@ -1,7 +1,6 @@
 import { RuleSet, Status } from "@/api/index.ts";
 import type { PackageJson } from "@/types.ts";
 import type { Target } from "@/utils/fs.ts";
-
 import { DOMAIN } from "./utils/domain.ts";
 
 const _tsconfig = new RuleSet<{

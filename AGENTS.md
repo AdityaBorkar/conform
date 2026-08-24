@@ -4,26 +4,26 @@
 
 1. `/CONTEXT.md` — ubiquitous language (canonical terms). Read first.
 2. `docs/architecture.md` — types, plugin authoring, preset layout, engine, CLI, TUI/JSON, params.
-3. `README.md` — user install/usage (`preset: "package"`).
+3. `README.md` — install/usage (`preset: "package"`).
 4. `docs/adr/` — 001 code presets, 002 atomic rules, 004 plugin overrides (003 superseded).
 
-Deprecated: `docs/CONTEXT.md` / `docs/glossary.md` — point to `/CONTEXT.md`.
+Deprecated: `docs/CONTEXT.md` / `docs/glossary.md` → `/CONTEXT.md`.
 
 ## Project
 
-`@adistack/conform` — CLI that checks repos against conformance Presets. Bun + TypeScript ESM (`"type": "module"`). No build: `noEmit: true`, `exports: "." → ./src/index.ts` (`src/index.ts:1`), `files: ["src","README.md"]`.
+`@adistack/conform` — CLI that checks repos against conformance Presets. Bun + TypeScript ESM (`"type": "module"`). No build: `noEmit: true`, `exports: "." → ./src/index.ts`, `files: ["src","README.md"]`, bin `conform → src/cli.ts` (re-exports `src/cli/index.ts`).
 
 ## Commands
 
-- Install: `bun install` (`bunfig.toml:14` `ignore-scripts=true`, `minimumReleaseAge=259200`)
+- Install: `bun install` (`bunfig.toml:12` `ignore-scripts=true`, `minimumReleaseAge=259200`)
 - Lint: `bun run check:lint` (`biome check . --fix`) · Format: `bun run format` (`biome format --write .`)
 - Typecheck: `bun run check:types` (`tsc --noEmit`)
-- CLI: `bun run src/cli/index.ts check [--path <dir>] [--json] [-v] [--group domains|files]` (`src/cli.ts` re-exports; `package.json:8` bin is `src/cli.ts`)
-- Tests: `bun run test` (`vitest run`) · `bun run test:unit` (`--exclude 'tests/e2e/**'`) · `bun run test:e2e` · `bun run test:integration` (`--passWithNoTests`, empty) · `bun run test:watch`
+- CLI: `bun run src/cli/index.ts check [--path <dir>] [--json] [-v] [--group domains|files]`
+- Tests: `bun run test` (`vitest run`) · `bun run test:unit` (`--exclude 'tests/e2e/**'`) · `bun run test:e2e` · `bun run test:integration` (`--passWithNoTests`, dir empty) · `bun run test:watch`
 - Single test: `bunx vitest run tests/e2e/check.test.ts -t "<name>"`
 - Changeset: `bun run changeset` · Version: `bun run version` (`changeset version`) · Publish: `bun run release`
 
-Required order: `check:lint` → `check:types` → `test`. CI (`release.yml:24`) runs only `check:lint` + `check:types` before `changesets/action`.
+Required order: `check:lint` → `check:types` → `test`. CI (`release.yml:22`) runs only `check:lint` + `check:types` before `changesets/action`.
 
 ## Architecture
 
@@ -31,10 +31,10 @@ Required order: `check:lint` → `check:types` → `test`. CI (`release.yml:24`)
 - `src/api/conformance.ts` — `loadConfig → presetResolver → mergePresetWithConfig → runChecks → renderTui/renderJson`. `output.results` filtered by `verbose`; `summary` always counts all; `hasFail` dominates `hasWarn`.
 - `src/utils/config.ts` — dynamic-imports `conform.config.ts` from target dir; requires `config.preset: string` else `no-config` (exit 2).
 - `src/api/preset.ts` — resolves `src/presets/<name>.ts` or `src/presets/<name>/index.ts` at repo root. Dogfood `conform.config.ts:4` uses `preset: "package"`.
-- `src/api/engine.ts` — flattens `preset.plugins[].rules`, applies `preset.rules` overrides (`RuleOverrides`: `off` skips, `warn`/`error`/`fail` coerce non-pass, `["warn", params]` passes `params` as `opts[0]`). Validation is in `src/api/plugin.ts` / `src/api/rule.ts` via arktype — invalid params → `fail` with `Invalid params: …` without calling `test`; `rule.check(targetPath, params?)`.
-- `src/types.ts` — `Rule {id,domain,files,description,check,paramsSchema?}`, `Plugin {id,rules}`, `Preset {name,description,plugins,rules?}`, `ConformConfig {preset,plugins?,rules?}`.
-- `src/api/index.ts` — re-exports `defineConfig`, `definePlugin`/`Plugin`/`RuleSet` (alias), `defineRule`, `definePreset`, `presetResolver`/`resolver` (alias), `Status`.
-- Presets: `src/presets/*.ts` (default `definePreset`); Plugins: `src/plugins/*.ts`. Only `package` is complete (13 plugins); `astro-site`/`monorepo`/`react-site`/`webapp` are stubs (`plugins: []`).
+- `src/api/engine.ts` — flattens `preset.plugins[].rules`, applies `preset.rules` overrides (`RuleOverrides`: `off` skips, `warn`/`error`/`fail` coerce non-pass, `["warn", params]` passes `params` as `opts[0]`). Validation in `src/api/plugin.ts` / `src/api/rule.ts` via arktype — invalid params → `fail` with `Invalid params: …` without calling `test`; `rule.check(targetPath, params?)`.
+- `src/types.ts` — `Rule {id,domain,files,description,check,paramsSchema?}`, `Plugin {id,rules}`, `Preset {name,description,plugins,rules?: StrictRuleOverrides}`, `ConformConfig {preset,plugins?,rules?}`. `RuleRegistry` maps `husky:hook` and `package-json:required-fields` to typed params.
+- `src/api/index.ts` — re-exports `defineConfig`, `definePlugin`/`Plugin`/`RuleSet` (alias), `definePreset`/`presetResolver`, `defineRule`, `Status`. `src/index.ts` additionally aliases `defineRule as rule` and re-exports types.
+- Presets: `src/presets/package.ts` (complete, 8 plugins) and `src/presets/monorepo.ts` (stub, `plugins: []`). Plugins: `src/plugins/*.ts` — `package_json`, `biome`, `tsconfig`, `husky`, `docs`, `gitignore`, `github`.
 
 For authoring examples see `docs/architecture.md`.
 
@@ -61,10 +61,10 @@ Canonical in docs: `Preset` not `preset`, `Plugin` not `RuleSet`, `presetResolve
 - Bun only; `import.meta.dir` for paths. Alias `@/*` → `./src/*` (`tsconfig.json:31`, `vitest.config.ts:8`).
 - TypeScript `^7.0.2` strict (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noUnusedLocals/Parameters`, `verbatimModuleSyntax`, `noEmit`). `arktype` for rule params.
 - Biome 2.x (`biome.json:3` `preset: all`): 2-space, double-quotes, LF, width 80, `organizeImports` groups, `vcs: git`. Overrides: `noDefaultExport: off`, `useNamingConvention: off`, `noSecrets: off`. No ESLint/Prettier.
-- `vitest.config.ts:12` `include: ["tests/**/*.test.ts"]` only — `src/**/*.test.ts` ignored.
-- Stale names still accepted: `preset`→`Preset`, `resolver`→`presetResolver`, `RuleSet`→`Plugin`. Use canonical in new code.
+- `vitest.config.ts:12` `include: ["tests/**/*.test.ts"]` only — `src/**/*.test.ts` ignored. `tests/integration/` is empty.
+- Stale names still accepted in code: `preset`→`Preset`, `RuleSet`→`Plugin`. Use canonical in new code. `resolver` alias does not exist — use `presetResolver`.
 
 ## Git Hooks & Release
 
 - Husky `pre-commit` (`.husky/pre-commit:1`): `bun run format` only. `commit-msg`: `commitlint --edit` with `.commitlintrc.json:4` `type-enum: feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|wip`.
-- Changesets (`.changeset/config.json`): `baseBranch: main`, `access: public`, `commit: false`. `bun run version`. `release.yml:29` on `main`: `bun install --frozen-lockfile` → `check:lint` + `check:types` → `changesets/action@v1` (`publish: bun run release`), needs `NPM_TOKEN`.
+- Changesets (`.changeset/config.json`): `baseBranch: main`, `access: public`, `commit: false`. `bun run version`. `release.yml:26` on `main`: `bun install --frozen-lockfile` → `check:lint` + `check:types` → `changesets/action@v1` (`publish: bun run release`), needs `NPM_TOKEN`.

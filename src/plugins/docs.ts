@@ -1,10 +1,8 @@
 import { RuleSet, Status } from "@/api/index.ts";
 import type { Target } from "@/utils/fs.ts";
-
 import { DOMAIN } from "./utils/domain.ts";
-import { hasHeading } from "./utils/markdown.ts";
 
-const _docs = new RuleSet<{
+export const docs = new RuleSet<{
   fileExists: (path: string) => boolean;
   readFile: (path: string) => string | null;
 }>({
@@ -16,7 +14,7 @@ const _docs = new RuleSet<{
   id: "docs",
 });
 
-_docs.defineRule({
+docs.defineRule({
   domain: DOMAIN.DOCUMENTATION,
   id: "readme",
   name: "README.md exists and is non-empty (JSR: has_readme — 2pts)",
@@ -32,7 +30,7 @@ _docs.defineRule({
   },
 });
 
-_docs.defineRule({
+docs.defineRule({
   domain: DOMAIN.DOCUMENTATION,
   id: "changelog",
   name: "CHANGELOG.md exists",
@@ -49,7 +47,7 @@ _docs.defineRule({
   },
 });
 
-_docs.defineRule({
+docs.defineRule({
   domain: DOMAIN.DOCUMENTATION,
   id: "contributing",
   name: "CONTRIBUTING.md exists",
@@ -66,44 +64,35 @@ _docs.defineRule({
   },
 });
 
-_docs.defineRule({
-  domain: DOMAIN.DOCUMENTATION,
-  id: "readme-install",
-  name: "README has an Installation section",
+docs.defineRule({
+  domain: DOMAIN.SECURITY,
+  id: "license",
+  name: "LICENSE file exists",
   test({ context }) {
-    const readme = context.readFile("README.md");
-    if (!readme) {
-      return Status.pass(
-        "README.md not found — skipping install section check",
-      );
-    }
     if (
-      hasHeading(readme, "install", "installation", "getting started", "setup")
+      context.fileExists("LICENSE") ||
+      context.fileExists("LICENSE.md") ||
+      context.fileExists("LICENSE.txt")
     ) {
       return Status.pass();
     }
-    return Status.warn(
-      "README.md has no Installation section — add ## Install or ## Getting Started",
-    );
+    return Status.fail("no LICENSE file found");
   },
 });
 
-_docs.defineRule({
-  domain: DOMAIN.DOCUMENTATION,
-  id: "readme-usage",
-  name: "README has a Usage section",
+docs.defineRule({
+  domain: DOMAIN.SECURITY,
+  id: "security-md",
+  name: "SECURITY.md exists",
   test({ context }) {
-    const readme = context.readFile("README.md");
-    if (!readme) {
-      return Status.pass("README.md not found — skipping usage section check");
-    }
-    if (hasHeading(readme, "usage", "quick start", "example", "basic usage")) {
+    if (context.fileExists("SECURITY.md")) {
       return Status.pass();
     }
+    if (context.fileExists(".github/SECURITY.md")) {
+      return Status.pass(".github/SECURITY.md");
+    }
     return Status.warn(
-      "README.md has no Usage section — add ## Usage or ## Quick Start",
+      "no SECURITY.md found — provides a responsible disclosure path for vulnerability reports",
     );
   },
 });
-
-export const docs = _docs;

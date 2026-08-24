@@ -3,7 +3,6 @@ import { type } from "arktype";
 import { RuleSet, Status } from "@/api/index.ts";
 import type { PackageJson } from "@/types.ts";
 import type { Target } from "@/utils/fs.ts";
-
 import { DOMAIN } from "./utils/domain.ts";
 import {
   DEFAULT_REQUIRED_PACKAGE_FIELDS,

@@ -10,13 +10,14 @@
             "groups": [
               ":URL:",
               ":BLANK_LINE:",
-              [":NODE:", ":BUN:", "^@plasmo/(.*)$", "^@plasmohq/(.*)$"],
+              ":NODE:",
+              ":BUN:",
+              ":PACKAGE_WITH_PROTOCOL:",
               ":BLANK_LINE:",
-              [":PACKAGE:", ":PACKAGE_WITH_PROTOCOL:"],
+              ":PACKAGE:",
               ":BLANK_LINE:",
-              [":ALIAS:"],
-              ":BLANK_LINE:",
-              [":PATH:"]
+              ":ALIAS:",
+              ":PATH:"
             ]
           }
         },
@@ -87,6 +88,7 @@
         "preset": "all",
         "useTopLevelRegex": "off"
       },
+      "preset": "recommended",
       "security": {
         "noSecrets": "off",
         "preset": "all"
@@ -113,9 +115,18 @@
           "complexity": {
             "noExcessiveLinesPerFunction": "off"
           },
-          "preset": "recommended",
           "style": {
             "noMagicNumbers": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/plugins/*.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useExportsLast": "off"
           }
         }
       }

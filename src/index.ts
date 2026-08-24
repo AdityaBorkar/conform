@@ -7,7 +7,6 @@ export {
   RuleSet,
   Status,
 } from "@/api/index.ts";
-
 export type {
   CheckResult,
   ConformConfig,

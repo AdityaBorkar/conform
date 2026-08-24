@@ -10,7 +10,6 @@ export type {
   RuleRegistry,
   StrictRuleOverrides,
 } from "@/types.ts";
-
 export { defineConfig } from "./config.ts";
 export { definePlugin, Plugin, RuleSet } from "./plugin.ts";
 export {

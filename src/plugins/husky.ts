@@ -3,7 +3,6 @@ import { type } from "arktype";
 import { RuleSet, Status } from "@/api/index.ts";
 import type { HuskyHookSpec, PackageJson } from "@/types.ts";
 import type { Target } from "@/utils/fs.ts";
-
 import { DOMAIN } from "./utils/domain.ts";
 
 const _husky = new RuleSet<{
@@ -68,7 +67,6 @@ export const DEFAULT_HUSKY_HOOKS: readonly HuskyHookSpec[] = [
   { contains: 'bun commitlint --edit "$1"', file: ".husky/commit-msg" },
 ] as const;
 
-// biome-ignore lint/style/useExportsLast: public API re-exported alongside rule helpers
 export function resolveHuskyHooks(params?: HuskyHookSpec[]): HuskyHookSpec[] {
   if (!params || params.length === 0) {
     return [...DEFAULT_HUSKY_HOOKS];
@@ -78,7 +76,7 @@ export function resolveHuskyHooks(params?: HuskyHookSpec[]): HuskyHookSpec[] {
 
 _husky.defineRule({
   domain: DOMAIN.DEV_ENVIRONMENT,
-  files: [...DEFAULT_HUSKY_HOOKS.map((h) => h.file)],
+  files: DEFAULT_HUSKY_HOOKS.map((h) => h.file),
   id: "hook",
   name: "husky hook file exists with expected content",
   params: type({ contains: "string", file: "string" }).array(),
