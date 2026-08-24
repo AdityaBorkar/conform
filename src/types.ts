@@ -55,9 +55,10 @@ export interface Plugin<
 
 export type RuleLevel = "warn" | "off" | "error";
 
-export type RuleConfig<P = unknown> = P extends Record<string, any>
-  ? RuleLevel | ({ level?: RuleLevel } & Partial<P>)
-  : RuleLevel | ({ level?: RuleLevel } & Record<string, unknown>);
+export type RuleConfig<P = unknown> =
+  P extends Record<string, any>
+    ? RuleLevel | ({ level?: RuleLevel } & Partial<P>)
+    : RuleLevel | ({ level?: RuleLevel } & Record<string, unknown>);
 
 export type RuleOverrides = Record<string, RuleConfig<unknown>>;
 
@@ -86,8 +87,8 @@ export interface BiomeConfigParams {
 }
 
 export interface BiomeScriptParams {
-  file_expressions: string[];
   contains: string;
+  file_expressions: string[];
 }
 
 export interface PackageEntryParams {
@@ -131,30 +132,30 @@ export interface GithubWorkflowContentParams {
  * Known keys are strictly typed; unknown keys fall back to `RuleConfig<unknown>`.
  */
 export interface RuleRegistry {
-  "gitignore/excludes": GitIgnoreExcludesParams;
-  "husky/hook": HuskyHookParams;
-  "husky/hooks-dir": DocsFilesParams;
-  "husky/prepare-script": GithubWorkflowContentParams;
-  "package-json/required-fields": RequiredFieldsParams;
-  "package-json/entry-point": PackageEntryParams;
-  "package-json/build-script": PackageScriptParams;
-  "package-json/files-or-npmignore": PackageFilesParams;
-  "package-json/no-install-hooks": PackageScriptParams;
-  "package-json/typecheck": PackageScriptParams;
-  "package-json/no-prepublish": PackageScriptParams;
   "biome/config-file": BiomeConfigParams;
-  "biome/lint-script": BiomeScriptParams;
   "biome/format-script": BiomeScriptParams;
-  "typescript/compiler-options": TsconfigOptionsParams;
+  "biome/lint-script": BiomeScriptParams;
   "docs/changelog": DocsFilesParams;
   "docs/contributing": DocsFilesParams;
   "docs/license": DocsFilesParams;
   "docs/security-md": DocsFilesParams;
-  "github/ci-workflow": GithubWorkflowParams;
-  "github/release-workflow": GithubWorkflowParams;
   "github/ci-lint": GithubWorkflowContentParams;
   "github/ci-typecheck": GithubWorkflowContentParams;
+  "github/ci-workflow": GithubWorkflowParams;
   "github/dependabot": GithubWorkflowParams;
+  "github/release-workflow": GithubWorkflowParams;
+  "gitignore/excludes": GitIgnoreExcludesParams;
+  "husky/hook": HuskyHookParams;
+  "husky/hooks-dir": DocsFilesParams;
+  "husky/prepare-script": GithubWorkflowContentParams;
+  "package-json/build-script": PackageScriptParams;
+  "package-json/entry-point": PackageEntryParams;
+  "package-json/files-or-npmignore": PackageFilesParams;
+  "package-json/no-install-hooks": PackageScriptParams;
+  "package-json/no-prepublish": PackageScriptParams;
+  "package-json/required-fields": RequiredFieldsParams;
+  "package-json/typecheck": PackageScriptParams;
+  "typescript/compiler-options": TsconfigOptionsParams;
 }
 
 export type StrictRuleConfig<K extends string> = K extends keyof RuleRegistry

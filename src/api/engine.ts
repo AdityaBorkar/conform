@@ -68,9 +68,7 @@ function parseOverride(rawOverride: RuleConfig | undefined): {
   const rec = rawOverride as Record<string, unknown>;
   const hasLevel = "level" in rec;
   let severity: Severity | "off" | null | undefined;
-  if (!hasLevel) {
-    severity = undefined;
-  } else {
+  if (hasLevel) {
     const rawLevel = rec["level"];
     if (rawLevel === undefined) {
       severity = undefined;
@@ -81,6 +79,8 @@ function parseOverride(rawOverride: RuleConfig | undefined): {
       }
       severity = normalized;
     }
+  } else {
+    severity = undefined;
   }
   const { level: _level, ...rest } = rec;
   const params = Object.keys(rest).length > 0 ? rest : undefined;

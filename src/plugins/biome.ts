@@ -59,8 +59,7 @@ export const biome = definePlugin({
       const contains = params?.contains ?? "biome";
       const matched = candidates.find(
         (name) =>
-          typeof scripts[name] === "string" &&
-          scripts[name].includes(contains),
+          typeof scripts[name] === "string" && scripts[name].includes(contains),
       );
       if (matched) {
         return Status.pass(scripts[matched] as string);
@@ -88,8 +87,7 @@ export const biome = definePlugin({
       const contains = params?.contains ?? "biome";
       const matched = candidates.find(
         (name) =>
-          typeof scripts[name] === "string" &&
-          scripts[name].includes(contains),
+          typeof scripts[name] === "string" && scripts[name].includes(contains),
       );
       if (matched) {
         return Status.pass(scripts[matched] as string);

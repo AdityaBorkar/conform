@@ -24,16 +24,6 @@ export function isDefined(value: unknown): boolean {
   return true;
 }
 
-export function resolveFields(
-  params?: { fields: string[] },
-  fallback: readonly string[] = DEFAULT_REQUIRED_PACKAGE_FIELDS,
-): string[] {
-  if (!params?.fields) {
-    return [...fallback];
-  }
-  return [...params.fields];
-}
-
 export function summarize(errors: type.errors): string {
   return Object.entries(errors.flatProblemsByPath)
     .map(([field, problems]) => `${field}: ${problems.join(", ")}`)

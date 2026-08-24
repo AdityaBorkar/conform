@@ -1,3 +1,5 @@
+import { type } from "arktype";
+
 import { definePlugin, Status } from "@/api/index.ts";
 import type { Target } from "@/utils/fs.ts";
 import { DOMAIN } from "./utils/domain.ts";
@@ -28,15 +30,21 @@ export const docs = definePlugin({
     domain: DOMAIN.DOCUMENTATION,
     id: "changelog",
     name: "CHANGELOG.md exists",
-    test({ context }) {
-      const changelogPaths = ["CHANGELOG.md", "CHANGELOG", "HISTORY.md"];
-      for (const path of changelogPaths) {
-        if (context.fileExists(path)) {
-          return Status.pass(path);
-        }
+    params: type({
+      file_expressions: "string[]",
+    }),
+    test({ context, params }) {
+      const candidates = params?.file_expressions ?? [
+        "CHANGELOG.md",
+        "CHANGELOG",
+        "HISTORY.md",
+      ];
+      const found = candidates.find((p) => context.fileExists(p));
+      if (found) {
+        return Status.pass(found);
       }
       return Status.warn(
-        "no CHANGELOG.md found — users and consumers need to see what changed between versions",
+        `no ${candidates.join(" or ")} found — users and consumers need to see what changed between versions`,
       );
     },
   })
@@ -44,15 +52,20 @@ export const docs = definePlugin({
     domain: DOMAIN.DOCUMENTATION,
     id: "contributing",
     name: "CONTRIBUTING.md exists",
-    test({ context }) {
-      if (context.fileExists("CONTRIBUTING.md")) {
-        return Status.pass();
-      }
-      if (context.fileExists(".github/CONTRIBUTING.md")) {
-        return Status.pass(".github/CONTRIBUTING.md");
+    params: type({
+      file_expressions: "string[]",
+    }),
+    test({ context, params }) {
+      const candidates = params?.file_expressions ?? [
+        "CONTRIBUTING.md",
+        ".github/CONTRIBUTING.md",
+      ];
+      const found = candidates.find((p) => context.fileExists(p));
+      if (found) {
+        return Status.pass(found);
       }
       return Status.warn(
-        "no CONTRIBUTING.md found — open source packages should tell contributors how to participate",
+        `no ${candidates.join(" or ")} found — open source packages should tell contributors how to participate`,
       );
     },
   })
@@ -60,30 +73,40 @@ export const docs = definePlugin({
     domain: DOMAIN.SECURITY,
     id: "license",
     name: "LICENSE file exists",
-    test({ context }) {
-      if (
-        context.fileExists("LICENSE") ||
-        context.fileExists("LICENSE.md") ||
-        context.fileExists("LICENSE.txt")
-      ) {
-        return Status.pass();
+    params: type({
+      file_expressions: "string[]",
+    }),
+    test({ context, params }) {
+      const candidates = params?.file_expressions ?? [
+        "LICENSE",
+        "LICENSE.md",
+        "LICENSE.txt",
+      ];
+      const found = candidates.find((p) => context.fileExists(p));
+      if (found) {
+        return Status.pass(found);
       }
-      return Status.fail("no LICENSE file found");
+      return Status.fail(`no ${candidates.join(" or ")} found`);
     },
   })
   .defineRule({
     domain: DOMAIN.SECURITY,
     id: "security-md",
     name: "SECURITY.md exists",
-    test({ context }) {
-      if (context.fileExists("SECURITY.md")) {
-        return Status.pass();
-      }
-      if (context.fileExists(".github/SECURITY.md")) {
-        return Status.pass(".github/SECURITY.md");
+    params: type({
+      file_expressions: "string[]",
+    }),
+    test({ context, params }) {
+      const candidates = params?.file_expressions ?? [
+        "SECURITY.md",
+        ".github/SECURITY.md",
+      ];
+      const found = candidates.find((p) => context.fileExists(p));
+      if (found) {
+        return Status.pass(found);
       }
       return Status.warn(
-        "no SECURITY.md found — provides a responsible disclosure path for vulnerability reports",
+        `no ${candidates.join(" or ")} found — provides a responsible disclosure path for vulnerability reports`,
       );
     },
   });

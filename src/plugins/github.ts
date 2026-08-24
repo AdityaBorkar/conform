@@ -1,18 +1,13 @@
+import { type } from "arktype";
+
 import { definePlugin, Status } from "@/api/index.ts";
 import { DOMAIN } from "@/plugins/utils/domain.ts";
-import {
-  CI_WORKFLOW_CANDIDATES,
-  findWorkflowFile,
-  RELEASE_WORKFLOW_CANDIDATES,
-} from "@/plugins/utils/workflows.ts";
 import type { Target } from "@/utils/fs.ts";
 
 export const github = definePlugin({
   context: (target: Target) => ({
     fileExists: (path: string) => target.fileExists(path),
     readFile: (path: string) => target.readFile(path),
-    target,
-    targetPath: target.path,
   }),
   id: "github",
 })
@@ -20,13 +15,26 @@ export const github = definePlugin({
     domain: DOMAIN.GITHUB_CONFIG,
     id: "ci-workflow",
     name: "CI workflow file exists",
-    test({ context }) {
-      const ciFile = findWorkflowFile(context.target, CI_WORKFLOW_CANDIDATES);
-      if (ciFile) {
-        return Status.pass(ciFile);
+    params: type({
+      file_expressions: "string[]",
+    }),
+    test({ context, params }) {
+      const candidates = params?.file_expressions ?? [
+        ".github/workflows/ci.yml",
+        ".github/workflows/ci.yaml",
+        ".github/workflows/test.yml",
+        ".github/workflows/test.yaml",
+        ".github/workflows/build.yml",
+        ".github/workflows/build.yaml",
+        ".github/workflows/check.yml",
+        ".github/workflows/check.yaml",
+      ];
+      const found = candidates.find((p) => context.fileExists(p));
+      if (found) {
+        return Status.pass(found);
       }
       return Status.fail(
-        "no CI workflow found — expected .github/workflows/{ci,test,build,check}.{yml,yaml}",
+        `no CI workflow found — expected ${candidates.join(", ")}`,
       );
     },
   })
@@ -34,16 +42,24 @@ export const github = definePlugin({
     domain: DOMAIN.GITHUB_CONFIG,
     id: "release-workflow",
     name: "Release/publish workflow file exists",
-    test({ context }) {
-      const releaseFile = findWorkflowFile(
-        context.target,
-        RELEASE_WORKFLOW_CANDIDATES,
-      );
-      if (releaseFile) {
-        return Status.pass(releaseFile);
+    params: type({
+      file_expressions: "string[]",
+    }),
+    test({ context, params }) {
+      const candidates = params?.file_expressions ?? [
+        ".github/workflows/release.yml",
+        ".github/workflows/release.yaml",
+        ".github/workflows/publish.yml",
+        ".github/workflows/publish.yaml",
+        ".github/workflows/deploy.yml",
+        ".github/workflows/deploy.yaml",
+      ];
+      const found = candidates.find((p) => context.fileExists(p));
+      if (found) {
+        return Status.pass(found);
       }
       return Status.warn(
-        "no release/publish workflow found — expected .github/workflows/{release,publish,deploy}.{yml,yaml}",
+        `no release/publish workflow found — expected ${candidates.join(", ")}`,
       );
     },
   })
@@ -51,8 +67,23 @@ export const github = definePlugin({
     domain: DOMAIN.GITHUB_CONFIG,
     id: "ci-lint",
     name: "CI workflow runs lint",
-    test({ context }) {
-      const ciFile = findWorkflowFile(context.target, CI_WORKFLOW_CANDIDATES);
+    params: type({
+      contains: "string[]",
+      file_expressions: "string[]",
+    }),
+    test({ context, params }) {
+      const candidates = params?.file_expressions ?? [
+        ".github/workflows/ci.yml",
+        ".github/workflows/ci.yaml",
+        ".github/workflows/test.yml",
+        ".github/workflows/test.yaml",
+        ".github/workflows/build.yml",
+        ".github/workflows/build.yaml",
+        ".github/workflows/check.yml",
+        ".github/workflows/check.yaml",
+      ];
+      const contains = params?.contains ?? ["biome", "lint", "check:lint"];
+      const ciFile = candidates.find((p) => context.fileExists(p));
       if (!ciFile) {
         return Status.pass("no CI workflow found — skipping content checks");
       }
@@ -62,15 +93,12 @@ export const github = definePlugin({
           "could not read CI workflow — skipping content checks",
         );
       }
-      if (
-        content.includes("biome") ||
-        content.includes("lint") ||
-        content.includes("check:lint")
-      ) {
-        return Status.pass();
+      const matched = contains.find((c) => content.includes(c));
+      if (matched) {
+        return Status.pass(`contains "${matched}"`);
       }
       return Status.warn(
-        "CI workflow does not appear to run lint — add a lint step to catch style issues in CI",
+        `CI workflow does not appear to run lint — expected to contain ${contains.map((c) => `"${c}"`).join(" or ")}`,
       );
     },
   })
@@ -78,8 +106,23 @@ export const github = definePlugin({
     domain: DOMAIN.GITHUB_CONFIG,
     id: "ci-typecheck",
     name: "CI workflow runs typecheck",
-    test({ context }) {
-      const ciFile = findWorkflowFile(context.target, CI_WORKFLOW_CANDIDATES);
+    params: type({
+      contains: "string[]",
+      file_expressions: "string[]",
+    }),
+    test({ context, params }) {
+      const candidates = params?.file_expressions ?? [
+        ".github/workflows/ci.yml",
+        ".github/workflows/ci.yaml",
+        ".github/workflows/test.yml",
+        ".github/workflows/test.yaml",
+        ".github/workflows/build.yml",
+        ".github/workflows/build.yaml",
+        ".github/workflows/check.yml",
+        ".github/workflows/check.yaml",
+      ];
+      const contains = params?.contains ?? ["tsc", "typecheck", "check:types"];
+      const ciFile = candidates.find((p) => context.fileExists(p));
       if (!ciFile) {
         return Status.pass("no CI workflow found — skipping content checks");
       }
@@ -89,15 +132,12 @@ export const github = definePlugin({
           "could not read CI workflow — skipping content checks",
         );
       }
-      if (
-        content.includes("tsc") ||
-        content.includes("typecheck") ||
-        content.includes("check:types")
-      ) {
-        return Status.pass();
+      const matched = contains.find((c) => content.includes(c));
+      if (matched) {
+        return Status.pass(`contains "${matched}"`);
       }
       return Status.warn(
-        "CI workflow does not appear to run typecheck — add a typecheck step to catch type errors in CI",
+        `CI workflow does not appear to run typecheck — expected to contain ${contains.map((c) => `"${c}"`).join(" or ")}`,
       );
     },
   })
@@ -105,24 +145,23 @@ export const github = definePlugin({
     domain: DOMAIN.GITHUB_CONFIG,
     id: "dependabot",
     name: "Dependabot or Renovate config exists",
-    test({ context }) {
-      if (context.fileExists(".github/dependabot.yml")) {
-        return Status.pass(".github/dependabot.yml");
-      }
-      if (context.fileExists(".github/dependabot.yaml")) {
-        return Status.pass(".github/dependabot.yaml");
-      }
-      if (context.fileExists("renovate.json")) {
-        return Status.pass("renovate.json");
-      }
-      if (context.fileExists(".renovaterc")) {
-        return Status.pass(".renovaterc");
-      }
-      if (context.fileExists(".renovaterc.json")) {
-        return Status.pass(".renovaterc.json");
+    params: type({
+      file_expressions: "string[]",
+    }),
+    test({ context, params }) {
+      const candidates = params?.file_expressions ?? [
+        ".github/dependabot.yml",
+        ".github/dependabot.yaml",
+        "renovate.json",
+        ".renovaterc",
+        ".renovaterc.json",
+      ];
+      const found = candidates.find((p) => context.fileExists(p));
+      if (found) {
+        return Status.pass(found);
       }
       return Status.warn(
-        "no Dependabot or Renovate config found — automated dependency updates prevent security drift",
+        `no ${candidates.join(" or ")} found — automated dependency updates prevent security drift`,
       );
     },
   });

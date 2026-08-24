@@ -1,23 +1,8 @@
 import { type } from "arktype";
 
 import { definePlugin, Status } from "@/api/index.ts";
-import type { HuskyHookSpec } from "@/types.ts";
 import type { Target } from "@/utils/fs.ts";
 import { DOMAIN } from "./utils/domain.ts";
-
-export const DEFAULT_HUSKY_HOOKS: readonly HuskyHookSpec[] = [
-  { contains: "bun run format", file: ".husky/pre-commit" },
-  { contains: 'bun commitlint --edit "$1"', file: ".husky/commit-msg" },
-] as const;
-
-export function resolveHuskyHooks(params?: {
-  hooks: HuskyHookSpec[];
-}): HuskyHookSpec[] {
-  if (!params?.hooks || params.hooks.length === 0) {
-    return [...DEFAULT_HUSKY_HOOKS];
-  }
-  return params.hooks;
-}
 
 export const husky = definePlugin({
   context: (target: Target) => ({
@@ -43,38 +28,56 @@ export const husky = definePlugin({
     domain: DOMAIN.DEV_ENVIRONMENT,
     id: "hooks-dir",
     name: ".husky/ directory exists",
-    test({ context }) {
-      if (context.fileExists(".husky")) {
-        return Status.pass();
+    params: type({
+      file_expressions: "string[]",
+    }),
+    test({ context, params }) {
+      const candidates = params?.file_expressions ?? [".husky"];
+      const found = candidates.find((f) => context.fileExists(f));
+      if (found) {
+        return Status.pass(found);
       }
-      return Status.fail(".husky/ directory not found");
+      return Status.fail(`${candidates.join(" or ")} not found`);
     },
   })
   .defineRule({
     domain: DOMAIN.DEV_ENVIRONMENT,
     id: "prepare-script",
     name: "prepare script calls husky",
-    test({ context }) {
-      const prepare = context.packageJson()?.scripts?.["prepare"];
-      if (prepare?.includes("husky")) {
-        return Status.pass(prepare);
+    params: type({
+      contains: "string",
+      file_expressions: "string[]",
+    }),
+    test({ context, params }) {
+      const scripts = context.packageJson()?.scripts ?? {};
+      const candidates = params?.file_expressions ?? ["prepare"];
+      const contains = params?.contains ?? "husky";
+      const scriptName = candidates.find((s) => scripts[s]);
+      if (!scriptName) {
+        return Status.fail(`no ${candidates.join(" or ")} script found`);
       }
-      if (!prepare) {
-        return Status.fail("no prepare script found");
+      const content = scripts[scriptName] as string;
+      if (content.includes(contains)) {
+        return Status.pass(content);
       }
-      return Status.fail(`prepare is "${prepare}", expected to call husky`);
+      return Status.fail(
+        `${scriptName} is "${content}", expected to contain "${contains}"`,
+      );
     },
   })
   .defineRule({
     domain: DOMAIN.DEV_ENVIRONMENT,
-    files: DEFAULT_HUSKY_HOOKS.map((h) => h.file),
+    files: [".husky/pre-commit", ".husky/commit-msg"],
     id: "hook",
     name: "husky hook file exists with expected content",
     params: type({
       hooks: type({ contains: "string", file: "string" }).array(),
     }),
     test({ context, params }) {
-      const specs = resolveHuskyHooks(params);
+      const specs = params?.hooks ?? [
+        { contains: "bun run format", file: ".husky/pre-commit" },
+        { contains: 'bun commitlint --edit "$1"', file: ".husky/commit-msg" },
+      ];
 
       const failures: string[] = [];
       for (const { file, contains } of specs) {

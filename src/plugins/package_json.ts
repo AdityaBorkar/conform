@@ -65,8 +65,8 @@ export const packageJson = definePlugin({
     test({ context, params }) {
       const pkg = context.packageJson();
       const fields = params?.fields ?? ["main", "module", "exports"];
-      const entries = fields.filter(
-        (f) => isDefined((pkg as Record<string, unknown> | null)?.[f]),
+      const entries = fields.filter((f) =>
+        isDefined((pkg as Record<string, unknown> | null)?.[f]),
       );
       if (entries.length > 0) {
         return Status.pass(entries.join(", "));
@@ -107,9 +107,7 @@ export const packageJson = definePlugin({
       if (found) {
         return Status.pass(`${found} exists`);
       }
-      return Status.warn(
-        `no files field or ${candidates.join(" or ")} found`,
-      );
+      return Status.warn(`no files field or ${candidates.join(" or ")} found`);
     },
   })
   .defineRule({
