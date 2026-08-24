@@ -37,10 +37,22 @@ export interface Rule {
   id: string;
 }
 
+export interface Plugin {
+  id: string;
+  rules: Rule[];
+}
+
+export type RuleSeverity = Severity | "off" | "error";
+
+export type RuleConfig = RuleSeverity | [RuleSeverity, ...unknown[]];
+
+export type RuleOverrides = Record<string, RuleConfig>;
+
 export interface Template {
   description: string;
   name: string;
-  rules: Rule[];
+  plugins: Plugin[];
+  rules?: RuleOverrides;
 }
 
 export interface RuleResult {
@@ -53,6 +65,8 @@ export interface RuleResult {
 }
 
 export interface ConformConfig {
+  plugins?: Plugin[];
+  rules?: RuleOverrides;
   template: string;
 }
 

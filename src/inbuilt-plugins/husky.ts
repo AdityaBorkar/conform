@@ -1,0 +1,79 @@
+import { RuleSet, Status } from "@/api/index.ts";
+import type { PackageJson } from "@/types.ts";
+import { fileExists, packageJson } from "@/utils/fs.ts";
+
+import { DOMAIN } from "./utils/domain.ts";
+
+const _husky = new RuleSet<{
+  fileExists: (path: string) => boolean;
+  packageJson: () => PackageJson | null;
+}>({
+  context: (targetPath) => ({
+    fileExists: (path: string) => fileExists(targetPath, path),
+    packageJson: () => packageJson(targetPath),
+  }),
+  domain: DOMAIN.DEV_ENVIRONMENT,
+  id: "husky",
+});
+
+_husky.defineRule({
+  id: "dev-deps",
+  name: "husky in devDependencies",
+  test({ context }) {
+    const huskyVersion = context.packageJson()?.devDependencies?.["husky"];
+    if (huskyVersion) {
+      return Status.pass(huskyVersion);
+    }
+    return Status.fail("husky not found in devDependencies");
+  },
+});
+
+_husky.defineRule({
+  id: "hooks-dir",
+  name: ".husky/ directory exists",
+  test({ context }) {
+    if (context.fileExists(".husky")) {
+      return Status.pass();
+    }
+    return Status.fail(".husky/ directory not found");
+  },
+});
+
+_husky.defineRule({
+  id: "prepare-script",
+  name: "prepare script calls husky",
+  test({ context }) {
+    const prepare = context.packageJson()?.scripts?.["prepare"];
+    if (prepare?.includes("husky")) {
+      return Status.pass(prepare);
+    }
+    if (!prepare) {
+      return Status.fail("no prepare script found");
+    }
+    return Status.fail(`prepare is "${prepare}", expected to call husky`);
+  },
+});
+
+_husky.defineRule({
+  id: "pre-commit",
+  name: "pre-commit hook exists",
+  test({ context }) {
+    if (context.fileExists(".husky/pre-commit")) {
+      return Status.pass();
+    }
+    return Status.fail("no pre-commit hook found");
+  },
+});
+
+_husky.defineRule({
+  id: "commit-msg",
+  name: "commit-msg hook exists",
+  test({ context }) {
+    if (context.fileExists(".husky/commit-msg")) {
+      return Status.pass();
+    }
+    return Status.fail("no commit-msg hook found");
+  },
+});
+
+export const husky = _husky;

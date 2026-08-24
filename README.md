@@ -43,7 +43,7 @@ import { defineConfig, defineTemplate, rule } from "@adityab/conform";
 Create a `conform.config.ts` in your repository root:
 
 ```ts
-import { defineConfig } from "@/conform-api/index.ts";
+import { defineConfig } from "@/api/index.ts";
 
 export default defineConfig({
   template: "npm-pkg",

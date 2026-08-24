@@ -1,4 +1,4 @@
-import { defineConfig } from "@/conform-api/index.ts";
+import { defineConfig } from "@/api/index.ts";
 
 export default defineConfig({
   template: "package",

@@ -134,7 +134,7 @@ Respond with a JSON object: { status: "pass" | "warn" | "fail", message?: string
 ## Example: AI Rule in a Template
 
 ```ts
-import { defineTemplate, rule, aiRule } from "@/conform-api/index.ts";
+import { defineTemplate, rule, aiRule } from "@/api/index.ts";
 
 export default defineTemplate({
   name: "npm-publish",
