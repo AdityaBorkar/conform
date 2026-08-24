@@ -1,4 +1,5 @@
 import type { CheckResult, Plugin as PluginInterface, Rule } from "@/types.ts";
+import { Target } from "@/utils/fs.ts";
 
 interface RuleSetRuleDef {
   domain?: string;
@@ -10,14 +11,16 @@ interface RuleSetRuleDef {
 
 export class Plugin<T = unknown> implements PluginInterface {
   private readonly config: {
-    context: (targetPath: string) => T;
+    // biome-ignore lint/suspicious/noExplicitAny: backward compat requires any
+    context: (target: any) => T;
     domain?: string;
     id: string;
   };
   private readonly ruleDefs: RuleSetRuleDef[] = [];
 
   constructor(config: {
-    context: (targetPath: string) => T;
+    // biome-ignore lint/suspicious/noExplicitAny: backward compat requires any
+    context: (target: any) => T;
     domain?: string;
     id: string;
   }) {
@@ -42,7 +45,13 @@ export class Plugin<T = unknown> implements PluginInterface {
     return this.ruleDefs.map(
       (ruleDef): Rule => ({
         check: async (targetPath: string) => {
-          const ctx = this.config.context(targetPath);
+          const target = new Target(targetPath);
+          let ctx: T;
+          try {
+            ctx = this.config.context(target);
+          } catch {
+            ctx = this.config.context(targetPath);
+          }
           return await ruleDef.test({ context: ctx });
         },
         description: ruleDef.name,
@@ -59,8 +68,20 @@ export class Plugin<T = unknown> implements PluginInterface {
 // while new code should prefer `Plugin` / `definePlugin`.
 export const RuleSet = Plugin;
 
+// biome-ignore lint/style/useUnifiedTypeSignatures: intentional overload for Target|string backward compat
+export function definePlugin<T>(config: {
+  context: (target: Target) => T;
+  domain?: string;
+  id: string;
+}): Plugin<T>;
 export function definePlugin<T>(config: {
   context: (targetPath: string) => T;
+  domain?: string;
+  id: string;
+}): Plugin<T>;
+export function definePlugin<T>(config: {
+  // biome-ignore lint/suspicious/noExplicitAny: backward compat requires any
+  context: (target: any) => T;
   domain?: string;
   id: string;
 }): Plugin<T> {

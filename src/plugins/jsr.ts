@@ -1,20 +1,24 @@
 import { RuleSet, Status } from "@/api/index.ts";
 import type { PackageJson } from "@/types.ts";
-import { fileExists, packageJson, readFile } from "@/utils/fs.ts";
+import type { Target } from "@/utils/fs.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
 import { getExportPaths, resolveJsrConfig } from "./utils/jsr.ts";
 import { SLOW_TYPE_PATTERNS } from "./utils/slow_types.ts";
 
 const _jsr = new RuleSet<{
+  fileExists: (path: string) => boolean;
   packageJson: () => PackageJson | null;
   readFile: (path: string) => string | null;
+  target: Target;
   targetPath: string;
 }>({
-  context: (targetPath) => ({
-    packageJson: () => packageJson(targetPath),
-    readFile: (path: string) => readFile(targetPath, path),
-    targetPath,
+  context: (target: Target) => ({
+    fileExists: (path: string) => target.fileExists(path),
+    packageJson: () => target.packageJson(),
+    readFile: (path: string) => target.readFile(path),
+    target,
+    targetPath: target.path,
   }),
   id: "jsr",
 });
@@ -24,7 +28,7 @@ _jsr.defineRule({
   id: "has-description",
   name: "package has a description for discoverability (JSR: has_description — 1pt)",
   test({ context }) {
-    const config = resolveJsrConfig(context.targetPath);
+    const config = resolveJsrConfig(context.target);
     const description =
       config.jsr?.description ?? context.packageJson()?.description;
     if (typeof description === "string" && description.trim().length > 0) {
@@ -43,7 +47,7 @@ _jsr.defineRule({
   id: "no-slow-types",
   name: "no slow types in exported symbols (JSR: all_fast_check — 5pts)",
   test({ context }) {
-    const exportPaths = getExportPaths(context.targetPath);
+    const exportPaths = getExportPaths(context.target);
     if (exportPaths.length === 0) {
       return Status.pass("no exports defined — skipping slow types check");
     }
@@ -73,7 +77,7 @@ _jsr.defineRule({
   id: "provenance",
   name: "publish workflow uses jsr publish with provenance (JSR: has_provenance — 1pt)",
   test({ context }) {
-    const ghDir = fileExists(context.targetPath, ".github");
+    const ghDir = context.fileExists(".github");
     if (!ghDir) {
       return Status.warn(
         "no .github directory found — cannot check provenance",

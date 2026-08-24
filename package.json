@@ -56,6 +56,7 @@
     "changeset": "changeset",
     "check:lint": "biome check . --fix",
     "check:types": "tsc --noEmit",
+    "format": "biome format --write .",
     "prepare": "husky",
     "release": "changeset publish",
     "test": "vitest run",

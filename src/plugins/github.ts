@@ -5,17 +5,19 @@ import {
   findWorkflowFile,
   RELEASE_WORKFLOW_CANDIDATES,
 } from "@/plugins/utils/workflows.ts";
-import { fileExists, readFile } from "@/utils/fs.ts";
+import type { Target } from "@/utils/fs.ts";
 
 const _github = new RuleSet<{
   fileExists: (path: string) => boolean;
   readFile: (path: string) => string | null;
+  target: Target;
   targetPath: string;
 }>({
-  context: (targetPath) => ({
-    fileExists: (path: string) => fileExists(targetPath, path),
-    readFile: (path: string) => readFile(targetPath, path),
-    targetPath,
+  context: (target: Target) => ({
+    fileExists: (path: string) => target.fileExists(path),
+    readFile: (path: string) => target.readFile(path),
+    target,
+    targetPath: target.path,
   }),
   domain: DOMAIN.GITHUB_CONFIG,
   id: "github",
@@ -25,7 +27,7 @@ _github.defineRule({
   id: "ci-workflow",
   name: "CI workflow file exists",
   test({ context }) {
-    const ciFile = findWorkflowFile(context.targetPath, CI_WORKFLOW_CANDIDATES);
+    const ciFile = findWorkflowFile(context.target, CI_WORKFLOW_CANDIDATES);
     if (ciFile) {
       return Status.pass(ciFile);
     }
@@ -40,7 +42,7 @@ _github.defineRule({
   name: "Release/publish workflow file exists",
   test({ context }) {
     const releaseFile = findWorkflowFile(
-      context.targetPath,
+      context.target,
       RELEASE_WORKFLOW_CANDIDATES,
     );
     if (releaseFile) {
@@ -56,7 +58,7 @@ _github.defineRule({
   id: "ci-lint",
   name: "CI workflow runs lint",
   test({ context }) {
-    const ciFile = findWorkflowFile(context.targetPath, CI_WORKFLOW_CANDIDATES);
+    const ciFile = findWorkflowFile(context.target, CI_WORKFLOW_CANDIDATES);
     if (!ciFile) {
       return Status.pass("no CI workflow found — skipping content checks");
     }
@@ -83,7 +85,7 @@ _github.defineRule({
   id: "ci-typecheck",
   name: "CI workflow runs typecheck",
   test({ context }) {
-    const ciFile = findWorkflowFile(context.targetPath, CI_WORKFLOW_CANDIDATES);
+    const ciFile = findWorkflowFile(context.target, CI_WORKFLOW_CANDIDATES);
     if (!ciFile) {
       return Status.pass("no CI workflow found — skipping content checks");
     }

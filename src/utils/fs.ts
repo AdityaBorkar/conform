@@ -7,20 +7,67 @@ function stripJsonComments(text: string): string {
   return text.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
-export function fileExists(targetPath: string, relPath: string): boolean {
-  return existsSync(join(targetPath, relPath));
+function resolveBase(targetPath: string | Target): string {
+  return typeof targetPath === "string" ? targetPath : targetPath.path;
 }
 
-export function readFile(targetPath: string, relPath: string): string | null {
+export class Target {
+  // biome-ignore lint/style/noParameterProperties: concise Target binding is intentional
+  constructor(readonly path: string) {}
+
+  fileExists(rel: string): boolean {
+    return fileExists(this.path, rel);
+  }
+
+  readFile(rel: string): string | null {
+    return readFile(this.path, rel);
+  }
+
+  readJson<T>(rel: string): T | null {
+    return readJson<T>(this.path, rel);
+  }
+
+  packageJson(): PackageJson | null {
+    return packageJson(this.path);
+  }
+
+  toString(): string {
+    return this.path;
+  }
+
+  valueOf(): string {
+    return this.path;
+  }
+
+  [Symbol.toPrimitive](): string {
+    return this.path;
+  }
+}
+
+export function createTarget(path: string): Target {
+  return new Target(path);
+}
+
+export function fileExists(
+  targetPath: string | Target,
+  relPath: string,
+): boolean {
+  return existsSync(join(resolveBase(targetPath), relPath));
+}
+
+export function readFile(
+  targetPath: string | Target,
+  relPath: string,
+): string | null {
   try {
-    return readFileSync(join(targetPath, relPath), "utf-8");
+    return readFileSync(join(resolveBase(targetPath), relPath), "utf-8");
   } catch {
     return null;
   }
 }
 
 export function readJson<T = unknown>(
-  targetPath: string,
+  targetPath: string | Target,
   relPath: string,
 ): T | null {
   const content = readFile(targetPath, relPath);
@@ -38,6 +85,6 @@ export function readJson<T = unknown>(
   }
 }
 
-export function packageJson(targetPath: string): PackageJson | null {
+export function packageJson(targetPath: string | Target): PackageJson | null {
   return readJson<PackageJson>(targetPath, "package.json");
 }

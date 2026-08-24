@@ -1,5 +1,5 @@
 import { RuleSet, Status } from "@/api/index.ts";
-import { fileExists, readFile } from "@/utils/fs.ts";
+import type { Target } from "@/utils/fs.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
 
@@ -7,9 +7,9 @@ const _gitignore = new RuleSet<{
   fileExists: (path: string) => boolean;
   readFile: (path: string) => string | null;
 }>({
-  context: (targetPath) => ({
-    fileExists: (path: string) => fileExists(targetPath, path),
-    readFile: (path: string) => readFile(targetPath, path),
+  context: (target: Target) => ({
+    fileExists: (path: string) => target.fileExists(path),
+    readFile: (path: string) => target.readFile(path),
   }),
   domain: DOMAIN.DEV_ENVIRONMENT,
   id: "gitignore",

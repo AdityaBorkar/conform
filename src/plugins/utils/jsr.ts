@@ -1,4 +1,4 @@
-import { readJson } from "@/utils/fs.ts";
+import { readJson, type Target } from "@/utils/fs.ts";
 
 export interface JsrConfig {
   description?: string;
@@ -14,7 +14,7 @@ export interface JsrConfig {
   version?: string;
 }
 
-export function resolveJsrConfig(targetPath: string): {
+export function resolveJsrConfig(targetPath: string | Target): {
   jsr: JsrConfig | null;
   source: string;
 } {
@@ -29,7 +29,7 @@ export function resolveJsrConfig(targetPath: string): {
   return { jsr: null, source: "package.json" };
 }
 
-export function getExportPaths(targetPath: string): string[] {
+export function getExportPaths(targetPath: string | Target): string[] {
   const config = resolveJsrConfig(targetPath);
   const exports = config.jsr?.exports;
   if (!exports) {

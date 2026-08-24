@@ -1,15 +1,15 @@
 import { RuleSet, Status } from "@/api/index.ts";
 import { DOMAIN } from "@/plugins/utils/domain.ts";
 import type { PackageJson } from "@/types.ts";
-import { fileExists, packageJson } from "@/utils/fs.ts";
+import type { Target } from "@/utils/fs.ts";
 
 const _biome = new RuleSet<{
   fileExists: (path: string) => boolean;
   packageJson: () => PackageJson | null;
 }>({
-  context: (targetPath) => ({
-    fileExists: (path: string) => fileExists(targetPath, path),
-    packageJson: () => packageJson(targetPath),
+  context: (target: Target) => ({
+    fileExists: (path: string) => target.fileExists(path),
+    packageJson: () => target.packageJson(),
   }),
   domain: DOMAIN.STYLE,
   id: "biome",

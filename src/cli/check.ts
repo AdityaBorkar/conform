@@ -1,47 +1,19 @@
 import { resolve } from "node:path";
 import process from "node:process";
 
-import { runChecks } from "@/api/engine.ts";
-import { presetResolver } from "@/api/preset.ts";
-import type { Plugin, Preset, RuleOverrides } from "@/types.ts";
-import { loadConfig } from "@/utils/config.ts";
-
-function mergePresetWithConfig(
-  preset: Preset,
-  config: { plugins?: Plugin[]; rules?: RuleOverrides },
-): Preset {
-  const plugins =
-    config.plugins && config.plugins.length > 0
-      ? [...preset.plugins, ...config.plugins]
-      : preset.plugins;
-
-  const rules: RuleOverrides | undefined =
-    config.rules || preset.rules
-      ? { ...(preset.rules ?? {}), ...(config.rules ?? {}) }
-      : undefined;
-
-  if (plugins === preset.plugins && rules === preset.rules) {
-    return preset;
-  }
-
-  return {
-    description: preset.description,
-    name: preset.name,
-    plugins,
-    ...(rules ? { rules } : {}),
-  };
-}
+import { check } from "@/api/conformance.ts";
+import type { GroupBy } from "@/types.ts";
 
 export async function CheckCommand({
   path,
   json,
-  verbose: _verbose,
+  verbose,
   group,
 }: {
-  path: string;
-  json: boolean;
-  verbose: boolean;
   group: string | undefined;
+  json: boolean;
+  path: string;
+  verbose: boolean;
 }) {
   if (json && group !== undefined) {
     process.stderr.write(
@@ -52,27 +24,29 @@ export async function CheckCommand({
 
   const targetPath = resolve(path);
 
-  const config = await loadConfig(targetPath);
-  if (!config) {
+  const result = await check(targetPath, {
+    ...(group ? { groupBy: group as GroupBy } : {}),
+    json,
+    verbose,
+  });
+
+  if ("error" in result) {
+    if (result.error === "no-config") {
+      process.stderr.write(
+        `Error: No conform.config.ts found in ${targetPath}\n`,
+      );
+    } else {
+      process.stderr.write(`Error: ${result.message}\n`);
+    }
     process.exit(2);
   }
 
-  const preset = await presetResolver(config.preset);
-  if (!preset) {
-    process.exit(2);
-  }
+  process.stdout.write(`${result.rendered}\n`);
 
-  const effectivePreset = mergePresetWithConfig(preset, config);
-
-  const results = await runChecks(effectivePreset, targetPath);
-
-  const hasFail = results.some((r) => r.status === "fail");
-  const hasWarn = results.some((r) => r.status === "warn");
-
-  if (hasFail) {
+  if (result.hasFail) {
     process.exit(1);
   }
-  if (hasWarn) {
+  if (result.hasWarn) {
     process.exit(2);
   }
   process.exit(0);

@@ -2,7 +2,7 @@ import { type } from "arktype";
 
 import { RuleSet, Status } from "@/api/index.ts";
 import type { PackageJson } from "@/types.ts";
-import { fileExists, packageJson as readPackageJson } from "@/utils/fs.ts";
+import type { Target } from "@/utils/fs.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
 
@@ -32,9 +32,9 @@ const _packageJson = new RuleSet<{
   fileExists: (path: string) => boolean;
   packageJson: () => PackageJson | null;
 }>({
-  context: (targetPath) => ({
-    fileExists: (path: string) => fileExists(targetPath, path),
-    packageJson: () => readPackageJson(targetPath),
+  context: (target: Target) => ({
+    fileExists: (path: string) => target.fileExists(path),
+    packageJson: () => target.packageJson(),
   }),
   domain: DOMAIN.BUILD,
   id: "package-json",

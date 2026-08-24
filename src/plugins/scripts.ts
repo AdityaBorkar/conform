@@ -1,14 +1,14 @@
 import { RuleSet, Status } from "@/api/index.ts";
 import type { PackageJson } from "@/types.ts";
-import { packageJson } from "@/utils/fs.ts";
+import type { Target } from "@/utils/fs.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
 
 const _scripts = new RuleSet<{
   packageJson: () => PackageJson | null;
 }>({
-  context: (targetPath) => ({
-    packageJson: () => packageJson(targetPath),
+  context: (target: Target) => ({
+    packageJson: () => target.packageJson(),
   }),
   domain: DOMAIN.BUILD,
   id: "scripts",

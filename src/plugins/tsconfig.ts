@@ -1,6 +1,6 @@
 import { RuleSet, Status } from "@/api/index.ts";
 import type { PackageJson } from "@/types.ts";
-import { fileExists, packageJson, readJson } from "@/utils/fs.ts";
+import type { Target } from "@/utils/fs.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
 
@@ -9,10 +9,10 @@ const _tsconfig = new RuleSet<{
   packageJson: () => PackageJson | null;
   readJson: <T = unknown>(path: string) => T | null;
 }>({
-  context: (targetPath) => ({
-    fileExists: (path: string) => fileExists(targetPath, path),
-    packageJson: () => packageJson(targetPath),
-    readJson: <T = unknown>(path: string) => readJson<T>(targetPath, path),
+  context: (target: Target) => ({
+    fileExists: (path: string) => target.fileExists(path),
+    packageJson: () => target.packageJson(),
+    readJson: <T = unknown>(path: string) => target.readJson<T>(path),
   }),
   domain: DOMAIN.CODE_QUALITY,
   id: "typescript",

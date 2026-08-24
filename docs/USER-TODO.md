@@ -2,8 +2,8 @@
 
 ## Phase 1
 
-improve-codebase-architecture
-deslop
+@husky Check if formatting on commit exists in pre-commit hook using "bun run format"
+@husky Check if commit message is
 
 - husky with conventional-commits
 - CHANGELOG.md with changesets
@@ -32,6 +32,9 @@ deslop
 - components.json
 - vite.config.ts
 - Breaking down of rules and composing templates out of them
+
+improve-codebase-architecture
+deslop
 
 ## Phase 2
 

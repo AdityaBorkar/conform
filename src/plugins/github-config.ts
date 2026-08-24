@@ -1,7 +1,8 @@
 import { RuleSet } from "@/api/index.ts";
+import type { Target } from "@/utils/fs.ts";
 
 const _githubConfig = new RuleSet({
-  context: () => ({}),
+  context: (_target: Target) => ({}),
   id: "github-config",
 });
 
