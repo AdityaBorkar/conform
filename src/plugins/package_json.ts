@@ -1,6 +1,6 @@
 import { type } from "arktype";
 
-import { RuleSet, Status } from "@/api/index.ts";
+import { Plugin, Status } from "@/api/index.ts";
 import type { PackageJson } from "@/types.ts";
 import type { Target } from "@/utils/fs.ts";
 import { DOMAIN } from "./utils/domain.ts";
@@ -26,7 +26,7 @@ const recommendedStructure = type({
   sideEffects: "boolean | string[]",
 });
 
-const _packageJson = new RuleSet<{
+const _packageJson = new Plugin<{
   fileExists: (path: string) => boolean;
   packageJson: () => PackageJson | null;
 }>({

@@ -1,4 +1,4 @@
-import { RuleSet, Status } from "@/api/index.ts";
+import { Plugin, Status } from "@/api/index.ts";
 import { DOMAIN } from "@/plugins/utils/domain.ts";
 import {
   CI_WORKFLOW_CANDIDATES,
@@ -7,7 +7,7 @@ import {
 } from "@/plugins/utils/workflows.ts";
 import type { Target } from "@/utils/fs.ts";
 
-const _github = new RuleSet<{
+const _github = new Plugin<{
   fileExists: (path: string) => boolean;
   readFile: (path: string) => string | null;
   target: Target;

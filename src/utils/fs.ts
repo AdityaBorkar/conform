@@ -7,40 +7,40 @@ function stripJsonComments(text: string): string {
   return text.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
-function resolveBase(targetPath: string | Target): string {
-  return typeof targetPath === "string" ? targetPath : targetPath.path;
-}
-
 export class Target {
   // biome-ignore lint/style/noParameterProperties: concise Target binding is intentional
   constructor(readonly path: string) {}
 
   fileExists(rel: string): boolean {
-    return fileExists(this.path, rel);
+    return existsSync(join(this.path, rel));
   }
 
   readFile(rel: string): string | null {
-    return readFile(this.path, rel);
+    try {
+      return readFileSync(join(this.path, rel), "utf-8");
+    } catch {
+      return null;
+    }
   }
 
   readJson<T>(rel: string): T | null {
-    return readJson<T>(this.path, rel);
+    const content = this.readFile(rel);
+    if (content === null) {
+      return null;
+    }
+    try {
+      return JSON.parse(content) as T;
+    } catch {
+      try {
+        return JSON.parse(stripJsonComments(content)) as T;
+      } catch {
+        return null;
+      }
+    }
   }
 
   packageJson(): PackageJson | null {
-    return packageJson(this.path);
-  }
-
-  toString(): string {
-    return this.path;
-  }
-
-  valueOf(): string {
-    return this.path;
-  }
-
-  [Symbol.toPrimitive](): string {
-    return this.path;
+    return this.readJson<PackageJson>("package.json");
   }
 }
 
@@ -48,43 +48,21 @@ export function createTarget(path: string): Target {
   return new Target(path);
 }
 
-export function fileExists(
-  targetPath: string | Target,
-  relPath: string,
-): boolean {
-  return existsSync(join(resolveBase(targetPath), relPath));
+export function fileExists(target: Target, relPath: string): boolean {
+  return target.fileExists(relPath);
 }
 
-export function readFile(
-  targetPath: string | Target,
-  relPath: string,
-): string | null {
-  try {
-    return readFileSync(join(resolveBase(targetPath), relPath), "utf-8");
-  } catch {
-    return null;
-  }
+export function readFile(target: Target, relPath: string): string | null {
+  return target.readFile(relPath);
 }
 
 export function readJson<T = unknown>(
-  targetPath: string | Target,
+  target: Target,
   relPath: string,
 ): T | null {
-  const content = readFile(targetPath, relPath);
-  if (content === null) {
-    return null;
-  }
-  try {
-    return JSON.parse(content) as T;
-  } catch {
-    try {
-      return JSON.parse(stripJsonComments(content)) as T;
-    } catch {
-      return null;
-    }
-  }
+  return target.readJson<T>(relPath);
 }
 
-export function packageJson(targetPath: string | Target): PackageJson | null {
-  return readJson<PackageJson>(targetPath, "package.json");
+export function packageJson(target: Target): PackageJson | null {
+  return target.packageJson();
 }

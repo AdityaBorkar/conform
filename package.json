@@ -5,7 +5,7 @@
     "url": "https://adityab.tech"
   },
   "bin": {
-    "conform": "src/cli.ts"
+    "conform": "src/cli/index.ts"
   },
   "bugs": "https://github.com/AdityaBorkar/conform/issues",
   "dependencies": {

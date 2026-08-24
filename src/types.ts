@@ -95,9 +95,6 @@ export interface Preset {
   rules?: StrictRuleOverrides;
 }
 
-/** @deprecated Use Preset instead. */
-export type preset = Preset;
-
 export interface RuleResult {
   description: string;
   domain: string;

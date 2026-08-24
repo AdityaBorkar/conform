@@ -2,6 +2,8 @@
 
 ## Phase 1
 
+Merge check into engine
+
 Ensure rules are first-principles like rules that can be easily extended and composed together in the preset.
 SKILL: /write-rule
 SKILL: /write-preset

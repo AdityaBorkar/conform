@@ -21,11 +21,11 @@ export const RELEASE_WORKFLOW_CANDIDATES = [
 ];
 
 export function findWorkflowFile(
-  targetPath: string | Target,
+  target: Target,
   candidates: string[],
 ): string | null {
   for (const path of candidates) {
-    if (readFile(targetPath, path) !== null) {
+    if (readFile(target, path) !== null) {
       return path;
     }
   }

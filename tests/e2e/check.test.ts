@@ -6,7 +6,7 @@ describe("e2e: check command", () => {
   it("exits with 0, 1, or 2 when run against a repo with config", () => {
     const proc = spawnSync(
       "bun",
-      ["run", "src/cli.ts", "check", "--path", "."],
+      ["run", "src/cli/index.ts", "check", "--path", "."],
       { encoding: "utf-8" },
     );
 
@@ -16,7 +16,7 @@ describe("e2e: check command", () => {
   it("exits with code 2 when no config found", () => {
     const proc = spawnSync(
       "bun",
-      ["run", "src/cli.ts", "check", "--path", "/tmp"],
+      ["run", "src/cli/index.ts", "check", "--path", "/tmp"],
       { encoding: "utf-8" },
     );
 

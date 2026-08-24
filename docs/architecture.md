@@ -9,7 +9,7 @@ Source of truth: `src/types.ts` + `src/api/*`. For terminology see `/CONTEXT.md`
 3. **Opinionated with oxc-style overrides** — `Preset.rules` and `ConformConfig.rules` are `RuleOverrides`. Severity `off` skips, `warn`/`error`/`fail` coerce non-pass, `pass` keeps pass. Tuple `[severity, ...opts]` passes `opts[0]` as validated `params`.
 4. **Atomic rules, grouped display** — Each check is one atomic Rule. TUI groups by `domain` then `files` (or by `files` with `--group files`). See ADR 002.
 5. **Zero config from CLI** — Preset selection lives in `conform.config.ts` (`preset: string`). No `--preset` flag. Additional `plugins`/`rules` are merged there.
-6. **Plugins own context** — `Plugin<T>` declares `context: (target: Target | string) => T`; each rule receives `{ context: T, params? }` via `test`. Standalone rules (`defineRule`) receive `targetPath: string` directly. All FS access goes through `src/utils/fs.ts`.
+6. **Plugins own context** — `Plugin<T>` declares `context: (target: Target) => T`; each rule receives `{ context: T, params? }` via `test`. All Rules must be defined via `Plugin#defineRule`; standalone `defineRule` does not exist. All FS access goes through `src/utils/fs.ts` (`Target`).
 
 ## Types (mirrors `src/types.ts`)
 
@@ -113,19 +113,6 @@ husky.defineRule({
 // preset or config override: rules: { "husky:hook-pattern": ["warn", { pattern: "*.sh" }] }
 ```
 
-Standalone:
-
-```ts
-import { defineRule, Status } from "@adistack/conform";
-export const myRule = defineRule({
-  id: "my-plugin:my-rule",
-  domain: DOMAIN.STYLE,
-  files: ["biome.json"],
-  description: "biome.json exists",
-  check: (targetPath) => Status.pass(),
-});
-```
-
 Preset:
 
 ```ts
@@ -143,8 +130,7 @@ export default definePreset({
 
 ```
 src/presets/        — flat files, each default-exports a Preset
-  package.ts        — only complete preset (7 plugins, 36 rules)
-  monorepo.ts       — stub (plugins: [])
+  package.ts        — complete preset (7 plugins, 36 rules)
 src/plugins/        — one file per plugin + utils/
   package_json.ts, biome.ts, tsconfig.ts, husky.ts, docs.ts, gitignore.ts, github.ts
   utils/domain.ts   — DOMAIN display strings ("Build & Tasks", "Code Quality", …)
@@ -178,7 +164,7 @@ conform check [--path <dir>] [--json] [-v|--verbose] [--group domains|files]
 - `-v, --verbose` — Show `pass` results (default hides them; `summary` always counts all).
 - `--group <mode>` — TUI grouping: `domains` (default) or `files`.
 
-Entry is `src/cli/index.ts` (`commander`); `package.json:bin.conform` is `src/cli.ts`.
+Entry is `src/cli/index.ts` (`commander`); `package.json:bin.conform` is `src/cli/index.ts`.
 
 Flow: `src/cli/check.ts` → `check()` (`loadConfig → presetResolver → mergePresetWithConfig → runChecks → renderTui/renderJson`) → `process.stdout.write(rendered)` → exit code.
 
@@ -220,9 +206,9 @@ Build & Tasks
 
 ### Params & Overrides detail
 
-- Rule may declare `params?: Type<P>` (arktype). `Plugin.defineRule` and `defineRule` both support it.
-- Override tuple is `[RuleSeverity, paramsValue]`. Engine takes `rawOverride[1]` as `rawParams`, validates against `paramsSchema` before `test()`. Invalid → `Status.fail("Invalid params: …")` without calling `test`.
-- Severity coercion: if override is `warn`/`fail`/`error` and result is `warn`/`fail`, status is rewritten to override. `pass` is never coerced. `off` skips the rule entirely.
+- Rule may declare `params?: Type<P>` (arktype) via `Plugin#defineRule`.
+- Override tuple is `[RuleSeverity, paramsValue]`. Engine takes `rawOverride[1]` as `rawParams`, validates against `paramsSchema` before `test()` via `validateParams` (`src/api/validate.ts`). Invalid → `Status.fail("Invalid params: …")` without calling `test`.
+- Severity coercion: if override is `warn`/`fail`/`error` and result is `warn`/`fail`, status is rewritten to override. `pass` is never coerced. `off` skips the rule entirely. All Rules are plugin-owned; standalone `defineRule` does not exist.
 
 ## Package Preset — Rule Set
 
@@ -268,5 +254,3 @@ Build & Tasks
 | | GitHub Configuration | `dependabot` | `dependabot.yml`/`yaml` or `renovate.json` (warn) |
 
 Shipped preset overrides (`src/presets/package.ts:rules`): `husky:hook: ["error", [{contains:"bun run format",file:".husky/pre-commit"},…]]` and `package-json:required-fields: ["error", ["license","name","author","contributors","repository"]]` (both `error`→`fail`). Generic example in §Preset above (`"package-json:files-or-npmignore": "warn"`) is illustrative only.
-
-Other preset: `monorepo.ts` is a stub (`plugins: []`). No `astro-site`/`react-site`/`webapp` presets exist on disk.

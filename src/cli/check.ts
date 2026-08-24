@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import process from "node:process";
 
-import { check } from "@/api/conformance.ts";
+import { check } from "@/api/engine.ts";
 import type { GroupBy } from "@/types.ts";
 
 export async function CheckCommand({
@@ -30,8 +30,8 @@ export async function CheckCommand({
     verbose,
   });
 
-  if ("error" in result) {
-    if (result.error === "no-config") {
+  if ("code" in result) {
+    if (result.code === "no-config") {
       process.stderr.write(
         `Error: No conform.config.ts found in ${targetPath}\n`,
       );

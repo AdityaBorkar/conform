@@ -1,10 +1,40 @@
 import type { Type } from "arktype";
+import { type } from "arktype";
 
-import { validateParams } from "@/api/validate.ts";
 import type { CheckResult, Plugin as PluginInterface, Rule } from "@/types.ts";
 import { Target } from "@/utils/fs.ts";
 
-interface RuleSetRuleDef<P = unknown> {
+/**
+ * Single validation adapter for arktype params.
+ * Owns the `Invalid params: …` formatting so callers don't duplicate it.
+ * Used by `Plugin#defineRule` (all Rules are plugin-owned).
+ */
+function validateParams<P>(
+  params: unknown,
+  schema: Type<P> | undefined,
+): { ok: true; value: P | undefined } | { ok: false; error: CheckResult } {
+  if (!schema) {
+    return { ok: true, value: params as P | undefined };
+  }
+  if (params === undefined) {
+    return { ok: true, value: undefined };
+  }
+  const parsed = (schema as unknown as (data: unknown) => unknown)(params);
+  if (parsed instanceof type.errors) {
+    const message = Object.entries(parsed.flatProblemsByPath)
+      .map(
+        ([path, problems]) => `${path}: ${(problems as string[]).join(", ")}`,
+      )
+      .join("; ");
+    return {
+      error: { message: `Invalid params: ${message}`, status: "fail" },
+      ok: false,
+    };
+  }
+  return { ok: true, value: parsed as P };
+}
+
+interface PluginRuleDef<P = unknown> {
   domain: string;
   files?: string[];
   id: string;
@@ -18,16 +48,14 @@ interface RuleSetRuleDef<P = unknown> {
 
 export class Plugin<T = unknown> implements PluginInterface {
   private readonly config: {
-    // biome-ignore lint/suspicious/noExplicitAny: backward compat requires any
-    context: (target: any) => T;
+    context: (target: Target) => T;
     domain: string;
     id: string;
   };
-  private readonly ruleDefs: RuleSetRuleDef<unknown>[] = [];
+  private readonly ruleDefs: PluginRuleDef<unknown>[] = [];
 
   constructor(config: {
-    // biome-ignore lint/suspicious/noExplicitAny: backward compat requires any
-    context: (target: any) => T;
+    context: (target: Target) => T;
     domain: string;
     id: string;
   }) {
@@ -45,7 +73,7 @@ export class Plugin<T = unknown> implements PluginInterface {
       params?: P;
     }) => CheckResult | Promise<CheckResult>;
   }): void {
-    this.ruleDefs.push(def as unknown as RuleSetRuleDef<unknown>);
+    this.ruleDefs.push(def as unknown as PluginRuleDef<unknown>);
   }
 
   get id(): string {
@@ -57,12 +85,7 @@ export class Plugin<T = unknown> implements PluginInterface {
       const base: Rule = {
         check: async (targetPath: string, params: unknown) => {
           const target = new Target(targetPath);
-          let ctx: T;
-          try {
-            ctx = this.config.context(target);
-          } catch {
-            ctx = this.config.context(targetPath);
-          }
+          const ctx = this.config.context(target);
 
           if (ruleDef.params) {
             const validated = validateParams(
@@ -106,25 +129,8 @@ export class Plugin<T = unknown> implements PluginInterface {
   }
 }
 
-// Backward compatibility: RuleSet was the previous name for Plugin.
-// Keeping the alias makes existing imports and presets continue to work
-// while new code should prefer `Plugin` / `definePlugin`.
-export const RuleSet = Plugin;
-
-// biome-ignore lint/style/useUnifiedTypeSignatures: intentional overload for Target|string backward compat
 export function definePlugin<T>(config: {
   context: (target: Target) => T;
-  domain: string;
-  id: string;
-}): Plugin<T>;
-export function definePlugin<T>(config: {
-  context: (targetPath: string) => T;
-  domain: string;
-  id: string;
-}): Plugin<T>;
-export function definePlugin<T>(config: {
-  // biome-ignore lint/suspicious/noExplicitAny: backward compat requires any
-  context: (target: any) => T;
   domain: string;
   id: string;
 }): Plugin<T> {

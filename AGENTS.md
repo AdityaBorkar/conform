@@ -11,7 +11,7 @@ Deprecated: `docs/CONTEXT.md` / `docs/glossary.md` → `/CONTEXT.md`.
 
 ## Project
 
-`@adistack/conform` — CLI that checks repos against conformance Presets. Bun + TypeScript ESM (`"type": "module"`). No build: `noEmit: true`, `exports: "." → ./src/index.ts`, `files: ["src","README.md"]`, bin `conform → src/cli.ts` (re-exports `src/cli/index.ts`).
+`@adistack/conform` — CLI that checks repos against conformance Presets. Bun + TypeScript ESM (`"type": "module"`). No build: `noEmit: true`, `exports: "." → ./src/index.ts`, `files: ["src","README.md"]`, bin `conform → src/cli/index.ts` (re-exports `src/cli/index.ts`).
 
 ## Commands
 
@@ -31,22 +31,21 @@ Required order: `check:lint` → `check:types` → `test`. CI (`release.yml:22`)
 - `src/api/conformance.ts` — `loadConfig → presetResolver → mergePresetWithConfig → runChecks → renderTui/renderJson`. `output.results` filtered by `verbose`; `summary` always counts all; `hasFail` dominates `hasWarn`.
 - `src/utils/config.ts` — dynamic-imports `conform.config.ts` from target dir; requires `config.preset: string` else `no-config` (exit 2).
 - `src/api/preset.ts` — resolves `src/presets/<name>.ts` or `src/presets/<name>/index.ts` at repo root. Dogfood `conform.config.ts:4` uses `preset: "package"`.
-- `src/api/engine.ts` — flattens `preset.plugins[].rules`, applies `preset.rules` overrides (`RuleOverrides`: `off` skips, `warn`/`error`/`fail` coerce non-pass, `["warn", params]` passes `params` as `opts[0]`). Validation in `src/api/plugin.ts` / `src/api/rule.ts` via arktype — invalid params → `fail` with `Invalid params: …` without calling `test`; `rule.check(targetPath, params?)`.
+- `src/api/engine.ts` — flattens `preset.plugins[].rules`, applies `preset.rules` overrides (`RuleOverrides`: `off` skips, `warn`/`error`/`fail` coerce non-pass, `["warn", params]` passes `params` as `opts[0]`). Validation in `src/api/plugin.ts` via arktype — invalid params → `fail` with `Invalid params: …` without calling `test`; `rule.check(targetPath, params?)`.
 - `src/types.ts` — `Rule {id,domain,files,description,check,paramsSchema?}`, `Plugin {id,rules}`, `Preset {name,description,plugins,rules?: StrictRuleOverrides}`, `ConformConfig {preset,plugins?,rules?}`. `RuleRegistry` maps `husky:hook` and `package-json:required-fields` to typed params.
-- `src/api/index.ts` — re-exports `defineConfig`, `definePlugin`/`Plugin`/`RuleSet` (alias), `definePreset`/`presetResolver`, `defineRule`, `Status`. `src/index.ts` additionally aliases `defineRule as rule` and re-exports types.
-- Presets: `src/presets/package.ts` (complete, 8 plugins) and `src/presets/monorepo.ts` (stub, `plugins: []`). Plugins: `src/plugins/*.ts` — `package_json`, `biome`, `tsconfig`, `husky`, `docs`, `gitignore`, `github`.
+- `src/api/index.ts` — re-exports `defineConfig`, `definePlugin`/`Plugin`, `definePreset`/`presetResolver`, `Status`.
+- Presets: `src/presets/package.ts` (complete, 7 plugins). Plugins: `src/plugins/*.ts` — `package_json`, `biome`, `tsconfig`, `husky`, `docs`, `gitignore`, `github`.
 
 For authoring examples see `docs/architecture.md`.
 
 ## Rules & Presets
 
-- `definePlugin({id,domain,context: (target: Target|string) => T})` + `.defineRule({id,name,domain,files?,params?,test: ({context:T,params?}) => CheckResult})` (`src/api/plugin.ts`) — IDs `pluginId:ruleId`.
-- `defineRule({id,domain,files,description,check:(targetPath,params?)=>CheckResult,params?})` — standalone, arktype `params` validated before `check`.
+- `definePlugin({id,domain,context: (target: Target) => T})` + `.defineRule({id,name,domain,files?,params?,test: ({context:T,params?}) => CheckResult})` (`src/api/plugin.ts`) — IDs `pluginId:ruleId`. All Rules must be defined via a Plugin; standalone `defineRule` does not exist.
 - `Status.pass/warn/fail(message?)` → `{status,message?}`.
 - `definePreset({name,description,plugins,rules?})` — `rules: Record<string, RuleSeverity | [RuleSeverity, ...unknown[]]>` (`RuleSeverity="pass"|"warn"|"fail"|"off"|"error"`, `error`→`fail`).
 - Domains: `src/plugins/utils/domain.ts` — `STYLE`, `BUILD`, `CODE_QUALITY`, `DEV_ENVIRONMENT`, `DOCUMENTATION`, `GITHUB_CONFIG`, `OBSERVABILITY`, `SECURITY`, `TESTING`.
 
-Canonical in docs: `Preset` not `preset`, `Plugin` not `RuleSet`, `presetResolver` not `resolver`, `domain`+`files` not `group`, `package` not `npm-pkg`. Aliases stay in code.
+Canonical: `Preset` not `preset`, `Plugin` not `RuleSet`, `presetResolver` not `resolver`, `domain`+`files` not `group`, `package` not `npm-pkg`. No aliases remain.
 
 ## Exit Codes
 
@@ -62,7 +61,6 @@ Canonical in docs: `Preset` not `preset`, `Plugin` not `RuleSet`, `presetResolve
 - TypeScript `^7.0.2` strict (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noUnusedLocals/Parameters`, `verbatimModuleSyntax`, `noEmit`). `arktype` for rule params.
 - Biome 2.x (`biome.json:3` `preset: all`): 2-space, double-quotes, LF, width 80, `organizeImports` groups, `vcs: git`. Overrides: `noDefaultExport: off`, `useNamingConvention: off`, `noSecrets: off`. No ESLint/Prettier.
 - `vitest.config.ts:12` `include: ["tests/**/*.test.ts"]` only — `src/**/*.test.ts` ignored. `tests/integration/` is empty.
-- Stale names still accepted in code: `preset`→`Preset`, `RuleSet`→`Plugin`. Use canonical in new code. `resolver` alias does not exist — use `presetResolver`.
 
 ## Git Hooks & Release
 

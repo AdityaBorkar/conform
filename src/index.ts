@@ -2,9 +2,7 @@ export {
   defineConfig,
   definePlugin,
   definePreset,
-  defineRule as rule,
   Plugin,
-  RuleSet,
   Status,
 } from "@/api/index.ts";
 export type {

@@ -1,8 +1,8 @@
-import { RuleSet, Status } from "@/api/index.ts";
+import { Plugin, Status } from "@/api/index.ts";
 import type { Target } from "@/utils/fs.ts";
 import { DOMAIN } from "./utils/domain.ts";
 
-const _gitignore = new RuleSet<{
+const _gitignore = new Plugin<{
   fileExists: (path: string) => boolean;
   readFile: (path: string) => string | null;
 }>({

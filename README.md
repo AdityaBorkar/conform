@@ -51,16 +51,22 @@ export default defineConfig({
 ### Programmatic API
 
 ```ts
-import { defineConfig, definePreset, definePlugin, defineRule, Status, presetResolver } from "@adistack/conform";
+import { defineConfig, definePreset, definePlugin, Status, presetResolver } from "@adistack/conform";
 import { DOMAIN } from "@adistack/conform/plugins/utils/domain.ts";
+import type { Target } from "@adistack/conform/utils/fs.ts";
 
-// Standalone rule
-export const myRule = defineRule({
-  id: "my-plugin:my-rule",
+// Plugin-owned rule (all Rules must belong to a Plugin)
+export const myPlugin = definePlugin({
+  id: "my-plugin",
   domain: DOMAIN.STYLE,
-  files: ["biome.json"],
-  description: "biome.json exists",
-  check: (targetPath) => Status.pass(),
+  context: (target: Target) => ({ target }),
+});
+
+myPlugin.defineRule({
+  id: "my-rule",
+  domain: DOMAIN.STYLE,
+  name: "biome.json exists",
+  test: ({ context }) => (context.target.fileExists("biome.json") ? Status.pass() : Status.fail("missing biome.json")),
 });
 ```
 
@@ -71,8 +77,6 @@ See [`/CONTEXT.md`](./CONTEXT.md) for terminology and [`docs/architecture.md`](.
 | Preset | Description |
 |--------|-------------|
 | `package` | Conformance rules for publishing an NPM package |
-
-Other presets (`astro-site`, `monorepo`, `react-site`, `webapp`) are stubs.
 
 ## License
 

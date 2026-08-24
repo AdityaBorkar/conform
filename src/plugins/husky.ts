@@ -1,11 +1,11 @@
 import { type } from "arktype";
 
-import { RuleSet, Status } from "@/api/index.ts";
+import { Plugin, Status } from "@/api/index.ts";
 import type { HuskyHookSpec, PackageJson } from "@/types.ts";
 import type { Target } from "@/utils/fs.ts";
 import { DOMAIN } from "./utils/domain.ts";
 
-const _husky = new RuleSet<{
+const _husky = new Plugin<{
   fileExists: (path: string) => boolean;
   packageJson: () => PackageJson | null;
   readFile: (path: string) => string | null;

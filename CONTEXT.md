@@ -13,8 +13,8 @@ CLI that checks a repository against a named Preset and reports Drift.
  _Avoid_: RuleSet
 
 **Rule**:
- Atomic check. Declares `id`, `domain`, `files`, `description`, `check`, and optional arktype `params`.
- _Avoid_: aiRule, kind
+ Atomic check. Must be defined via `Plugin#defineRule`; standalone `defineRule` does not exist. Declares `id`, `domain`, `files`, `description`, `check`, and optional arktype `params`.
+ _Avoid_: aiRule, kind, standalone rule
 
 **CheckResult**:
  Outcome returned by a Rule's `check`: `{ status, message? }` where `status` is `Severity`.

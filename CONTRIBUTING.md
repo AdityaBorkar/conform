@@ -20,7 +20,7 @@ bun run test
 
 # Run CLI locally (canonical entry)
 bun run src/cli/index.ts check
-# also works: bun run src/cli.ts check (re-export)
+# also works: bun run src/cli/index.ts check (re-export)
 ```
 
 Required order: `check:lint` → `check:types` → `test`.

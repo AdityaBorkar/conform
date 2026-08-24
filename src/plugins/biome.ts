@@ -1,9 +1,9 @@
-import { RuleSet, Status } from "@/api/index.ts";
+import { Plugin, Status } from "@/api/index.ts";
 import { DOMAIN } from "@/plugins/utils/domain.ts";
 import type { PackageJson } from "@/types.ts";
 import type { Target } from "@/utils/fs.ts";
 
-const _biome = new RuleSet<{
+const _biome = new Plugin<{
   fileExists: (path: string) => boolean;
   packageJson: () => PackageJson | null;
 }>({
