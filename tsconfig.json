@@ -40,7 +40,7 @@
     "strictPropertyInitialization": true,
     "stripInternal": true,
     "target": "ESNext",
-    "types": ["bun"],
+    "types": ["@types/bun"],
     "useUnknownInCatchVariables": true,
     "verbatimModuleSyntax": true
   }

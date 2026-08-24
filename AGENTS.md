@@ -2,85 +2,60 @@
 
 ## Project
 
-`@adityab/conform` — CLI that checks repositories against conformance templates. Bun + TypeScript, ESM (`"type": "module"`). Published as raw TS source: no build step (`noEmit: true`), `exports: "." → ./src/index.ts`, `files: ["src", "templates"]`.
+`@adityab/conform` — CLI that checks repos against conformance presets. Bun + TypeScript, ESM (`"type": "module"`). Published as raw TS: no build, `noEmit: true`, `exports: "." → ./src/index.ts`. Listed `files: ["src","templates"]` but `templates/` does not exist — presets live in `src/presets/`.
 
 ## Commands
 
-- **Install:** `bun install`
-- **Lint & format:** `bun run check:lint` (`biome check . --fix`)
-- **Typecheck:** `bun run check:types` (`tsc --noEmit`)
-- **Run CLI:** `bun run src/cli.ts check [--path <dir>] [--json] [-v] [--group domains|files]`
-- **Test (all):** `bun run test` (`vitest run`)
-- **Test (unit):** `bun run test:unit` — excludes only `tests/e2e/**`
-- **Test (integration):** `bun run test:integration` (`--passWithNoTests`; dir currently empty)
-- **Test (e2e):** `bun run test:e2e`
-- **Test (watch):** `bun run test:watch`
-- **Changeset:** `bun run changeset` · **Version:** `bun run version` · **Publish:** `bun run release`
+- Install: `bun install` (respects `bunfig.toml`: `ignore-scripts=true`, `minimumReleaseAge=3d`)
+- Lint & format: `bun run check:lint` (`biome check . --fix`)
+- Typecheck: `bun run check:types` (`tsc --noEmit`)
+- Run CLI: `bun run src/cli/index.ts check [--path <dir>] [--json] [-v] [--group domains|files]` (not `src/cli.ts`)
+- Tests: `bun run test` (`vitest run`) · `bun run test:unit` (excludes `tests/e2e/**`) · `bun run test:integration` (`--passWithNoTests`, empty) · `bun run test:e2e` · watch `bun run test:watch`
+- Changeset: `bun run changeset` · Version: `bun run version` · Publish: `bun run release`
 
-Required order: `check:lint` → `check:types` → `test`. `CONTRIBUTING.md` requires all three green before PR; the release CI runs `check:lint` + `check:types` only.
+Required order: `check:lint` → `check:types` → `test`. Release CI (`release.yml`) runs only `check:lint` + `check:types`.
 
-**Gotcha:** `CONTRIBUTING.md` says `bun test` but the correct command is `bun run test` (vitest, not Bun's built-in runner).
-
-**Gotcha:** Vitest config (`vitest.config.ts`) includes only `tests/**/*.test.ts`. Test files colocated in `src/` (e.g. `src/engine/engine.test.ts`, `src/target.test.ts`) are **not** picked up by `bun run test`.
+**Gotcha:** `CONTRIBUTING.md` says `bun test` — correct is `bun run test` (vitest, not Bun runner). `vitest.config.ts` includes only `tests/**/*.test.ts`; colocated `src/**/*.test.ts` are ignored.
 
 ## Architecture
 
-- `src/cli.ts` — `commander` entrypoint (`bin.conform`). `check` options: `--path` (default cwd), `--json`, `-v/--verbose`, `--group domains|files`. `--json` + `--group` together → exit 1.
-- `src/commands/check.ts` — `loadConfig → resolver → createTarget → runChecks → exit code`. Exit codes: 0 pass, 1 fail, 2 warn (also used for no-config / template-not-found).
-- `src/config/load.ts` — dynamic-imports `conform.config.ts` from the target dir.
-- `src/conform-api/resolver.ts` — resolves a template by name. Currently looks up `templates/<name>/index.ts` (directory-based).
-- `src/conform-api/index.ts` — `defineConfig`, `defineTemplate`, `defineRule`, `RuleSet`, `Status`.
-- `src/engine/index.ts` — iterates `template.rules`, calls `rule.check(target)`, collects `RuleResult[]`.
-- `src/target.ts` — `createTarget`: cached file reads; `readJson` strips `//` and `/* */` comments as a fallback parse. Returns a `Target` object (not `CheckContext` — that name is stale).
-- `src/reporter/` — `tui.ts` (ANSI, human) and `json.ts` (machine). Both hide `pass` results unless `--verbose`; summary counts always reflect all results. Support `groupBy: "domains" | "files"`.
-- `src/index.ts` — package API: re-exports `defineConfig`, `defineTemplate`, `rule` (alias for `defineRule`), `RuleSet`, `Status` + types.
-- `src/types.ts` — all shared types. `Target` is the context interface passed to rule checks.
+- `src/cli/index.ts` — `commander` entrypoint (`bin.conform` declares `src/cli.ts` which does not exist; use `src/cli/index.ts`). Package version read via `join(import.meta.dir, "..", "package.json")` is broken (resolves to `src/package.json`); needs `../..`.
+- `src/cli/check.ts` — `loadConfig → resolver → mergeTemplateWithConfig → runChecks → exit code`. Exit codes: 0 pass, 1 fail, 2 warn/no-config/template-not-found. Rejects `--json` + `--group` together (exit 1). Reporters never called (see gotchas).
+- `src/utils/config.ts` — dynamic-imports `conform.config.ts` from target dir; requires `config.template` string.
+- `src/api/resolver.ts` — resolves by name from `templates/<name>.ts` or `templates/<name>/index.ts` at repo root — but `templates/` does not exist (presets are in `src/presets/`), so every lookup returns `null`.
+- `src/api/engine.ts` — flattens `template.plugins[].rules`, applies `template.rules` overrides (`RuleOverrides`: `"off"` skips, `"warn"/"error"/"fail"` coerce non-pass, tuple `["warn", ...opts]` supported), calls `rule.check(targetPath)`.
+- `src/utils/fs.ts` — `fileExists`, `readFile`, `readJson` (strips `//` and `/* */` comments), `packageJson`. No `Target` object — rules receive `targetPath: string`.
+- `src/cli/reporter/tui.ts` + `json.ts` — hide `pass` unless `verbose`; summary counts always include all. `groupBy: "domains"|"files"` (default `domains`). `json.ts` outputs `ConformOutput`.
+- `src/api/index.ts` — re-exports `defineConfig`, `definePlugin`/`Plugin`/`RuleSet` (alias), `defineRule`, `defineTemplate`/`defineTemplateLegacy`, `Status` + types.
+- `src/types.ts` — `Severity: "pass"|"warn"|"fail"`, `Rule { id, domain, files, description, check(ctx: string) }`, `Plugin { id, rules }`, `RuleOverrides`, `Template { name, description, plugins, rules? }`, `RuleResult`, `ConformConfig`, `ConformOutput`.
 
-### Current gotchas (mid-refactor)
+## Gotchas (verify before fixing)
 
-1. **Resolver mismatch:** Templates on disk are flat files `templates/<name>.ts`, but `resolver.ts` still expects `templates/<name>/index.ts`. So `bun run src/cli.ts check` against the dogfood config (`conform.config.ts` → `template: "package"`) currently exits 2 with no output — the resolver returns null.
+1. **Bin + version path broken:** `package.json` bin `src/cli.ts` missing; `src/cli/index.ts:11` reads `../package.json` (should be `../../package.json`). `bun run src/cli/index.ts check` crashes with `ENOENT` before reaching checks.
+2. **Resolver mismatch:** `resolver.ts` looks in `templates/` (nonexistent). Dogfood `conform.config.ts` (`template: "package"`) always fails with exit 2. Fix: point resolver at `src/presets/` or add `templates/` shim.
+3. **Reporters not wired:** `CheckCommand` computes `results` but never calls `renderTui`/`renderJson`; only exit code varies, no stdout.
+4. **Old doc names stale:** `Target`/`CheckContext` no longer exists; `RuleSet` is now `Plugin` (alias kept); `templates/rules/` is now `src/inbuilt-plugins/`.
 
-2. **Reporters not wired:** `CheckCommand` does not yet call `renderTui`/`renderJson`. Results are computed but never displayed; only the exit code varies.
+## Rule & preset API
 
-## Rule & template API
+- `Plugin`/`RuleSet`: `new Plugin({ id, domain?, context: (targetPath) => T })` + `.defineRule({ id, name, domain?, files?, test: ({context: T}) => CheckResult })`. IDs namespaced as `pluginId:ruleId`. `definePlugin` helper is preferred for new code.
+- `defineRule({ id, domain, files, description, check })` — standalone, `check: (targetPath: string) => CheckResult`.
+- `Status.pass/warn/fail(message?)` → `{ status, message? }`; `status` is the severity.
+- `defineTemplate({ name, description, plugins, rules? })` — `rules` is an oxc-style override map `Record<string, RuleSeverity | [RuleSeverity, ...unknown[]]>` where `RuleSeverity = "pass"|"warn"|"fail"|"off"|"error"` (`"error"` → `"fail"`).
+- Domains in `src/inbuilt-plugins/utils/domain.ts`: `STYLE`, `BUILD`, `CODE_QUALITY`, `DEV_ENVIRONMENT`, `DOCUMENTATION`, `GITHUB_CONFIG`, `OBSERVABILITY`, `SECURITY`, `TESTING`.
 
-- **`RuleSet`** — primary way to define rules. Constructor takes `{ id, domain?, context: (target) => T }`. Call `.defineRule({ id, name, domain?, files?, test })` to add rules. `.rules` getter produces `Rule[]` with IDs namespaced as `RuleSet.id:ruleDef.id`.
-- **`defineRule`** (exported as `rule`) — standalone rule definition: `{ id, domain, files, description, check }`.
-- **`Status`** — helper factories: `Status.pass()`, `Status.warn()`, `Status.fail()`, each taking an optional message.
-- **`defineTemplate`** — identity function for type safety: `{ name, description, rules }`.
-- `check(ctx)` / `test({ context })` returns `{ status: "pass" | "warn" | "fail", message? }`; `status` IS the severity — no separate `severity` field.
-- `Target` exposes `fileExists`, `readFile`, `readJson`, `packageJson`, `targetPath`.
-- Domains defined in `templates/rules/utils/domain.ts` as human-readable labels (e.g. `"Style & Validation"`, `"Build & Tasks"`). RuleSet `.domain` defaults to `DOMAIN.STYLE` but can be overridden per-RuleSet or per-rule.
+## Presets
 
-## Templates
-
-Flat `.ts` files in `templates/`, each a `defineTemplate()` default export. Rules live in `templates/rules/` as `RuleSet` modules (one file per domain, e.g. `biome.ts`, `tsconfig.ts`, `package_json.ts`). Shared helpers in `templates/rules/utils/`.
-
-| Template file | `name` | Status |
-|---------------|--------|--------|
-| `package.ts` | `package` | Complete (~58 rules across 13 RuleSets) |
-| `astro-site.ts`, `monorepo.ts`, `react-site.ts`, `webapp.ts` | — | Empty placeholders |
-
-Adding a template = create `templates/<name>.ts` with a `defineTemplate()` default export (no registration step). Note the resolver mismatch above.
+Flat files in `src/presets/` (`defineTemplate` default export). Plugins in `src/inbuilt-plugins/` (one file per domain + `utils/`). Only `package` is complete (~13 plugins); `astro-site`, `monorepo`, `react-site`, `webapp` are empty (`plugins: []`). Adding a preset: create `src/presets/<name>.ts` (resolver will need updating).
 
 ## Toolchain
 
-- **Runtime:** Bun only (not Node). `import.meta.dir` for path resolution.
-- **Biome 2.x** with explicit `biome.json`: all-rule presets on; formatter = 2-space, double quotes, LF, width 80; `organizeImports` with custom groups; VCS git integration. Notable overrides: `noDefaultExport: off`, `useNamingConvention: off`, `noSecrets: off`. No ESLint/Prettier.
-- **TypeScript** `^7.0.1-rc` (peer dep). Very strict: `strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`, `exactOptionalPropertyTypes`, `noUnusedLocals`, `noUnusedParameters`, `verbatimModuleSyntax`, `noEmit: true`. Path alias `@/*` → `./src/*` (tsconfig + vitest config).
-- **Test runner:** Vitest (`vitest.config.ts`): alias `@` → `src`, includes `tests/**/*.test.ts`.
-- **CLI parsing:** `commander`.
-- **Validation:** `arktype` used in rule files for structural checks (e.g. `package_json.ts`).
+- Runtime: Bun only; `import.meta.dir` for paths. Path alias `@/*` → `./src/*` (tsconfig + vitest).
+- Biome 2.x (`biome.json`): presets `all`, 2-space/double-quotes/LF/width 80, `organizeImports` groups, `vcs` git. Overrides: `noDefaultExport: off`, `useNamingConvention: off`, `noSecrets: off`. No ESLint/Prettier.
+- TypeScript `^7.0.1-rc` strict: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noUnusedLocals/Parameters`, `verbatimModuleSyntax`, `noEmit`.
+- `arktype` for structural validation in plugins (e.g. `package_json.ts`).
 
-## Git hooks (Husky)
+## Git hooks & release
 
-- **pre-commit:** `bunx biome format --write .` (format only — not full `biome check`).
-- **commit-msg:** Conventional Commits regex `^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|wip)(\(.+\))?!?: .{1,100}`. `wip` is an allowed type and the description is capped at 100 chars.
-
-## Release flow (Changesets)
-
-`.changeset/config.json`: `baseBranch: main`, `access: public`, `commit: false`, changelog via `@changesets/changelog-git`. `bun run version` = `changeset version` then `scripts/ensure-unreleased.ts`, which injects a `## Unreleased` header into `CHANGELOG.md` if missing. `.github/workflows/release.yml` runs on push to `main`: lint + typecheck, then `changesets/action@v1` opens a "version packages" PR; merging that PR runs `bun run release` to publish. Publishing needs `NPM_TOKEN` (`.npmrc` → `//registry.npmjs.org/:_authToken=${NPM_TOKEN}`).
-
-## Env
-
-`.env.example` declares `NPM_TOKEN` (used by `.npmrc` for publishing) and `CONFORM_AI_API_KEY` (declared but not yet referenced in `src/`; tied to the planned AI-rules feature in `docs/adr/003-deterministic-and-ai-rules.md`).
+- Husky `pre-commit`: `bunx biome format --write .` (format only, not `biome check`). `commit-msg`: regex `^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|wip)(\(.+\))?!?: .{1,100}` — `wip` allowed, description 100 chars max.
+- Changesets: `baseBranch: main`, `access: public`, `commit: false`, changelog `changelog-git`. `bun run version` runs `changeset version && scripts/ensure-unreleased.ts` (injects `## Unreleased` in `CHANGELOG.md`). `release.yml` on `main`: `bun install --frozen-lockfile` → `check:lint` + `check:types` → `changesets/action@v1` (`publish: bun run release`, `version: bun run version`). Needs `NPM_TOKEN`.
