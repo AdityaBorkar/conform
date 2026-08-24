@@ -5,6 +5,7 @@ import type { PackageJson } from "@/types.ts";
 import type { Target } from "@/utils/fs.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
+import { isDefined, resolveFields, summarize } from "./utils/package.ts";
 
 const requiredStructure = type({
   bugs: "unknown",
@@ -22,12 +23,6 @@ const recommendedStructure = type({
   sideEffects: "boolean | string[]",
 });
 
-function summarize(errors: type.errors): string {
-  return Object.entries(errors.flatProblemsByPath)
-    .map(([field, problems]) => `${field}: ${problems.join(", ")}`)
-    .join("; ");
-}
-
 const _packageJson = new RuleSet<{
   fileExists: (path: string) => boolean;
   packageJson: () => PackageJson | null;
@@ -41,6 +36,7 @@ const _packageJson = new RuleSet<{
 });
 
 _packageJson.defineRule({
+  domain: DOMAIN.BUILD,
   id: "structure",
   name: "package.json structure: required & recommended fields",
   test({ context }) {
@@ -64,6 +60,7 @@ _packageJson.defineRule({
 });
 
 _packageJson.defineRule({
+  domain: DOMAIN.BUILD,
   id: "entry-point",
   name: "main, module, or exports entry defined",
   test({ context }) {
@@ -81,6 +78,7 @@ _packageJson.defineRule({
 });
 
 _packageJson.defineRule({
+  domain: DOMAIN.BUILD,
   id: "build-script",
   name: "scripts.prepare or scripts.build exists",
   test({ context }) {
@@ -96,6 +94,7 @@ _packageJson.defineRule({
 });
 
 _packageJson.defineRule({
+  domain: DOMAIN.BUILD,
   id: "files-or-npmignore",
   name: "files field or .npmignore exists",
   test({ context }) {
@@ -128,6 +127,26 @@ _packageJson.defineRule({
       );
     }
     return Status.pass();
+  },
+});
+
+_packageJson.defineRule({
+  domain: DOMAIN.BUILD,
+  id: "required-fields",
+  name: "required package.json fields are defined",
+  test({ context, options }) {
+    const pkg = context.packageJson();
+    if (!pkg) {
+      return Status.fail("package.json not found");
+    }
+    const fields = resolveFields(options);
+    const missing = fields.filter(
+      (field) => !isDefined((pkg as Record<string, unknown>)[field]),
+    );
+    if (missing.length > 0) {
+      return Status.fail(`missing required fields: ${missing.join(", ")}`);
+    }
+    return Status.pass(`all required fields present: ${fields.join(", ")}`);
   },
 });
 

@@ -15,6 +15,7 @@ const _testing = new RuleSet<{
 });
 
 _testing.defineRule({
+  domain: DOMAIN.TESTING,
   id: "test-script",
   name: "scripts.test exists in package.json",
   test({ context }) {
@@ -29,6 +30,7 @@ _testing.defineRule({
 });
 
 _testing.defineRule({
+  domain: DOMAIN.TESTING,
   id: "test-runner",
   name: "test script invokes a known test runner",
   test({ context }) {

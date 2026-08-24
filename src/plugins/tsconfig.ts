@@ -19,6 +19,7 @@ const _tsconfig = new RuleSet<{
 });
 
 _tsconfig.defineRule({
+  domain: DOMAIN.CODE_QUALITY,
   id: "deps",
   name: "typescript in devDependencies or peerDependencies",
   test({ context }) {
@@ -35,6 +36,7 @@ _tsconfig.defineRule({
 });
 
 _tsconfig.defineRule({
+  domain: DOMAIN.CODE_QUALITY,
   id: "tsconfig",
   name: "tsconfig.json exists",
   test({ context }) {
@@ -46,6 +48,7 @@ _tsconfig.defineRule({
 });
 
 _tsconfig.defineRule({
+  domain: DOMAIN.CODE_QUALITY,
   id: "strict",
   name: "strict: true in tsconfig",
   test({ context }) {
@@ -60,6 +63,7 @@ _tsconfig.defineRule({
 });
 
 _tsconfig.defineRule({
+  domain: DOMAIN.CODE_QUALITY,
   id: "no-unchecked-indexed-access",
   name: "noUncheckedIndexedAccess: true in tsconfig",
   test({ context }) {
@@ -76,6 +80,7 @@ _tsconfig.defineRule({
 });
 
 _tsconfig.defineRule({
+  domain: DOMAIN.CODE_QUALITY,
   id: "isolated-modules",
   name: "isolatedModules: true in tsconfig",
   test({ context }) {
@@ -92,6 +97,7 @@ _tsconfig.defineRule({
 });
 
 _tsconfig.defineRule({
+  domain: DOMAIN.CODE_QUALITY,
   id: "verbatim-module-syntax",
   name: "verbatimModuleSyntax: true in tsconfig",
   test({ context }) {

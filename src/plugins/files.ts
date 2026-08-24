@@ -9,6 +9,7 @@ const _files = new RuleSet<{
   context: (target: Target) => ({
     fileExists: (path: string) => target.fileExists(path),
   }),
+  domain: DOMAIN.SECURITY,
   id: "files",
 });
 

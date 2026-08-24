@@ -20,6 +20,7 @@ const _bin = new RuleSet<{
 });
 
 _bin.defineRule({
+  domain: DOMAIN.BUILD,
   id: "file-exists",
   name: "bin field references files that exist",
   test({ context }) {
@@ -38,6 +39,7 @@ _bin.defineRule({
 });
 
 _bin.defineRule({
+  domain: DOMAIN.BUILD,
   id: "shebang",
   name: "bin entry files have a shebang line",
   test({ context }) {

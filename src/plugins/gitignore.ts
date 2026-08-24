@@ -16,6 +16,7 @@ const _gitignore = new RuleSet<{
 });
 
 _gitignore.defineRule({
+  domain: DOMAIN.DEV_ENVIRONMENT,
   id: "exists",
   name: ".gitignore exists",
   test({ context }) {
@@ -27,6 +28,7 @@ _gitignore.defineRule({
 });
 
 _gitignore.defineRule({
+  domain: DOMAIN.DEV_ENVIRONMENT,
   id: "node-modules",
   name: '.gitignore contains "node_modules"',
   test({ context }) {
@@ -44,6 +46,7 @@ _gitignore.defineRule({
 });
 
 _gitignore.defineRule({
+  domain: DOMAIN.DEV_ENVIRONMENT,
   id: "env",
   name: '.gitignore contains ".env"',
   test({ context }) {

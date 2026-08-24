@@ -33,12 +33,15 @@ export async function runChecks(
     const rawOverride = overrides[rule.id];
     const override =
       rawOverride === undefined ? undefined : normalizeSeverity(rawOverride);
+    const ruleOptions: unknown[] = Array.isArray(rawOverride)
+      ? rawOverride.slice(1)
+      : [];
 
     if (override === "off") {
       continue;
     }
 
-    const result = await rule.check(targetPath);
+    const result = await rule.check(targetPath, ...ruleOptions);
 
     let status: Severity = result.status;
     // If a rule is configured to a different severity, coerce non-passing

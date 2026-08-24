@@ -16,6 +16,7 @@ const _biome = new RuleSet<{
 });
 
 _biome.defineRule({
+  domain: DOMAIN.STYLE,
   id: "dev-deps",
   name: "@biomejs/biome in devDependencies",
   test({ context }) {
@@ -28,6 +29,7 @@ _biome.defineRule({
 });
 
 _biome.defineRule({
+  domain: DOMAIN.STYLE,
   id: "config-file",
   name: "biome.json or biome.jsonc exists",
   test({ context }) {
@@ -42,6 +44,7 @@ _biome.defineRule({
 });
 
 _biome.defineRule({
+  domain: DOMAIN.STYLE,
   id: "lint-script",
   name: "lint or check script runs biome",
   test({ context }) {
@@ -55,6 +58,7 @@ _biome.defineRule({
 });
 
 _biome.defineRule({
+  domain: DOMAIN.STYLE,
   id: "format-script",
   name: "format script runs biome",
   test({ context }) {

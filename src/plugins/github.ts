@@ -24,6 +24,7 @@ const _github = new RuleSet<{
 });
 
 _github.defineRule({
+  domain: DOMAIN.GITHUB_CONFIG,
   id: "ci-workflow",
   name: "CI workflow file exists",
   test({ context }) {
@@ -38,6 +39,7 @@ _github.defineRule({
 });
 
 _github.defineRule({
+  domain: DOMAIN.GITHUB_CONFIG,
   id: "release-workflow",
   name: "Release/publish workflow file exists",
   test({ context }) {
@@ -55,6 +57,7 @@ _github.defineRule({
 });
 
 _github.defineRule({
+  domain: DOMAIN.GITHUB_CONFIG,
   id: "ci-lint",
   name: "CI workflow runs lint",
   test({ context }) {
@@ -82,6 +85,7 @@ _github.defineRule({
 });
 
 _github.defineRule({
+  domain: DOMAIN.GITHUB_CONFIG,
   id: "ci-typecheck",
   name: "CI workflow runs typecheck",
   test({ context }) {
@@ -109,6 +113,7 @@ _github.defineRule({
 });
 
 _github.defineRule({
+  domain: DOMAIN.GITHUB_CONFIG,
   id: "dependabot",
   name: "Dependabot or Renovate config exists",
   test({ context }) {

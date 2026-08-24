@@ -20,6 +20,7 @@ const _jsr = new RuleSet<{
     target,
     targetPath: target.path,
   }),
+  domain: DOMAIN.BUILD,
   id: "jsr",
 });
 

@@ -8,8 +8,10 @@ export interface CheckResult {
 }
 
 export interface PackageJson {
+  author?: string | Record<string, unknown>;
   bin?: unknown;
   bugs?: unknown;
+  contributors?: Array<string | Record<string, unknown>>;
   dependencies?: Record<string, string>;
   description?: string;
   devDependencies?: Record<string, string>;
@@ -30,7 +32,10 @@ export interface PackageJson {
 }
 
 export interface Rule {
-  check: (ctx: string) => CheckResult | Promise<CheckResult>;
+  check: (
+    ctx: string,
+    ...options: unknown[]
+  ) => CheckResult | Promise<CheckResult>;
   description: string;
   domain: string;
   files: string[];

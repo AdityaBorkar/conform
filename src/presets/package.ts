@@ -31,11 +31,15 @@ export default definePreset({
     githubConfig,
     files,
   ],
-  // rules can be overridden per-template or per-project (oxc-style):
-  // rules: {
-  //   "biome:dev-deps": "error",
-  //   "package-json:files-or-npmignore": "warn",
-  //   "package-json:no-install-hooks": "off",
-  //   // with options (future): "biome:template": ["warn", { url: "..." }]
-  // },
+  rules: {
+    "husky:hook": [
+      "error",
+      { contains: "bun run format", file: ".husky/pre-commit" },
+      { contains: 'bun commitlint --edit "$1"', file: ".husky/commit-msg" },
+    ],
+    "package-json:required-fields": [
+      "error",
+      ["license", "name", "author", "contributors", "repository"],
+    ],
+  },
 });

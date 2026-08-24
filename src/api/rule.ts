@@ -1,7 +1,10 @@
 import type { CheckResult, Rule } from "@/types.ts";
 
 export function defineRule(def: {
-  check: (ctx: string) => CheckResult | Promise<CheckResult>;
+  check: (
+    ctx: string,
+    ...options: unknown[]
+  ) => CheckResult | Promise<CheckResult>;
   description: string;
   domain: string;
   files: string[];

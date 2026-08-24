@@ -17,6 +17,7 @@ const _docs = new RuleSet<{
 });
 
 _docs.defineRule({
+  domain: DOMAIN.DOCUMENTATION,
   id: "readme",
   name: "README.md exists and is non-empty (JSR: has_readme — 2pts)",
   test({ context }) {
@@ -32,6 +33,7 @@ _docs.defineRule({
 });
 
 _docs.defineRule({
+  domain: DOMAIN.DOCUMENTATION,
   id: "changelog",
   name: "CHANGELOG.md exists",
   test({ context }) {
@@ -48,6 +50,7 @@ _docs.defineRule({
 });
 
 _docs.defineRule({
+  domain: DOMAIN.DOCUMENTATION,
   id: "contributing",
   name: "CONTRIBUTING.md exists",
   test({ context }) {
@@ -64,6 +67,7 @@ _docs.defineRule({
 });
 
 _docs.defineRule({
+  domain: DOMAIN.DOCUMENTATION,
   id: "readme-install",
   name: "README has an Installation section",
   test({ context }) {
@@ -85,6 +89,7 @@ _docs.defineRule({
 });
 
 _docs.defineRule({
+  domain: DOMAIN.DOCUMENTATION,
   id: "readme-usage",
   name: "README has a Usage section",
   test({ context }) {

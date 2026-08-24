@@ -15,6 +15,7 @@ const _scripts = new RuleSet<{
 });
 
 _scripts.defineRule({
+  domain: DOMAIN.BUILD,
   id: "typecheck",
   name: "typecheck script exists",
   test({ context }) {
@@ -31,6 +32,7 @@ _scripts.defineRule({
 });
 
 _scripts.defineRule({
+  domain: DOMAIN.BUILD,
   id: "no-prepublish",
   name: "deprecated prepublish script is not used",
   test({ context }) {
