@@ -28,7 +28,7 @@ Required order: `check:lint` → `check:types` → `test`. CI (`release.yml:24`)
 - `src/cli/reporter/tui.ts:106` + `json.ts:3` — hide `pass` unless `verbose`; summary counts always include all. `groupBy` default `domains`.
 - `src/api/index.ts:8` — re-exports `defineConfig`, `definePlugin`/`Plugin`/`RuleSet` (alias), `defineRule`, `defineTemplate`/`defineTemplateLegacy`, `Status`.
 - `src/types.ts:1,45,51,58,67` — `Severity`, `Rule { id, domain, files, description, check(ctx: string) }`, `Plugin { id, rules }`, `Template { name, description, plugins, rules? }`, `ConformConfig`, `ConformOutput`.
-- Presets: `src/presets/*.ts` (default export `defineTemplate`). Plugins: `src/inbuilt-plugins/*.ts`. Only `package` is complete (13 plugins); `astro-site`, `monorepo`, `react-site`, `webapp` are stubs (`plugins: []`).
+- Presets: `src/presets/*.ts` (default export `defineTemplate`). Plugins: `src/plugins/*.ts`. Only `package` is complete (13 plugins); `astro-site`, `monorepo`, `react-site`, `webapp` are stubs (`plugins: []`).
 
 ## Gotchas
 
@@ -36,7 +36,7 @@ Required order: `check:lint` → `check:types` → `test`. CI (`release.yml:24`)
 2. **Resolver mismatch** — `resolver.ts:7` looks in `templates/` (nonexistent). Dogfood `conform.config.ts:4` (`template: "package"`) always returns `null` → exit 2.
 3. **Reporters not wired** — `src/cli/check.ts` computes `results` but never calls `renderTui`/`renderJson`; no stdout, only exit code.
 4. **Tests location** — `vitest.config.ts:12` `include: ["tests/**/*.test.ts"]` only; colocated `src/**/*.test.ts` ignored.
-5. **Stale names** — `Target`/`CheckContext` removed; `RuleSet` → `Plugin` (alias kept); `templates/rules/` → `src/inbuilt-plugins/`.
+5. **Stale names** — `Target`/`CheckContext` removed; `RuleSet` → `Plugin` (alias kept); `templates/rules/` → `src/plugins/`.
 
 ## Rule & Preset API
 
@@ -44,7 +44,7 @@ Required order: `check:lint` → `check:types` → `test`. CI (`release.yml:24`)
 - `defineRule({ id, domain, files, description, check: (targetPath: string) => CheckResult })` — standalone.
 - `Status.pass/warn/fail(message?)` → `{ status, message? }`.
 - `defineTemplate({ name, description, plugins, rules? })` — `rules` is oxc-style `Record<string, RuleSeverity | [RuleSeverity, ...unknown[]]>` where `RuleSeverity = "pass"|"warn"|"fail"|"off"|"error"` (`"error"` → `"fail"`).
-- Domains: `src/inbuilt-plugins/utils/domain.ts` — `STYLE`, `BUILD`, `CODE_QUALITY`, `DEV_ENVIRONMENT`, `DOCUMENTATION`, `GITHUB_CONFIG`, `OBSERVABILITY`, `SECURITY`, `TESTING`.
+- Domains: `src/plugins/utils/domain.ts` — `STYLE`, `BUILD`, `CODE_QUALITY`, `DEV_ENVIRONMENT`, `DOCUMENTATION`, `GITHUB_CONFIG`, `OBSERVABILITY`, `SECURITY`, `TESTING`.
 
 ## Toolchain
 

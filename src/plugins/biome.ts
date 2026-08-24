@@ -1,5 +1,5 @@
 import { RuleSet, Status } from "@/api/index.ts";
-import { DOMAIN } from "@/inbuilt-plugins/utils/domain.ts";
+import { DOMAIN } from "@/plugins/utils/domain.ts";
 import type { PackageJson } from "@/types.ts";
 import { fileExists, packageJson } from "@/utils/fs.ts";
 

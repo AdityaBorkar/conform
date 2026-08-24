@@ -1,10 +1,10 @@
 import { RuleSet, Status } from "@/api/index.ts";
-import { DOMAIN } from "@/inbuilt-plugins/utils/domain.ts";
+import { DOMAIN } from "@/plugins/utils/domain.ts";
 import {
   CI_WORKFLOW_CANDIDATES,
   findWorkflowFile,
   RELEASE_WORKFLOW_CANDIDATES,
-} from "@/inbuilt-plugins/utils/workflows.ts";
+} from "@/plugins/utils/workflows.ts";
 import { fileExists, readFile } from "@/utils/fs.ts";
 
 const _github = new RuleSet<{

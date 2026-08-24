@@ -75,7 +75,7 @@ export interface ConformOutput {
 export interface PackageJson { name?: string; version?: string; description?: string; license?: string; type?: string; main?: string; module?: string; exports?: unknown; bin?: unknown; files?: string[]; homepage?: string; repository?: unknown; bugs?: unknown; sideEffects?: boolean | string[]; engines?: Record<string, string>; dependencies?: Record<string,string>; devDependencies?: Record<string,string>; peerDependencies?: Record<string,string>; scripts?: Record<string,string>; }
 // helpers
 export const Status = { pass(msg?): CheckResult, warn(msg?): CheckResult, fail(msg?): CheckResult }
-export const DOMAIN = { BUILD, CODE_QUALITY, DEV_ENVIRONMENT, DOCUMENTATION, GITHUB_CONFIG, OBSERVABILITY, SECURITY, STYLE, TESTING } // src/inbuilt-plugins/utils/domain.ts
+export const DOMAIN = { BUILD, CODE_QUALITY, DEV_ENVIRONMENT, DOCUMENTATION, GITHUB_CONFIG, OBSERVABILITY, SECURITY, STYLE, TESTING } // src/plugins/utils/domain.ts
 ```
 
 `CheckContext` from earlier drafts does not exist. Rules do not receive `readFile`/`readJson`/`packageJson` directly; they receive either `targetPath: string` (standalone `defineRule`) or `{ context: T }` where `T` is the plugin's context object built from `src/utils/fs.ts` helpers.
@@ -87,7 +87,7 @@ Preferred path — `definePlugin` / `Plugin`:
 ```ts
 import { definePlugin, Status } from "@adityab/conform";
 import { fileExists, packageJson } from "@/utils/fs.ts";
-import { DOMAIN } from "@/inbuilt-plugins/utils/domain.ts";
+import { DOMAIN } from "@/plugins/utils/domain.ts";
 
 export const husky = definePlugin({
   id: "husky",
@@ -125,7 +125,7 @@ Template:
 
 ```ts
 import { defineTemplate } from "@adityab/conform";
-import { husky } from "@/inbuilt-plugins/husky.ts";
+import { husky } from "@/plugins/husky.ts";
 // ... other plugins
 export default defineTemplate({
   name: "package",
@@ -142,7 +142,7 @@ IDs are namespaced as `pluginId:ruleId` by `Plugin`. `defineTemplateLegacy` exis
 ```
 src/presets/        — flat files, each default-exports a Template (defineTemplate)
   package.ts        — only complete preset (13 plugins); astro-site/monorepo/react-site/webapp are stubs (plugins: [])
-src/inbuilt-plugins/ — one file per plugin/domain + utils/domain.ts
+src/plugins/ — one file per plugin/domain + utils/domain.ts
   package_json.ts, biome.ts, tsconfig.ts, husky.ts, scripts.ts, bin.ts,
   testing.ts, jsr.ts, docs.ts, gitignore.ts, github.ts, github-config.ts, files.ts
   utils/domain.ts   — DOMAIN constants (human display strings)
@@ -239,7 +239,7 @@ No `kind`/`confidence`/`reasoning`/`ai` fields — those belonged to a removed A
 
 ## Package Preset — Rule Set
 
-`src/presets/package.ts` is the only complete preset. 13 plugins, 40+ atomic rules (namespaced `pluginId:ruleId`). Short summary (see `src/inbuilt-plugins/*` for exact `test` logic and `Status` messages):
+`src/presets/package.ts` is the only complete preset. 13 plugins, 40+ atomic rules (namespaced `pluginId:ruleId`). Short summary (see `src/plugins/*` for exact `test` logic and `Status` messages):
 
 | Plugin (`id`) | Domain | Rule (`id`) | One-line |
 |---|---|---|---|
@@ -301,4 +301,4 @@ Other presets (`astro-site`, `monorepo`, `react-site`, `webapp`) are empty stubs
 1. **Bin + version path broken:** `package.json` `bin.conform = src/cli.ts` missing; `src/cli/index.ts:11` reads `../package.json` (i.e. `src/package.json`). Should be `../../package.json`. `bun run src/cli/index.ts check` crashes with `ENOENT` before checks unless patched.
 2. **Resolver mismatch:** looks in `templates/` (nonexistent); presets live in `src/presets/`. Fix: point resolver at `src/presets/` or add `templates/` shim.
 3. **Reporters not wired:** `CheckCommand` computes `results` but never calls `renderTui`/`renderJson`; only exit code varies, no stdout. Add `process.stdout.write(renderTui(...))` / `renderJson(...)` branch.
-4. **Docs drift:** `Target`/`CheckContext`, `RuleSet` old name, `templates/rules/` → now `src/inbuilt-plugins/`, `group` → `domain`+`files`, `kind`/`aiRule` never existed.
+4. **Docs drift:** `Target`/`CheckContext`, `RuleSet` old name, `templates/rules/` → now `src/plugins/`, `group` → `domain`+`files`, `kind`/`aiRule` never existed.

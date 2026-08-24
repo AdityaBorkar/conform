@@ -10,7 +10,7 @@ After ADR 002 (atomic rules, grouped display) the codebase evolved away from `Te
 
 ## Decision
 
-- **Template composes Plugins, not Rules directly.** `src/presets/*.ts` assemble `src/inbuilt-plugins/*` plugins. `defineTemplateLegacy` adapts old `{ rules: Rule[] }` via a synthetic `legacy` plugin.
+- **Template composes Plugins, not Rules directly.** `src/presets/*.ts` assemble `src/plugins/*` plugins. `defineTemplateLegacy` adapts old `{ rules: Rule[] }` via a synthetic `legacy` plugin.
 - **Plugin owns context extraction.** `Plugin<T>` is `new Plugin({ id, domain?, context })` (or `definePlugin`). Rules inside a plugin receive typed `context` via `test({ context: T })`; IDs are namespaced `pluginId:ruleId`. Domain defaults to the plugin's domain, overridable per rule, plus `files` for TUI grouping.
 - **Standalone Rule exists for one-offs** — `defineRule({ id, domain, files, description, check })` taking `targetPath: string` directly.
 - **Overrides are oxc-style.** `Template.rules` and `ConformConfig.rules` merge via `mergeTemplateWithConfig` (config overrides template). `engine.ts` `normalizeSeverity` maps `"error"→"fail"`; `"off"` skips; non-pass results are coerced to configured severity; `pass` stays pass. Tuple `[severity, ...opts]` reserved for future options.
@@ -20,7 +20,7 @@ After ADR 002 (atomic rules, grouped display) the codebase evolved away from `Te
 ## Rationale
 
 - **Context isolation** — Each plugin declares exactly the FS surface it needs; tests can inject a fake context without touching disk. `defineRule` keeps simple rules trivial.
-- **Composability & discoverability** — Presets are just lists of plugins; adding a preset is a new file in `src/presets/`, adding a domain is a new file in `src/inbuilt-plugins/`. Domains use `utils/domain.ts` display strings, enabling consistent TUI grouping.
+- **Composability & discoverability** — Presets are just lists of plugins; adding a preset is a new file in `src/presets/`, adding a domain is a new file in `src/plugins/`. Domains use `utils/domain.ts` display strings, enabling consistent TUI grouping.
 - **Familiar override UX** — Oxc/ESLint-style severity strings reduce learning curve; `"off"`/`"warn"` in `conform.config.ts` lets repos tune without forking a template.
 - **Back-compat shim** — `defineTemplateLegacy` + resolver's `isLegacyTemplate` keep old templates loadable while migrating docs and code.
 

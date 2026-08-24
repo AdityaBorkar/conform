@@ -1,6 +1,6 @@
 # Glossary
 
-Source of truth for types: `src/types.ts`; for constants: `src/inbuilt-plugins/utils/domain.ts`.
+Source of truth for types: `src/types.ts`; for constants: `src/plugins/utils/domain.ts`.
 
 | Term | Definition |
 |------|-----------|
@@ -24,6 +24,6 @@ Source of truth for types: `src/types.ts`; for constants: `src/inbuilt-plugins/u
 | **Resolver** | `src/api/resolver.ts` — resolves `templateName` → `Template` by importing `templates/<name>.ts` or `templates/<name>/index.ts`. Currently broken (see Gotchas: should be `src/presets/`). |
 | **Engine** | `src/api/engine.ts` — `runChecks(template, targetPath)` flattening plugins, applying `RuleOverrides`, awaiting each `check`. |
 | **conform.config.ts** | Config file in target repo that declares `template` and optional `plugins`/`rules` overrides. |
-| **Preset** | File in `src/presets/` (e.g. `package.ts`) composing `src/inbuilt-plugins/*` plugins into a reusable `Template`. Only `package` is complete; others are stubs. |
+| **Preset** | File in `src/presets/` (e.g. `package.ts`) composing `src/plugins/*` plugins into a reusable `Template`. Only `package` is complete; others are stubs. |
 
 Deprecated / removed: `CheckContext` (`targetPath`+`readFile`/`readJson`/`packageJson`/`fileExists`), `Group` (now `domain`+`files`), `kind`/`aiRule`/`AiCheckResult`/`confidence`/`reasoning`/`--disable-ai`/`✱` (AI proposal superseded, ADR 003).

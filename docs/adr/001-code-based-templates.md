@@ -27,7 +27,7 @@ Templates are code-based TypeScript modules.
 
 ## Amendment 2026-08-24
 
-- Canonical locations are `src/presets/*.ts` (templates) composing `src/inbuilt-plugins/*.ts` (plugins) — not `templates/` at repo root as originally written. `src/api/resolver.ts` still looks in `templates/` (known gotcha; should be `src/presets/`). See CONTEXT.md and ADR 004.
+- Canonical locations are `src/presets/*.ts` (templates) composing `src/plugins/*.ts` (plugins) — not `templates/` at repo root as originally written. `src/api/resolver.ts` still looks in `templates/` (known gotcha; should be `src/presets/`). See CONTEXT.md and ADR 004.
 
 ## Alternatives Considered
 
