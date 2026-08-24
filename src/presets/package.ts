@@ -5,12 +5,12 @@ import { github } from "@/plugins/github.ts";
 import { gitignore } from "@/plugins/gitignore.ts";
 import { husky } from "@/plugins/husky.ts";
 import { packageJson } from "@/plugins/package_json.ts";
-import { tsconfig } from "@/plugins/tsconfig.ts";
+import { tsconfig_json } from "@/plugins/tsconfig_json.ts";
 
 export default definePreset({
   description: "Conformance rules for publishing an NPM package",
   name: "package",
-  plugins: [packageJson, biome, tsconfig, husky, docs, gitignore, github],
+  plugins: [packageJson, biome, tsconfig_json, husky, docs, gitignore, github],
   rules: {
     "gitignore/excludes": {
       file_expressions: ["node_modules", ".env*", "*.env", "*.gen.ts"],

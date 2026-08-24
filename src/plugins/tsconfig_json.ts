@@ -9,7 +9,7 @@ export const tsconfigOptionsSchema = type({
   "warnOptions?": "Record<string, unknown>",
 });
 
-export const tsconfig = definePlugin({
+export const tsconfig_json = definePlugin({
   context: (target: Target) => ({
     fileExists: (path: string) => target.fileExists(path),
     packageJson: () => target.packageJson(),

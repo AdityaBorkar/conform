@@ -4,12 +4,12 @@ import { github } from "./github.ts";
 import { gitignore } from "./gitignore.ts";
 import { husky } from "./husky.ts";
 import { packageJson } from "./package_json.ts";
-import { tsconfig } from "./tsconfig.ts";
+import { tsconfig_json } from "./tsconfig_json.ts";
 
 const allBuiltinPlugins = [
   packageJson,
   biome,
-  tsconfig,
+  tsconfig_json,
   husky,
   docs,
   gitignore,
