@@ -49,7 +49,6 @@ interface PluginRuleDef<P = unknown> {
 export class Plugin<
   Id extends string = string,
   T = unknown,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   M extends Record<string, any> = Record<string, any>,
 > implements PluginInterface<Id, M>
 {

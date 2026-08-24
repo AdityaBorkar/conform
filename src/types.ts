@@ -1,5 +1,7 @@
 import type { Type } from "arktype";
 
+type AnyPlugin = Plugin<any, any>;
+
 export type Severity = "pass" | "warn" | "fail";
 
 export type GroupBy = "domains" | "files";
@@ -44,12 +46,10 @@ export interface Rule<P = unknown> {
 
 export interface Plugin<
   Id extends string = string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ParamMap extends Record<string, any> = Record<string, any>,
 > {
   _paramMap?: ParamMap;
   id: Id;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   rules: Rule<any>[];
 }
 
@@ -178,13 +178,13 @@ export type UnionToIntersection<U> = (
   ? I
   : never;
 
-export type InferPresetParamMap<Ps extends readonly Plugin<any, any>[]> =
+export type InferPresetParamMap<Ps extends readonly AnyPlugin[]> =
   UnionToIntersection<InferPluginParamMap<Ps[number]>>;
 
-export type AutoRuleRegistry<Ps extends readonly Plugin<any, any>[]> =
+export type AutoRuleRegistry<Ps extends readonly AnyPlugin[]> =
   InferPresetParamMap<Ps> & RuleRegistry;
 
-export type StrictPresetRules<Ps extends readonly Plugin<any, any>[]> = {
+export type StrictPresetRules<Ps extends readonly AnyPlugin[]> = {
   [K in keyof AutoRuleRegistry<Ps>]?: RuleConfig<AutoRuleRegistry<Ps>[K]>;
 } & {
   [K in string as K extends keyof AutoRuleRegistry<Ps>
@@ -199,7 +199,7 @@ export interface Preset {
   rules?: StrictRuleOverrides;
 }
 
-export interface PresetWithPlugins<Ps extends readonly Plugin<any, any>[]> {
+export interface PresetWithPlugins<Ps extends readonly AnyPlugin[]> {
   description: string;
   name: string;
   plugins: Ps;

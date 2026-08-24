@@ -74,10 +74,7 @@ export const husky = definePlugin({
       hooks: type({ contains: "string", file: "string" }).array(),
     }),
     test({ context, params }) {
-      const specs = params?.hooks ?? [
-        { contains: "bun run format", file: ".husky/pre-commit" },
-        { contains: 'bun commitlint --edit "$1"', file: ".husky/commit-msg" },
-      ];
+      const specs = params?.hooks ?? [];
 
       const failures: string[] = [];
       for (const { file, contains } of specs) {
