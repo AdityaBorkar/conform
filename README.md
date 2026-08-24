@@ -42,11 +42,13 @@ export default defineConfig({
   preset: "package",
   // optional tuning (oxc-style):
   // plugins: [myPlugin],
-  // rules: { "biome:dev-deps": "warn", "package-json:no-install-hooks": "off" },
+  // rules: { "biome/dev-deps": "warn", "package-json/no-install-hooks": "off" },
+  // with params flattened (level optional): "gitignore/excludes": { level: "error", file_expressions: ["node_modules"] },
+  // or just { file_expressions: ["node_modules"] } without level, or "gitignore/excludes": "off"
 });
 ```
 
-`rules` values are `off | warn | error | fail | pass` or `[severity, params]` where `params` is validated by the rule's arktype schema. Non-pass results are coerced to the configured severity; `pass` stays `pass` (intentionally allowing `pass` to suppress `warn`/`fail`). Unknown severity strings fail the rule with `Invalid severity "…"` (fail-closed).
+`rules` values are `RuleLevel` string (`"off" | "warn" | "error"`) or flat object `{ level?: "off"|"warn"|"error", ...params }` where `...params` is validated by the rule's arktype schema (no `params` wrapper, `level` optional). Non-pass results are coerced to the configured severity; `pass` stays `pass` (intentionally allowing `pass` to suppress `warn`/`fail`). Unknown severity strings fail the rule with `Invalid severity "…"` (fail-closed).
 
 ### Programmatic API
 

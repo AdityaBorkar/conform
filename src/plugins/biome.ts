@@ -1,3 +1,5 @@
+import { type } from "arktype";
+
 import { definePlugin, Status } from "@/api/index.ts";
 import { DOMAIN } from "@/plugins/utils/domain.ts";
 import type { Target } from "@/utils/fs.ts";
@@ -26,42 +28,74 @@ export const biome = definePlugin({
     domain: DOMAIN.STYLE,
     id: "config-file",
     name: "biome.json or biome.jsonc exists",
-    test({ context }) {
-      if (context.fileExists("biome.json")) {
-        return Status.pass("biome.json");
+    params: type({
+      file_expressions: "string[]",
+    }),
+    test({ context, params }) {
+      const candidates = params?.file_expressions ?? [
+        "biome.json",
+        "biome.jsonc",
+      ];
+      const found = candidates.find((f) => context.fileExists(f));
+      if (found) {
+        return Status.pass(found);
       }
-      if (context.fileExists("biome.jsonc")) {
-        return Status.pass("biome.jsonc");
-      }
-      return Status.warn("no biome.json or biome.jsonc found");
+      return Status.warn(
+        `no ${candidates.join(" or ")} found — add a biome config to enforce consistent style`,
+      );
     },
   })
   .defineRule({
     domain: DOMAIN.STYLE,
     id: "lint-script",
     name: "lint or check script runs biome",
-    test({ context }) {
+    params: type({
+      contains: "string",
+      file_expressions: "string[]",
+    }),
+    test({ context, params }) {
       const scripts = context.packageJson()?.scripts ?? {};
-      const lintScript = scripts["lint"] ?? scripts["check"];
-      if (typeof lintScript === "string" && lintScript.includes("biome")) {
-        return Status.pass(lintScript);
+      const candidates = params?.file_expressions ?? ["lint", "check"];
+      const contains = params?.contains ?? "biome";
+      const matched = candidates.find(
+        (name) =>
+          typeof scripts[name] === "string" &&
+          scripts[name].includes(contains),
+      );
+      if (matched) {
+        return Status.pass(scripts[matched] as string);
       }
-      return Status.fail("no script running biome check/lint found");
+      return Status.fail(
+        `no script [${candidates.join(", ")}] running "${contains}" found`,
+      );
     },
   })
   .defineRule({
     domain: DOMAIN.STYLE,
     id: "format-script",
     name: "format script runs biome",
-    test({ context }) {
+    params: type({
+      contains: "string",
+      file_expressions: "string[]",
+    }),
+    test({ context, params }) {
       const scripts = context.packageJson()?.scripts ?? {};
-      const formatScript =
-        scripts["format"] ?? scripts["check:format"] ?? scripts["check:lint"];
-      if (typeof formatScript === "string" && formatScript.includes("biome")) {
-        return Status.pass(formatScript);
+      const candidates = params?.file_expressions ?? [
+        "format",
+        "check:format",
+        "check:lint",
+      ];
+      const contains = params?.contains ?? "biome";
+      const matched = candidates.find(
+        (name) =>
+          typeof scripts[name] === "string" &&
+          scripts[name].includes(contains),
+      );
+      if (matched) {
+        return Status.pass(scripts[matched] as string);
       }
       return Status.warn(
-        "no format script running biome format found — add a format script to enforce consistent style",
+        `no format script [${candidates.join(", ")}] running "${contains}" found — add a format script to enforce consistent style`,
       );
     },
   });

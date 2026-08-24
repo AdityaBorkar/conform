@@ -22,7 +22,7 @@ Rules are atomic — each rule performs exactly one check. The TUI output groups
 ## Consequences
 
 - presets will have many rules (the `package` preset has 36 across 7 plugins). This is fine — the grouped TUI display makes this scannable.
-- Rule IDs must be globally unique within a preset. Convention: `pluginId:ruleId` (e.g., `husky:dev-deps`), enforced by `Plugin` namespacing.
+- Rule IDs must be globally unique within a preset. Convention: `pluginId/ruleId` (e.g., `husky/dev-deps`), enforced by `Plugin` namespacing.
 
 ## Amendment 2026-08-24 (current)
 

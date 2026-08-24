@@ -6,7 +6,7 @@ Source of truth: `src/types.ts` + `src/api/*` + `src/utils/*` + `src/cli/*`. For
 
 1. **Presets are code** — TypeScript modules exporting a Preset, not YAML/data files. Rules can inspect anything on disk.
 2. **Check-only, no auto-fix** — Report drift. Humans fix it.
-3. **Opinionated with oxc-style overrides** — `Preset.rules` and `ConformConfig.rules` are `StrictRuleOverrides`/`RuleOverrides`. Severity `off` skips, any defined `pass`/`warn`/`error`(`→fail`) coerces non-`pass` results (`pass` results never rewritten; `off` never reaches coercion). Unknown severity → fail-closed (`engine.ts:120` emits `fail` with `Invalid severity "…"`) . Tuple `[severity, ...opts]` passes `opts[0]` (`rawOverride[1]`) as `params` validated in `src/api/plugin.ts` (not engine). See Params & Overrides detail below.
+3. **Opinionated with oxc-style overrides** — `Preset.rules` and `ConformConfig.rules` are `StrictRuleOverrides`/`RuleOverrides` (`{ level?: "warn"|"off"|"error", ...params }` with flattened params, `level` optional; `level` string alone also allowed). Severity `off` skips, any defined `warn`/`error`(`→fail`) coerces non-`pass` results (`pass` results never rewritten; `off` never reaches coercion). Unknown severity → fail-closed (`engine.ts:120` emits `fail` with `Invalid severity "…"`) . Params are flattened alongside `level` (no `params` key) and validated in `src/api/plugin.ts` (not engine). See Params & Overrides detail below.
 4. **Atomic rules, grouped display** — Each check is one atomic Rule. TUI groups by `domain` then `files` (or by `files` with `--group files`). See ADR 002.
 5. **Zero config from CLI** — Preset selection lives in `conform.config.ts` (`preset: string`, truthy check). No `--preset` flag. Additional `plugins`/`rules` are merged via `mergePresetWithConfig` (`src/api/engine.ts:80`).
 6. **Plugins own context** — `Plugin<T>` declares `id`+`context: (target: Target) => T`; each rule declares its own `domain` (required, no plugin-level default). Each rule receives `{ context: T, params? }` via `test`. All Rules must be defined via `Plugin#defineRule`; standalone `defineRule` does not exist. All FS access goes through `src/utils/fs.ts` (`Target`).
@@ -20,7 +20,7 @@ export type GroupBy = "domains" | "files";
 export interface CheckResult { status: Severity; message?: string }
 
 export interface Rule<P = unknown> {
-  id: string;            // namespaced as `pluginId:ruleId` when via Plugin
+  id: string;            // namespaced as `pluginId/ruleId` when via Plugin
   domain: string;        // e.g. DOMAIN.BUILD = "Build & Tasks"
   files: string[];
   description: string;   // authoring uses `name` (Plugin#defineRule) → materialized as `description`
@@ -30,16 +30,18 @@ export interface Rule<P = unknown> {
 
 export interface Plugin { id: string; rules: Rule[] } // impl: class Plugin<T> { context:(Target)=>T, defineRule }
 
-export type RuleSeverity = Severity | "off" | "error"; // "error" → "fail"
-export type RuleConfig<P = unknown> = RuleSeverity | [RuleSeverity, P, ...unknown[]];
+export type RuleLevel = "warn" | "off" | "error";
+export type RuleConfig<P = unknown> = P extends Record<string, any>
+  ? RuleLevel | ({ level?: RuleLevel } & Partial<P>)
+  : RuleLevel | ({ level?: RuleLevel } & Record<string, unknown>);
 export type RuleOverrides = Record<string, RuleConfig>;
 
 // param-typed IDs
 export interface HuskyHookSpec { file: string; contains: string }
 export type RequiredFieldsParams = string[] | { fields: string[] };
 export interface RuleRegistry {
-  "husky:hook": HuskyHookSpec[];
-  "package-json:required-fields": RequiredFieldsParams;
+  "husky/hook": HuskyHookSpec[];
+  "package-json/required-fields": RequiredFieldsParams;
 }
 export type StrictRuleOverrides = {
   [K in keyof RuleRegistry]?: RuleConfig<RuleRegistry[K]>;
@@ -108,7 +110,7 @@ husky.defineRule({
     return Status.pass();
   },
 });
-// preset or config override: rules: { "husky:hook-pattern": ["warn", { pattern: "*.sh" }] }
+// preset or config override: rules: { "husky/hook-pattern": { level: "warn", pattern: "*.sh" } } // or { pattern: "*.sh" } with level omitted
 ```
 
 Preset:
@@ -120,7 +122,7 @@ export default definePreset({
   name: "package",
   description: "Conformance rules for publishing an NPM package",
   plugins: [husky],
-  rules: { "package-json:files-or-npmignore": "warn" },
+  rules: { "package-json/files-or-npmignore": "warn" },
 });
 ```
 
@@ -145,7 +147,7 @@ import { defineConfig } from "@adistack/conform";
 export default defineConfig({
   preset: "package",
   plugins: [myPlugin],                    // optional, appended to preset.plugins
-  rules: { "biome:dev-deps": "error" },   // optional, shallow-merged over preset.rules
+  rules: { "biome/dev-deps": "error" },   // optional, shallow-merged over preset.rules
 });
 ```
 
@@ -166,7 +168,7 @@ Entry is `src/cli/index.ts` (`commander`); `package.json:bin.conform` is `src/cl
 
 Flow: `src/cli/check.ts` → `check()` (`loadConfig → presetResolver → mergePresetWithConfig → runChecks → renderTui/renderJson`) → `process.stdout.write(rendered)` → exit code.
 
-Engine (`src/api/engine.ts:38-160`): flattens `preset.plugins[].rules`, parses override via `parseOverride`/`normalizeSeverity` (`error`→`fail`, unknown → `null` fail-closed), rejects unknown severity as `fail` `Invalid severity "…"`, skips `off`, forwards `rawParams` (`rawOverride[1]`) to `rule.check(targetPath, params?)`, coerces non-`pass` result via `coerceStatus`. Param validation lives in `src/api/plugin.ts:12 validateParams` inside the `Plugin.rules` getter wrapper (invalid → `fail` with `Invalid params: …` without calling `test`); engine does not validate.
+Engine (`src/api/engine.ts:38-160`): flattens `preset.plugins[].rules`, parses override via `parseOverride`/`normalizeSeverity` (`error`→`fail`, unknown → `null` fail-closed), rejects unknown severity as `fail` `Invalid severity "…"`, skips `off`, forwards flattened params (rest of override minus `level`) to `rule.check(targetPath, params?)`, coerces non-`pass` result via `coerceStatus`. Param validation lives in `src/api/plugin.ts:12 validateParams` inside the `Plugin.rules` getter wrapper (invalid → `fail` with `Invalid params: …` without calling `test`); engine does not validate. `level` is optional; `RuleLevel` string alone (`"off"` etc.) is also accepted.
 
 ## Exit Codes
 
@@ -197,7 +199,7 @@ Build & Tasks
 {
   "preset": "package",
   "path": "/path/to/repo",
-  "results": [{ "id": "husky:dev-deps", "domain": "Dev Environment", "files": [], "description": "husky in devDependencies", "status": "fail", "message": "…" }],
+  "results": [{ "id": "husky/dev-deps", "domain": "Dev Environment", "files": [], "description": "husky in devDependencies", "status": "fail", "message": "…" }],
   "summary": { "pass": 12, "warn": 3, "fail": 5 }
 }
 ```
@@ -205,12 +207,12 @@ Build & Tasks
 ### Params & Overrides detail
 
 - Rule may declare `params?: Type<P>` (arktype) via `Plugin#defineRule` (`src/api/plugin.ts:65-77`); materialized `Rule` exposes it as `paramsSchema`.
-- Override tuple is `[RuleSeverity, paramsValue]`. Engine takes `rawOverride[1]` as `rawParams` via `parseOverride` (`src/api/engine.ts:57-68`); validation happens in the `Plugin.rules` wrapper via `validateParams` (`src/api/plugin.ts:12`) before `test()`. Invalid → `Status.fail("Invalid params: …")` without calling `test`. When `params` schema exists but `rawParams === undefined`, validation is skipped and `undefined` is forwarded (`plugin.ts:18-20`); when no schema exists, `rawParams` is forwarded unvalidated (`plugin.ts:16-17`).
+- Override is flat: `{ level?: RuleLevel, ...params }` or `RuleLevel` string alone. Engine takes rest of override minus `level` as `rawParams` via `parseOverride` (`src/api/engine.ts:57-68`); validation happens in the `Plugin.rules` wrapper via `validateParams` (`src/api/plugin.ts:12`) before `test()`. Invalid → `Status.fail("Invalid params: …")` without calling `test`. When `params` schema exists but `rawParams === undefined` (no extra keys beyond `level`), validation is skipped and `undefined` is forwarded (`plugin.ts:18-20`); when no schema exists, `rawParams` is forwarded unvalidated (`plugin.ts:16-17`). `level` is optional.
 - Severity coercion (`src/api/engine.ts:38-78`): `normalizeSeverity` maps `error`→`fail`, `off`→`off`, unknown string → `null` (fail-closed). Unknown severity does not coerce — engine emits `fail` with `Invalid severity "…" for rule "…"` without calling `check` (`engine.ts:121-135`). `off` skips the rule. Any defined override (`pass`/`warn`/`fail`/`error`→`fail`) coerces a non-`pass` result to that severity (`coerceStatus`); `pass` results are never rewritten regardless of override. This means `["pass", …]` or `"pass"` intentionally suppresses a `warn`/`fail` to `pass`. `pass` staying `pass` is the only invariant.
 
 ## Package Preset — Rule Set
 
-`src/presets/package.ts` — 7 plugins, 36 rules (see `src/plugins/*` for exact messages). Every rule's `files` is `[]` except `husky:hook` which is `[".husky/pre-commit", ".husky/commit-msg"]`.
+`src/presets/package.ts` — 7 plugins, 36 rules (see `src/plugins/*` for exact messages). Every rule's `files` is `[]` except `husky/hook` which is `[".husky/pre-commit", ".husky/commit-msg"]`.
 
 | Plugin | Domain | Rule | One-line |
 |---|---|---|---|
@@ -251,4 +253,4 @@ Build & Tasks
 | | GitHub Configuration | `ci-typecheck` | CI workflow runs `tsc`/`typecheck` (warn) |
 | | GitHub Configuration | `dependabot` | `dependabot.yml`/`yaml` or `renovate.json` (warn) |
 
-Shipped preset overrides (`src/presets/package.ts:rules`): `husky:hook: ["error", [{contains:"bun run format",file:".husky/pre-commit"},…]]` and `package-json:required-fields: ["error", ["license","name","author","contributors","repository"]]` (both `error`→`fail`). Generic example in §Preset above (`"package-json:files-or-npmignore": "warn"`) is illustrative only.
+Shipped preset overrides (`src/presets/package.ts:rules`): `husky/hook: { level: "error", hooks: [{contains:"bun run format",file:".husky/pre-commit"},…] }` and `package-json/required-fields: { level: "error", fields: ["license","name","author","contributors","repository"] }` (both `error`→`fail`); `gitignore/excludes: { level: "error", file_expressions: ["node_modules",".env"] }`. Generic example in §Preset above (`"package-json/files-or-npmignore": "warn"`) is illustrative only (`{ level: "warn" }` or `"warn"` both accepted).

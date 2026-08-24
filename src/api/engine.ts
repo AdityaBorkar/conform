@@ -55,26 +55,35 @@ function parseOverride(rawOverride: RuleConfig | undefined): {
   if (rawOverride === undefined) {
     return { params: undefined, severity: undefined };
   }
-  if (
-    typeof rawOverride !== "object" ||
-    rawOverride === null ||
-    !("level" in rawOverride)
-  ) {
+  if (typeof rawOverride === "string") {
+    const severity = normalizeLevel(rawOverride);
+    if (severity === null) {
+      return { params: undefined, severity: null };
+    }
+    return { params: undefined, severity };
+  }
+  if (typeof rawOverride !== "object" || rawOverride === null) {
     return { params: undefined, severity: null };
   }
-  const rec = rawOverride as {
-    level: unknown;
-    params?: unknown;
-    options?: unknown;
-  };
-  const severity = normalizeLevel(String(rec.level));
-  if (severity === null) {
-    return { params: undefined, severity: null };
+  const rec = rawOverride as Record<string, unknown>;
+  const hasLevel = "level" in rec;
+  let severity: Severity | "off" | null | undefined;
+  if (!hasLevel) {
+    severity = undefined;
+  } else {
+    const rawLevel = rec["level"];
+    if (rawLevel === undefined) {
+      severity = undefined;
+    } else {
+      const normalized = normalizeLevel(String(rawLevel));
+      if (normalized === null) {
+        return { params: undefined, severity: null };
+      }
+      severity = normalized;
+    }
   }
-  // `params` and `options` are aliases — `params` wins if both present
-  const hasParams = "params" in rec;
-  const hasOptions = "options" in rec;
-  const params = hasParams ? rec.params : hasOptions ? rec.options : undefined;
+  const { level: _level, ...rest } = rec;
+  const params = Object.keys(rest).length > 0 ? rest : undefined;
   return { params, severity };
 }
 

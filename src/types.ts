@@ -55,9 +55,9 @@ export interface Plugin<
 
 export type RuleLevel = "warn" | "off" | "error";
 
-export type RuleConfig<P = unknown> =
-  | { level: RuleLevel }
-  | ({ level: Exclude<RuleLevel, "off"> } & ({ params: P } | { options: P }));
+export type RuleConfig<P = unknown> = P extends Record<string, any>
+  ? RuleLevel | ({ level?: RuleLevel } & Partial<P>)
+  : RuleLevel | ({ level?: RuleLevel } & Record<string, unknown>);
 
 export type RuleOverrides = Record<string, RuleConfig<unknown>>;
 
@@ -81,20 +81,80 @@ export interface HuskyHookParams {
   hooks: HuskyHookSpec[];
 }
 
+export interface BiomeConfigParams {
+  file_expressions: string[];
+}
+
+export interface BiomeScriptParams {
+  file_expressions: string[];
+  contains: string;
+}
+
+export interface PackageEntryParams {
+  fields: string[];
+}
+
+export interface PackageScriptParams {
+  scripts: string[];
+}
+
+export interface PackageFilesParams {
+  file_expressions: string[];
+}
+
+export interface TsconfigOptionsParams {
+  options: Record<string, unknown>;
+  warnOptions: Record<string, unknown>;
+}
+
+export interface DocsFilesParams {
+  file_expressions: string[];
+}
+
+export interface GithubWorkflowParams {
+  file_expressions: string[];
+}
+
+export interface GithubWorkflowContentParams {
+  contains: string[];
+  file_expressions: string[];
+}
+
 /**
  * Registry that maps known Rule IDs to their validated params type.
  * Extend via declaration merging in plugins or custom presets:
  * ```ts
  * declare module "@/types.ts" {
- *   interface RuleRegistry { "my-plugin:my-rule": MyParams }
+ *   interface RuleRegistry { "my-plugin/my-rule": MyParams }
  * }
  * ```
  * Known keys are strictly typed; unknown keys fall back to `RuleConfig<unknown>`.
  */
 export interface RuleRegistry {
-  "gitignore:excludes": GitIgnoreExcludesParams;
-  "husky:hook": HuskyHookParams;
-  "package-json:required-fields": RequiredFieldsParams;
+  "gitignore/excludes": GitIgnoreExcludesParams;
+  "husky/hook": HuskyHookParams;
+  "husky/hooks-dir": DocsFilesParams;
+  "husky/prepare-script": GithubWorkflowContentParams;
+  "package-json/required-fields": RequiredFieldsParams;
+  "package-json/entry-point": PackageEntryParams;
+  "package-json/build-script": PackageScriptParams;
+  "package-json/files-or-npmignore": PackageFilesParams;
+  "package-json/no-install-hooks": PackageScriptParams;
+  "package-json/typecheck": PackageScriptParams;
+  "package-json/no-prepublish": PackageScriptParams;
+  "biome/config-file": BiomeConfigParams;
+  "biome/lint-script": BiomeScriptParams;
+  "biome/format-script": BiomeScriptParams;
+  "typescript/compiler-options": TsconfigOptionsParams;
+  "docs/changelog": DocsFilesParams;
+  "docs/contributing": DocsFilesParams;
+  "docs/license": DocsFilesParams;
+  "docs/security-md": DocsFilesParams;
+  "github/ci-workflow": GithubWorkflowParams;
+  "github/release-workflow": GithubWorkflowParams;
+  "github/ci-lint": GithubWorkflowContentParams;
+  "github/ci-typecheck": GithubWorkflowContentParams;
+  "github/dependabot": GithubWorkflowParams;
 }
 
 export type StrictRuleConfig<K extends string> = K extends keyof RuleRegistry

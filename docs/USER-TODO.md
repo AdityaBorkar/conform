@@ -2,9 +2,10 @@
 
 ## Phase 1
 
-Refactor gitignore docs files
 Refactor tsconfig for STRING MATCH
 Refactor biome for STRING MATCH
+- .zed/settings.json
+- bunfig.toml
 
 New rule for Pulumi: No .env* / *.env files
 Generated files are git ignored "*.gen.ts"
@@ -13,19 +14,9 @@ Generated files are git ignored "*.gen.ts"
   - scripts
     - check:*
     - build
-  - package:
-    - publishConfig
-    - homepage
-    - files
-    - bugs
-    - description
-    - keywords
-    - engines
   - only "#/*" as an import alias
 - tsconfig.json
   - only "#/*" as an import alias
-- .zed/settings.json
-- bunfig.toml
 - gitignores
   - .env*
   - *.gen.ts

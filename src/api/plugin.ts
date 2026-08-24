@@ -76,7 +76,7 @@ export class Plugin<
       context: T;
       params?: P;
     }) => CheckResult | Promise<CheckResult>;
-  }): Plugin<Id, T, M & Record<`${Id}:${RId}`, P>>;
+  }): Plugin<Id, T, M & Record<`${Id}/${RId}`, P>>;
 
   defineRule<const RId extends string>(def: {
     domain: string;
@@ -138,7 +138,7 @@ export class Plugin<
         description: ruleDef.name,
         domain: ruleDef.domain,
         files: ruleDef.files ?? [],
-        id: `${this.config.id}:${ruleDef.id}`,
+        id: `${this.config.id}/${ruleDef.id}`,
       };
       if (ruleDef.params) {
         (base as Rule & { paramsSchema: Type }).paramsSchema = ruleDef.params;

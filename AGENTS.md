@@ -31,8 +31,8 @@ Required order: `check:lint` → `check:types` → `test`. CI (`release.yml:22`)
 - `src/api/engine.ts` — `check()` = `loadConfig → presetResolver → mergePresetWithConfig → runChecks → renderTui/renderJson`. `output.results` filtered by `verbose`; `summary` always counts all; `hasFail` dominates `hasWarn`.
 - `src/utils/config.ts` — dynamic-imports `conform.config.ts` from target dir; requires `config.preset: string` else `no-config` (exit 2).
 - `src/api/preset.ts:6` — resolves `src/presets/<name>.ts` or `src/presets/<name>/index.ts` at repo root (`resolve(import.meta.dir,"..","..")`+`join`); `isValidPreset` requires `name:string` + `description:string` + `plugins:array`. Dogfood `conform.config.ts:4` uses `preset: "package"`.
-- `src/api/plugin.ts:12` — `validateParams` via arktype; invalid params → `fail` with `Invalid params: …` without calling `test`. `src/api/engine.ts:80` flattens `preset.plugins[].rules`, applies `preset.rules` overrides (`off` skips, `pass`/`warn`/`error→fail` coerce non-pass with `pass` results never rewritten; unknown severity → `fail` `Invalid severity "…"`, `["warn", params]` passes `params` as `opts[0]`).
-- `src/types.ts` — `Rule {id,domain,files,description,check,paramsSchema?}`, `Plugin {id,rules}`, `Preset {name,description,plugins,rules?: StrictRuleOverrides}`, `ConformConfig {preset,plugins?,rules?}`. `RuleRegistry` maps `husky:hook` and `package-json:required-fields` to typed params.
+- `src/api/plugin.ts:12` — `validateParams` via arktype; invalid params → `fail` with `Invalid params: …` without calling `test`. `src/api/engine.ts:80` flattens `preset.plugins[].rules`, applies `preset.rules` overrides (`off` skips, `warn`/`error→fail` coerce non-pass with `pass` results never rewritten; unknown severity → `fail` `Invalid severity "…"`, flattened `{ level?, ...params }` or `RuleLevel` string; `level` optional).
+- `src/types.ts` — `Rule {id,domain,files,description,check,paramsSchema?}`, `Plugin {id,rules}`, `Preset {name,description,plugins,rules?: StrictRuleOverrides}`, `ConformConfig {preset,plugins?,rules?}`. `RuleRegistry` maps `husky/hook`, `package-json/required-fields`, `gitignore/excludes` to typed params (flat `{ level?, ...params }`, `level` optional).
 - `src/api/index.ts` + `src/index.ts` — re-exports `defineConfig`, `definePlugin`/`Plugin`, `definePreset`/`presetResolver`, `Status`, plus `DOMAIN` and `Target` (avoid deep imports).
 - Presets: `src/presets/package.ts` (complete, 7 plugins). Plugins: `src/plugins/*.ts` — `package_json`, `biome`, `tsconfig`, `husky`, `docs`, `gitignore`, `github`.
 
@@ -40,9 +40,9 @@ For authoring examples see `docs/architecture.md`.
 
 ## Rules & Presets
 
-- `definePlugin({id,context: (target: Target) => T})` + `.defineRule({id,name,domain,files?,params?,test: ({context:T,params?}) => CheckResult})` (`src/api/plugin.ts`) — `domain` required per rule (no plugin-level default). IDs `pluginId:ruleId`. All Rules must be defined via a Plugin; standalone `defineRule` does not exist.
+- `definePlugin({id,context: (target: Target) => T})` + `.defineRule({id,name,domain,files?,params?,test: ({context:T,params?}) => CheckResult})` (`src/api/plugin.ts`) — `domain` required per rule (no plugin-level default). IDs `pluginId/ruleId`. All Rules must be defined via a Plugin; standalone `defineRule` does not exist.
 - `Status.pass/warn/fail(message?)` → `{status,message?}`.
-- `definePreset({name,description,plugins,rules?})` — `rules: Record<string, RuleSeverity | [RuleSeverity, ...unknown[]]>` (`RuleSeverity="pass"|"warn"|"fail"|"off"|"error"`, `error`→`fail`).
+- `definePreset({name,description,plugins,rules?})` — `rules: Record<string, RuleLevel | ({ level?: RuleLevel } & Record<string, unknown>)>` (`RuleLevel="warn"|"off"|"error"`, `error`→`fail`, `level` optional, params flattened).
 - Domains: `src/plugins/utils/domain.ts` — `STYLE`, `BUILD`, `CODE_QUALITY`, `DEV_ENVIRONMENT`, `DOCUMENTATION`, `GITHUB_CONFIG`, `OBSERVABILITY`, `SECURITY`, `TESTING`.
 
 Canonical: `Preset` not `preset`, `Plugin` not `RuleSet`, `presetResolver` not `resolver`, `domain`+`files` not `group`, `package` not `npm-pkg`.
