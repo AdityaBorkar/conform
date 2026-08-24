@@ -68,7 +68,7 @@
     "test:unit": "vitest run --exclude 'tests/e2e/**'",
     "test:watch": "vitest",
     "update:deps": "taze -w && bun install",
-    "version": "changeset version && bun run scripts/ensure-unreleased.ts"
+    "version": "changeset version"
   },
   "sideEffects": false,
   "type": "module",

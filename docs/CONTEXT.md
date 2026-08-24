@@ -1,4 +1,15 @@
-# CONTEXT.md — @adistack/conform
+# Deprecated — see `/CONTEXT.md` and `docs/architecture.md`
+
+This file was the previous 300-line CONTEXT. It has been split:
+
+- **Glossary (ubiquitous language):** [`/CONTEXT.md`](../CONTEXT.md) — canonical, 1–2 sentences per term per `domain-modeling` format.
+- **Architecture & flows:** [`docs/architecture.md`](./architecture.md) — types, plugin authoring, preset layout, CLI, exit codes, TUI/JSON, rule params.
+
+The content below is retained for history and will be removed after 2026-09. Do not edit — update the two files above instead.
+
+---
+
+# CONTEXT.md — @adistack/conform (archived)
 
 ## What It Is
 

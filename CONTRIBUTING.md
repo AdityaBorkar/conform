@@ -16,11 +16,14 @@ bun run check:lint
 bun run check:types
 
 # Run tests
-bun test
+bun run test
 
-# Run CLI locally
-bun run src/cli.ts check
+# Run CLI locally (canonical entry)
+bun run src/cli/index.ts check
+# also works: bun run src/cli.ts check (re-export)
 ```
+
+Required order: `check:lint` → `check:types` → `test`.
 
 ## Commits
 
@@ -38,5 +41,5 @@ Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `buil
 2. Create a feature branch
 3. Make your changes
 4. Ensure `bun run check:lint` and `bun run check:types` pass
-5. Ensure `bun test` passes
+5. Ensure `bun run test` passes
 6. Open a pull request

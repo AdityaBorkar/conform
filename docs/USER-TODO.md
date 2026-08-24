@@ -6,9 +6,6 @@ Ensure rules are first-principles like rules that can be easily extended and com
 SKILL: /write-rule
 SKILL: /write-preset
 
-/init
-improve-codebase-architecture
-
 Refactor gitignore docs files
 Refactor tsconfig for STRING MATCH
 Refactor biome for STRING MATCH
@@ -41,6 +38,8 @@ Generated files are git ignored "*.gen.ts"
   - No docker.compose files
   - package.json infra:*
   - Pulumi.dev and Pulumi.production and Pulumi.preview
+- Changelog
+  - Unreleased section will be contructed by Ai agents using diff directly at release. Do not maintain "unreleased" section in CHANGELOG.md.
 
 Create: monorepo support baked into the Engine/API
 

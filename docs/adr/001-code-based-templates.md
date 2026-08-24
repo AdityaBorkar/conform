@@ -25,9 +25,9 @@ presets are code-based TypeScript modules.
 - preset authors can introduce side effects or non-deterministic behavior in check functions. We mitigate this by keeping the plugin context read-only (`src/utils/fs.ts` only).
 - preset versioning is just package versioning — no separate schema version needed.
 
-## Amendment 2026-08-24
+## Amendment 2026-08-24 (fixed)
 
-- Canonical locations are `src/presets/*.ts` (presets) composing `src/plugins/*.ts` (plugins) — not `presets/` at repo root as originally written. `src/api/resolver.ts` still looks in `presets/` (known gotcha; should be `src/presets/`). See CONTEXT.md and ADR 004.
+- Canonical locations are `src/presets/*.ts` (presets) composing `src/plugins/*.ts` (plugins) — not `presets/` at repo root as originally written. Fixed: `src/api/preset.ts` now resolves `src/presets/` (was `presets/` before this date). See `/CONTEXT.md` and ADR 004.
 
 ## Alternatives Considered
 

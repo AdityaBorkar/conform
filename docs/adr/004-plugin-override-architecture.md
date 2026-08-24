@@ -27,9 +27,9 @@ After ADR 002 (atomic rules, grouped display) the codebase evolved away from `pr
 ## Consequences
 
 - Authoring docs must teach `Plugin`/`definePlugin` + `Status`, not `rule()/aiRule()` or `CheckContext`.
-- Resolver must be fixed to look at `src/presets/` (currently `presets/` — a known gotcha, `bin` path also broken, reporters not yet wired).
+- Fixed 2026-08-24: resolver now looks at `src/presets/` (was `presets/`), `bin` path is `src/cli.ts` re-export, reporters are wired in `src/cli/check.ts`. See `docs/architecture.md`.
 - `ConformConfig` gains `plugins?`/`rules?` beyond `preset` (already in `src/types.ts`).
-- `Rule severity` is per-rule via `Status` in code; `RuleOverrides` only remaps displayed `status` (coercion), not the rule's intrinsic logic.
+- `Rule severity` is per-rule via `Status` in code; `RuleOverrides` only remaps displayed `status` (coercion), not the rule's intrinsic logic. Tuple form `[severity, params]` passes validated params.
 
 ## Alternatives Considered
 
