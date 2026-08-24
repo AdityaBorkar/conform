@@ -4,6 +4,10 @@ import { definePlugin, Status } from "@/api/index.ts";
 import type { Target } from "@/utils/fs.ts";
 import { DOMAIN } from "./utils/domain.ts";
 
+export const gitignoreExcludesSchema = type({
+  file_expressions: "string[]",
+});
+
 export const gitignore = definePlugin({
   context: (target: Target) => ({
     fileExists: (path: string) => target.fileExists(path),
@@ -26,9 +30,7 @@ export const gitignore = definePlugin({
     domain: DOMAIN.DEV_ENVIRONMENT,
     id: "excludes",
     name: ".gitignore contains exclusion paths",
-    params: type({
-      file_expressions: "string[]",
-    }),
+    params: gitignoreExcludesSchema,
     test({ context, params }) {
       const content = context.readFile(".gitignore");
       if (!content) {

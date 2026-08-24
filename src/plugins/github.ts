@@ -4,6 +4,15 @@ import { definePlugin, Status } from "@/api/index.ts";
 import { DOMAIN } from "@/plugins/utils/domain.ts";
 import type { Target } from "@/utils/fs.ts";
 
+export const githubWorkflowSchema = type({
+  file_expressions: "string[]",
+});
+
+export const githubWorkflowContentSchema = type({
+  contains: "string[]",
+  file_expressions: "string[]",
+});
+
 export const github = definePlugin({
   context: (target: Target) => ({
     fileExists: (path: string) => target.fileExists(path),
@@ -15,9 +24,7 @@ export const github = definePlugin({
     domain: DOMAIN.GITHUB_CONFIG,
     id: "ci-workflow",
     name: "CI workflow file exists",
-    params: type({
-      file_expressions: "string[]",
-    }),
+    params: githubWorkflowSchema,
     test({ context, params }) {
       const candidates = params?.file_expressions ?? [
         ".github/workflows/ci.yml",
@@ -42,9 +49,7 @@ export const github = definePlugin({
     domain: DOMAIN.GITHUB_CONFIG,
     id: "release-workflow",
     name: "Release/publish workflow file exists",
-    params: type({
-      file_expressions: "string[]",
-    }),
+    params: githubWorkflowSchema,
     test({ context, params }) {
       const candidates = params?.file_expressions ?? [
         ".github/workflows/release.yml",
@@ -67,10 +72,7 @@ export const github = definePlugin({
     domain: DOMAIN.GITHUB_CONFIG,
     id: "ci-lint",
     name: "CI workflow runs lint",
-    params: type({
-      contains: "string[]",
-      file_expressions: "string[]",
-    }),
+    params: githubWorkflowContentSchema,
     test({ context, params }) {
       const candidates = params?.file_expressions ?? [
         ".github/workflows/ci.yml",
@@ -106,10 +108,7 @@ export const github = definePlugin({
     domain: DOMAIN.GITHUB_CONFIG,
     id: "ci-typecheck",
     name: "CI workflow runs typecheck",
-    params: type({
-      contains: "string[]",
-      file_expressions: "string[]",
-    }),
+    params: githubWorkflowContentSchema,
     test({ context, params }) {
       const candidates = params?.file_expressions ?? [
         ".github/workflows/ci.yml",
@@ -145,9 +144,7 @@ export const github = definePlugin({
     domain: DOMAIN.GITHUB_CONFIG,
     id: "dependabot",
     name: "Dependabot or Renovate config exists",
-    params: type({
-      file_expressions: "string[]",
-    }),
+    params: githubWorkflowSchema,
     test({ context, params }) {
       const candidates = params?.file_expressions ?? [
         ".github/dependabot.yml",

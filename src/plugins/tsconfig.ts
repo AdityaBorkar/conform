@@ -4,6 +4,11 @@ import { definePlugin, Status } from "@/api/index.ts";
 import type { Target } from "@/utils/fs.ts";
 import { DOMAIN } from "./utils/domain.ts";
 
+export const tsconfigOptionsSchema = type({
+  "options?": "Record<string, unknown>",
+  "warnOptions?": "Record<string, unknown>",
+});
+
 export const tsconfig = definePlugin({
   context: (target: Target) => ({
     fileExists: (path: string) => target.fileExists(path),
@@ -43,10 +48,7 @@ export const tsconfig = definePlugin({
     domain: DOMAIN.CODE_QUALITY,
     id: "compiler-options",
     name: "compilerOptions in tsconfig",
-    params: type({
-      "options?": "Record<string, unknown>",
-      "warnOptions?": "Record<string, unknown>",
-    }),
+    params: tsconfigOptionsSchema,
     test({ context, params }) {
       const tsconfig = context.readJson<{
         compilerOptions?: Record<string, unknown>;
@@ -69,7 +71,7 @@ export const tsconfig = definePlugin({
 
       const effectiveWarn: Record<string, unknown> = { ...warnOptions };
       if (tsconfig.compilerOptions["noEmit"] === true) {
-        delete effectiveWarn["sourceMap"];
+        effectiveWarn["sourceMap"] = undefined;
       }
 
       const missing = Object.entries(options).filter(
@@ -78,12 +80,15 @@ export const tsconfig = definePlugin({
       if (missing.length > 0) {
         const details = missing
           .map(([k, v]) => {
-            if (k === "strict")
+            if (k === "strict") {
               return `"${k}: ${String(v)}" — strict mode not enabled`;
-            if (k === "noUncheckedIndexedAccess")
+            }
+            if (k === "noUncheckedIndexedAccess") {
               return `"${k}: ${String(v)}" — array/object index access should return T | undefined`;
-            if (k === "isolatedModules")
+            }
+            if (k === "isolatedModules") {
               return `"${k}: ${String(v)}" — required for Bun, esbuild, and SWC`;
+            }
             return `"${k}: ${String(v)}"`;
           })
           .join("; ");
@@ -96,10 +101,12 @@ export const tsconfig = definePlugin({
       if (warnMissing.length > 0) {
         const details = warnMissing
           .map(([k, v]) => {
-            if (k === "verbatimModuleSyntax")
+            if (k === "verbatimModuleSyntax") {
               return `"${k}: ${String(v)}" — prevents CJS/ESM mismatches`;
-            if (k === "sourceMap")
+            }
+            if (k === "sourceMap") {
               return `"${k}: ${String(v)}" — without source maps, production stack traces are nearly impossible to debug`;
+            }
             return `"${k}: ${String(v)}"`;
           })
           .join("; ");

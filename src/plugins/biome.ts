@@ -4,6 +4,15 @@ import { definePlugin, Status } from "@/api/index.ts";
 import { DOMAIN } from "@/plugins/utils/domain.ts";
 import type { Target } from "@/utils/fs.ts";
 
+export const biomeConfigSchema = type({
+  file_expressions: "string[]",
+});
+
+export const biomeScriptSchema = type({
+  contains: "string",
+  file_expressions: "string[]",
+});
+
 export const biome = definePlugin({
   context: (target: Target) => ({
     fileExists: (path: string) => target.fileExists(path),
@@ -28,9 +37,7 @@ export const biome = definePlugin({
     domain: DOMAIN.STYLE,
     id: "config-file",
     name: "biome.json or biome.jsonc exists",
-    params: type({
-      file_expressions: "string[]",
-    }),
+    params: biomeConfigSchema,
     test({ context, params }) {
       const candidates = params?.file_expressions ?? [
         "biome.json",
@@ -49,10 +56,7 @@ export const biome = definePlugin({
     domain: DOMAIN.STYLE,
     id: "lint-script",
     name: "lint or check script runs biome",
-    params: type({
-      contains: "string",
-      file_expressions: "string[]",
-    }),
+    params: biomeScriptSchema,
     test({ context, params }) {
       const scripts = context.packageJson()?.scripts ?? {};
       const candidates = params?.file_expressions ?? ["lint", "check"];
@@ -73,10 +77,7 @@ export const biome = definePlugin({
     domain: DOMAIN.STYLE,
     id: "format-script",
     name: "format script runs biome",
-    params: type({
-      contains: "string",
-      file_expressions: "string[]",
-    }),
+    params: biomeScriptSchema,
     test({ context, params }) {
       const scripts = context.packageJson()?.scripts ?? {};
       const candidates = params?.file_expressions ?? [

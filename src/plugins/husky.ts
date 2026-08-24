@@ -4,6 +4,19 @@ import { definePlugin, Status } from "@/api/index.ts";
 import type { Target } from "@/utils/fs.ts";
 import { DOMAIN } from "./utils/domain.ts";
 
+export const huskyHooksDirSchema = type({
+  file_expressions: "string[]",
+});
+
+export const huskyPrepareSchema = type({
+  contains: "string",
+  file_expressions: "string[]",
+});
+
+export const huskyHookSchema = type({
+  hooks: type({ contains: "string", file: "string" }).array(),
+});
+
 export const husky = definePlugin({
   context: (target: Target) => ({
     fileExists: (path: string) => target.fileExists(path),
@@ -28,9 +41,7 @@ export const husky = definePlugin({
     domain: DOMAIN.DEV_ENVIRONMENT,
     id: "hooks-dir",
     name: ".husky/ directory exists",
-    params: type({
-      file_expressions: "string[]",
-    }),
+    params: huskyHooksDirSchema,
     test({ context, params }) {
       const candidates = params?.file_expressions ?? [".husky"];
       const found = candidates.find((f) => context.fileExists(f));
@@ -44,10 +55,7 @@ export const husky = definePlugin({
     domain: DOMAIN.DEV_ENVIRONMENT,
     id: "prepare-script",
     name: "prepare script calls husky",
-    params: type({
-      contains: "string",
-      file_expressions: "string[]",
-    }),
+    params: huskyPrepareSchema,
     test({ context, params }) {
       const scripts = context.packageJson()?.scripts ?? {};
       const candidates = params?.file_expressions ?? ["prepare"];
@@ -70,9 +78,7 @@ export const husky = definePlugin({
     files: [".husky/pre-commit", ".husky/commit-msg"],
     id: "hook",
     name: "husky hook file exists with expected content",
-    params: type({
-      hooks: type({ contains: "string", file: "string" }).array(),
-    }),
+    params: huskyHookSchema,
     test({ context, params }) {
       const specs = params?.hooks ?? [];
 

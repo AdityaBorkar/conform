@@ -25,6 +25,22 @@ const recommendedStructure = type({
   sideEffects: "boolean | string[]",
 });
 
+export const packageEntrySchema = type({
+  fields: "string[]",
+});
+
+export const packageScriptsSchema = type({
+  scripts: "string[]",
+});
+
+export const packageFilesSchema = type({
+  file_expressions: "string[]",
+});
+
+export const packageRequiredFieldsSchema = type({
+  fields: "string[]",
+});
+
 export const packageJson = definePlugin({
   context: (target: Target) => ({
     fileExists: (path: string) => target.fileExists(path),
@@ -59,9 +75,7 @@ export const packageJson = definePlugin({
     domain: DOMAIN.BUILD,
     id: "entry-point",
     name: "main, module, or exports entry defined",
-    params: type({
-      fields: "string[]",
-    }),
+    params: packageEntrySchema,
     test({ context, params }) {
       const pkg = context.packageJson();
       const fields = params?.fields ?? ["main", "module", "exports"];
@@ -78,9 +92,7 @@ export const packageJson = definePlugin({
     domain: DOMAIN.BUILD,
     id: "build-script",
     name: "scripts.prepare or scripts.build exists",
-    params: type({
-      scripts: "string[]",
-    }),
+    params: packageScriptsSchema,
     test({ context, params }) {
       const scripts = context.packageJson()?.scripts ?? {};
       const candidates = params?.scripts ?? ["prepare", "build"];
@@ -95,9 +107,7 @@ export const packageJson = definePlugin({
     domain: DOMAIN.BUILD,
     id: "files-or-npmignore",
     name: "files field or .npmignore exists",
-    params: type({
-      file_expressions: "string[]",
-    }),
+    params: packageFilesSchema,
     test({ context, params }) {
       if (context.packageJson()?.files) {
         return Status.pass("files field defined");
@@ -114,9 +124,7 @@ export const packageJson = definePlugin({
     domain: DOMAIN.SECURITY,
     id: "no-install-hooks",
     name: "no preinstall/postinstall/install lifecycle scripts",
-    params: type({
-      scripts: "string[]",
-    }),
+    params: packageScriptsSchema,
     test({ context, params }) {
       const scripts = context.packageJson()?.scripts ?? {};
       const dangerous = params?.scripts ?? [
@@ -137,9 +145,7 @@ export const packageJson = definePlugin({
     domain: DOMAIN.BUILD,
     id: "required-fields",
     name: "required package.json fields are defined",
-    params: type({
-      fields: "string[]",
-    }),
+    params: packageRequiredFieldsSchema,
     test({ context, params }) {
       const pkg = context.packageJson();
       if (!pkg) {
@@ -159,9 +165,7 @@ export const packageJson = definePlugin({
     domain: DOMAIN.BUILD,
     id: "typecheck",
     name: "typecheck script exists",
-    params: type({
-      scripts: "string[]",
-    }),
+    params: packageScriptsSchema,
     test({ context, params }) {
       const scripts = context.packageJson()?.scripts ?? {};
       const candidates = params?.scripts ?? [
@@ -182,9 +186,7 @@ export const packageJson = definePlugin({
     domain: DOMAIN.BUILD,
     id: "no-prepublish",
     name: "deprecated prepublish script is not used",
-    params: type({
-      scripts: "string[]",
-    }),
+    params: packageScriptsSchema,
     test({ context, params }) {
       const scripts = context.packageJson()?.scripts ?? {};
       const candidates = params?.scripts ?? ["prepublish"];

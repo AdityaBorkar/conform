@@ -17,9 +17,6 @@ Generated files are git ignored "*.gen.ts"
   - only "#/*" as an import alias
 - tsconfig.json
   - only "#/*" as an import alias
-- gitignores
-  - .env*
-  - *.gen.ts
 - shadcn = components.json
 - vite.config.ts
 

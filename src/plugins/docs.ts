@@ -4,6 +4,10 @@ import { definePlugin, Status } from "@/api/index.ts";
 import type { Target } from "@/utils/fs.ts";
 import { DOMAIN } from "./utils/domain.ts";
 
+export const docsFilesSchema = type({
+  file_expressions: "string[]",
+});
+
 export const docs = definePlugin({
   context: (target: Target) => ({
     fileExists: (path: string) => target.fileExists(path),
@@ -30,9 +34,7 @@ export const docs = definePlugin({
     domain: DOMAIN.DOCUMENTATION,
     id: "changelog",
     name: "CHANGELOG.md exists",
-    params: type({
-      file_expressions: "string[]",
-    }),
+    params: docsFilesSchema,
     test({ context, params }) {
       const candidates = params?.file_expressions ?? [
         "CHANGELOG.md",
@@ -52,9 +54,7 @@ export const docs = definePlugin({
     domain: DOMAIN.DOCUMENTATION,
     id: "contributing",
     name: "CONTRIBUTING.md exists",
-    params: type({
-      file_expressions: "string[]",
-    }),
+    params: docsFilesSchema,
     test({ context, params }) {
       const candidates = params?.file_expressions ?? [
         "CONTRIBUTING.md",
@@ -73,9 +73,7 @@ export const docs = definePlugin({
     domain: DOMAIN.SECURITY,
     id: "license",
     name: "LICENSE file exists",
-    params: type({
-      file_expressions: "string[]",
-    }),
+    params: docsFilesSchema,
     test({ context, params }) {
       const candidates = params?.file_expressions ?? [
         "LICENSE",
@@ -93,9 +91,7 @@ export const docs = definePlugin({
     domain: DOMAIN.SECURITY,
     id: "security-md",
     name: "SECURITY.md exists",
-    params: type({
-      file_expressions: "string[]",
-    }),
+    params: docsFilesSchema,
     test({ context, params }) {
       const candidates = params?.file_expressions ?? [
         "SECURITY.md",

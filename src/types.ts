@@ -1,5 +1,7 @@
 import type { Type } from "arktype";
 
+import type { AllBuiltinPlugins } from "@/plugins/index.ts";
+
 type AnyPlugin = Plugin<any, any>;
 
 export type Severity = "pass" | "warn" | "fail";
@@ -48,7 +50,7 @@ export interface Plugin<
   Id extends string = string,
   ParamMap extends Record<string, any> = Record<string, any>,
 > {
-  _paramMap?: ParamMap;
+  _paramMap: ParamMap;
   id: Id;
   rules: Rule<any>[];
 }
@@ -61,110 +63,6 @@ export type RuleConfig<P = unknown> =
     : RuleLevel | ({ level?: RuleLevel } & Record<string, unknown>);
 
 export type RuleOverrides = Record<string, RuleConfig<unknown>>;
-
-/**
- * Shared param shapes — single source of truth for Plugin schemas and registry.
- */
-export interface HuskyHookSpec {
-  contains: string;
-  file: string;
-}
-
-export interface RequiredFieldsParams {
-  fields: string[];
-}
-
-export interface GitIgnoreExcludesParams {
-  file_expressions: string[];
-}
-
-export interface HuskyHookParams {
-  hooks: HuskyHookSpec[];
-}
-
-export interface BiomeConfigParams {
-  file_expressions: string[];
-}
-
-export interface BiomeScriptParams {
-  contains: string;
-  file_expressions: string[];
-}
-
-export interface PackageEntryParams {
-  fields: string[];
-}
-
-export interface PackageScriptParams {
-  scripts: string[];
-}
-
-export interface PackageFilesParams {
-  file_expressions: string[];
-}
-
-export interface TsconfigOptionsParams {
-  options: Record<string, unknown>;
-  warnOptions: Record<string, unknown>;
-}
-
-export interface DocsFilesParams {
-  file_expressions: string[];
-}
-
-export interface GithubWorkflowParams {
-  file_expressions: string[];
-}
-
-export interface GithubWorkflowContentParams {
-  contains: string[];
-  file_expressions: string[];
-}
-
-/**
- * Registry that maps known Rule IDs to their validated params type.
- * Extend via declaration merging in plugins or custom presets:
- * ```ts
- * declare module "@/types.ts" {
- *   interface RuleRegistry { "my-plugin/my-rule": MyParams }
- * }
- * ```
- * Known keys are strictly typed; unknown keys fall back to `RuleConfig<unknown>`.
- */
-export interface RuleRegistry {
-  "biome/config-file": BiomeConfigParams;
-  "biome/format-script": BiomeScriptParams;
-  "biome/lint-script": BiomeScriptParams;
-  "docs/changelog": DocsFilesParams;
-  "docs/contributing": DocsFilesParams;
-  "docs/license": DocsFilesParams;
-  "docs/security-md": DocsFilesParams;
-  "github/ci-lint": GithubWorkflowContentParams;
-  "github/ci-typecheck": GithubWorkflowContentParams;
-  "github/ci-workflow": GithubWorkflowParams;
-  "github/dependabot": GithubWorkflowParams;
-  "github/release-workflow": GithubWorkflowParams;
-  "gitignore/excludes": GitIgnoreExcludesParams;
-  "husky/hook": HuskyHookParams;
-  "husky/hooks-dir": DocsFilesParams;
-  "husky/prepare-script": GithubWorkflowContentParams;
-  "package-json/build-script": PackageScriptParams;
-  "package-json/entry-point": PackageEntryParams;
-  "package-json/files-or-npmignore": PackageFilesParams;
-  "package-json/no-install-hooks": PackageScriptParams;
-  "package-json/no-prepublish": PackageScriptParams;
-  "package-json/required-fields": RequiredFieldsParams;
-  "package-json/typecheck": PackageScriptParams;
-  "typescript/compiler-options": TsconfigOptionsParams;
-}
-
-export type StrictRuleConfig<K extends string> = K extends keyof RuleRegistry
-  ? RuleConfig<RuleRegistry[K]>
-  : RuleConfig<unknown>;
-
-export type StrictRuleOverrides = {
-  [K in keyof RuleRegistry]?: StrictRuleConfig<K>;
-} & Record<string, RuleConfig<unknown>>;
 
 // Auto-inferred param maps from plugins (full type-safe, no hardcoding)
 export type InferPluginParamMap<P> =
@@ -180,6 +78,22 @@ export type UnionToIntersection<U> = (
 
 export type InferPresetParamMap<Ps extends readonly AnyPlugin[]> =
   UnionToIntersection<InferPluginParamMap<Ps[number]>>;
+
+/**
+ * Registry that maps known Rule IDs to their validated params type.
+ * Auto-inferred from the arktype `params` schemas defined in `src/plugins/*.ts`
+ * via `InferPresetParamMap<AllBuiltinPlugins>` — single source of truth.
+ * Unknown keys fall back to `RuleConfig<unknown>`.
+ */
+export type RuleRegistry = InferPresetParamMap<AllBuiltinPlugins>;
+
+export type StrictRuleConfig<K extends string> = K extends keyof RuleRegistry
+  ? RuleConfig<RuleRegistry[K]>
+  : RuleConfig<unknown>;
+
+export type StrictRuleOverrides = {
+  [K in keyof RuleRegistry]?: StrictRuleConfig<K>;
+} & Record<string, RuleConfig<unknown>>;
 
 export type AutoRuleRegistry<Ps extends readonly AnyPlugin[]> =
   InferPresetParamMap<Ps> & RuleRegistry;

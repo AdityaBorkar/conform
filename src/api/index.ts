@@ -1,10 +1,8 @@
 export { DOMAIN } from "@/plugins/utils/domain.ts";
 export type {
   ConformConfig,
-  HuskyHookSpec,
   Plugin as PluginInterface,
   Preset,
-  RequiredFieldsParams,
   RuleConfig,
   RuleLevel,
   RuleOverrides,

@@ -52,6 +52,7 @@ export class Plugin<
   M extends Record<string, any> = Record<string, any>,
 > implements PluginInterface<Id, M>
 {
+  declare _paramMap: M;
   private readonly config: {
     context: (target: Target) => T;
     id: Id;
