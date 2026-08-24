@@ -38,18 +38,20 @@ Generated files are git ignored "*.gen.ts"
   - No docker.compose files
   - package.json infra:*
   - Pulumi.dev and Pulumi.production and Pulumi.preview
-- Changelog
-  - Unreleased section will be contructed by Ai agents using diff directly at release. Do not maintain "unreleased" section in CHANGELOG.md.
 
 Create: monorepo support baked into the Engine/API
 
-Create: @tanstack-start-website @tanstack-start-webapp
 
 /init
 improve-codebase-architecture
 deslop
 
+Create: @tanstack-start-website @tanstack-start-webapp
+
 - CHANGELOG.md with changesets
+  - Unreleased section will be contructed by Ai agents using diff directly at release. Do not maintain "unreleased" section in CHANGELOG.md.
+  - [Script] Release -> pi-agent -> SKILLs -> changelog
+    - writes version and changelog -> provenance and publish
 - CI/cd Pipeline
   - github actions
 - GitHub Repo Config checks
@@ -57,6 +59,7 @@ deslop
 
 ## Phase 2
 
+- RULE: "check:conform" command runs before version release / deployment
 - Output of the Tool must be optimized for AI agents
 - Create a skill to use this repo and a wiki for ai agents to navigate this repo
 - Create a plan-of-action for docs under @adistack/*

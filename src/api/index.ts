@@ -1,8 +1,14 @@
 export type {
+  ConformConfig,
+  HuskyHookSpec,
   Plugin as PluginInterface,
   Preset,
   preset,
+  RequiredFieldsParams,
+  RuleConfig,
   RuleOverrides,
+  RuleRegistry,
+  StrictRuleOverrides,
 } from "@/types.ts";
 
 export { defineConfig } from "./config.ts";

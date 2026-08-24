@@ -1,7 +1,7 @@
 import { type } from "arktype";
 
 import { RuleSet, Status } from "@/api/index.ts";
-import type { PackageJson } from "@/types.ts";
+import type { HuskyHookSpec, PackageJson } from "@/types.ts";
 import type { Target } from "@/utils/fs.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
@@ -61,10 +61,7 @@ _husky.defineRule({
   },
 });
 
-export interface HuskyHookSpec {
-  contains: string;
-  file: string;
-}
+export type { HuskyHookSpec } from "@/types.ts";
 
 export const DEFAULT_HUSKY_HOOKS: readonly HuskyHookSpec[] = [
   { contains: "bun run format", file: ".husky/pre-commit" },

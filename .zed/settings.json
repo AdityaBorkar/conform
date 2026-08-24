@@ -15,13 +15,7 @@
       "name": "biome"
     }
   },
-  "language_servers": [
-    "!eslint",
-    "!typescript-language-server",
-    "!vtsls",
-    "!markdownlint",
-    "..."
-  ],
+  "language_servers": ["!markdownlint", "!oxfmt", "!oxlint", "..."],
   "lsp": {
     "biome": {
       "binary": {

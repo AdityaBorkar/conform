@@ -1,5 +1,4 @@
 import { definePreset } from "@/api/index.ts";
-import { bin } from "@/plugins/bin.ts";
 import { biome } from "@/plugins/biome.ts";
 import { docs } from "@/plugins/docs.ts";
 import { files } from "@/plugins/files.ts";
@@ -7,9 +6,7 @@ import { github } from "@/plugins/github.ts";
 import { githubConfig } from "@/plugins/github-config.ts";
 import { gitignore } from "@/plugins/gitignore.ts";
 import { husky } from "@/plugins/husky.ts";
-import { jsr } from "@/plugins/jsr.ts";
 import { packageJson } from "@/plugins/package_json.ts";
-import { testing } from "@/plugins/testing.ts";
 import { tsconfig } from "@/plugins/tsconfig.ts";
 
 export default definePreset({
@@ -20,9 +17,6 @@ export default definePreset({
     biome,
     tsconfig,
     husky,
-    bin,
-    testing,
-    jsr,
     docs,
     gitignore,
     github,

@@ -49,15 +49,50 @@ export interface Plugin {
 
 export type RuleSeverity = Severity | "off" | "error";
 
-export type RuleConfig = RuleSeverity | [RuleSeverity, ...unknown[]];
+export type RuleConfig<P = unknown> =
+  | RuleSeverity
+  | [RuleSeverity, P, ...unknown[]];
 
 export type RuleOverrides = Record<string, RuleConfig>;
+
+/**
+ * Shared param shapes — single source of truth for Plugin schemas and registry.
+ */
+export interface HuskyHookSpec {
+  contains: string;
+  file: string;
+}
+
+export type RequiredFieldsParams = string[] | { fields: string[] };
+
+/**
+ * Registry that maps known Rule IDs to their validated params type.
+ * Extend via declaration merging in plugins or custom presets:
+ * ```ts
+ * declare module "@/types.ts" {
+ *   interface RuleRegistry { "my-plugin:my-rule": MyParams }
+ * }
+ * ```
+ * Known keys are strictly typed; unknown keys fall back to `RuleConfig<unknown>`.
+ */
+export interface RuleRegistry {
+  "husky:hook": HuskyHookSpec[];
+  "package-json:required-fields": RequiredFieldsParams;
+}
+
+export type StrictRuleConfig<K extends string> = K extends keyof RuleRegistry
+  ? RuleConfig<RuleRegistry[K]>
+  : RuleConfig;
+
+export type StrictRuleOverrides = {
+  [K in keyof RuleRegistry]?: StrictRuleConfig<K>;
+} & Record<string, RuleConfig>;
 
 export interface Preset {
   description: string;
   name: string;
   plugins: Plugin[];
-  rules?: RuleOverrides;
+  rules?: StrictRuleOverrides;
 }
 
 /** @deprecated Use Preset instead. */
@@ -75,7 +110,7 @@ export interface RuleResult {
 export interface ConformConfig {
   plugins?: Plugin[];
   preset: string;
-  rules?: RuleOverrides;
+  rules?: StrictRuleOverrides;
 }
 
 export interface ConformOutput {

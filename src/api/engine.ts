@@ -27,6 +27,31 @@ function normalizeSeverity(
   return null;
 }
 
+function parseOverride(
+  rawOverride: import("@/types.ts").RuleConfig | undefined,
+): {
+  params: unknown;
+  severity: Severity | "off" | null | undefined;
+} {
+  if (rawOverride === undefined) {
+    return { params: undefined, severity: undefined };
+  }
+  return {
+    params: Array.isArray(rawOverride) ? rawOverride[1] : undefined,
+    severity: normalizeSeverity(rawOverride),
+  };
+}
+
+function coerceStatus(
+  original: Severity,
+  override: Severity | "off" | null | undefined,
+): Severity {
+  if (override !== undefined && override !== null && original !== "pass") {
+    return override as Severity;
+  }
+  return original;
+}
+
 export async function runChecks(
   preset: Preset,
   targetPath: string,
@@ -37,11 +62,8 @@ export async function runChecks(
 
   for await (const rule of allRules) {
     const rawOverride = overrides[rule.id];
-    const override =
-      rawOverride === undefined ? undefined : normalizeSeverity(rawOverride);
-    const rawParams: unknown = Array.isArray(rawOverride)
-      ? rawOverride[1]
-      : undefined;
+    const { severity: override, params: rawParams } =
+      parseOverride(rawOverride);
 
     if (override === "off") {
       continue;
@@ -51,14 +73,7 @@ export async function runChecks(
       rule.check as (ctx: string, params: unknown) => Promise<CheckResult>
     )(targetPath, rawParams);
 
-    let status: Severity = result.status;
-    // If a rule is configured to a different severity, coerce non-passing
-    // results to the configured level. `pass` results stay as pass.
-    // This mirrors oxc/eslint where `rules: { "plugin/rule": "warn" }`
-    // downgrades an error to a warning. `off` skips the rule entirely above.
-    if (override !== undefined && override !== null && status !== "pass") {
-      status = override as Severity;
-    }
+    const status = coerceStatus(result.status, override);
 
     const entry: RuleResult = {
       description: rule.description,

@@ -1,6 +1,6 @@
 import type { Type } from "arktype";
-import { type } from "arktype";
 
+import { validateParams } from "@/api/validate.ts";
 import type { CheckResult, Rule } from "@/types.ts";
 
 export function defineRule<P = unknown>(def: {
@@ -29,24 +29,11 @@ export function defineRule<P = unknown>(def: {
 
   // biome-ignore lint/correctness/useQwikValidLexicalScope: not a Qwik component, plain closure
   const wrappedCheck = (ctx: string, params?: P) => {
-    if (params === undefined) {
-      return originalCheck(ctx, undefined as P);
+    const validated = validateParams<P>(params, paramsSchema);
+    if (!validated.ok) {
+      return validated.error;
     }
-    const parsed = (paramsSchema as unknown as (data: unknown) => unknown)(
-      params,
-    );
-    if (parsed instanceof type.errors) {
-      const message = Object.entries(parsed.flatProblemsByPath)
-        .map(
-          ([path, problems]) => `${path}: ${(problems as string[]).join(", ")}`,
-        )
-        .join("; ");
-      return {
-        message: `Invalid params: ${message}`,
-        status: "fail",
-      } as CheckResult;
-    }
-    return originalCheck(ctx, parsed as P);
+    return originalCheck(ctx, validated.value);
   };
 
   return {

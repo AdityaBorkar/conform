@@ -1,6 +1,6 @@
 import type { Type } from "arktype";
-import { type } from "arktype";
 
+import { validateParams } from "@/api/validate.ts";
 import type { CheckResult, Plugin as PluginInterface, Rule } from "@/types.ts";
 import { Target } from "@/utils/fs.ts";
 
@@ -65,28 +65,12 @@ export class Plugin<T = unknown> implements PluginInterface {
           }
 
           if (ruleDef.params) {
-            if (params === undefined) {
-              return await (
-                ruleDef.test as (args: {
-                  context: T;
-                  params: unknown;
-                }) => CheckResult | Promise<CheckResult>
-              )({
-                context: ctx,
-                params: undefined,
-              });
-            }
-            const parsed = (
-              ruleDef.params as unknown as (data: unknown) => unknown
-            )(params);
-            if (parsed instanceof type.errors) {
-              const message = Object.entries(parsed.flatProblemsByPath)
-                .map(
-                  ([path, problems]) =>
-                    `${path}: ${(problems as string[]).join(", ")}`,
-                )
-                .join("; ");
-              return { message: `Invalid params: ${message}`, status: "fail" };
+            const validated = validateParams(
+              params,
+              ruleDef.params as unknown as Type<unknown>,
+            );
+            if (!validated.ok) {
+              return validated.error;
             }
             return await (
               ruleDef.test as (args: {
@@ -95,7 +79,7 @@ export class Plugin<T = unknown> implements PluginInterface {
               }) => CheckResult | Promise<CheckResult>
             )({
               context: ctx,
-              params: parsed,
+              params: validated.value,
             });
           }
 
