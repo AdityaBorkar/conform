@@ -114,7 +114,7 @@ export function renderTui(
     : results.filter((r) => r.status !== "pass");
 
   const lines: string[] = [];
-  lines.push(`${BOLD}@adityab/conform${RESET} — ${presetName} preset`);
+  lines.push(`${BOLD}@adistack/conform${RESET} — ${presetName} preset`);
   lines.push("");
 
   const maxIdLen = Math.max(...visible.map((r) => shortId(r.id).length));

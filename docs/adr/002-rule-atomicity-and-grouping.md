@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-A template like "husky is implemented" is really multiple distinct checks (devDependency present, directory exists, hooks configured, prepare script set up). We need to decide whether each of these is a separate rule or whether they're bundled into one rule with sub-checks.
+A preset like "husky is implemented" is really multiple distinct checks (devDependency present, directory exists, hooks configured, prepare script set up). We need to decide whether each of these is a separate rule or whether they're bundled into one rule with sub-checks.
 
 ## Decision
 
@@ -14,15 +14,15 @@ Rules are atomic — each rule performs exactly one check. The TUI output groups
 
 ## Rationale
 
-- **Composability** — Atomic rules can be reused across templates without pulling in unrelated checks.
+- **Composability** — Atomic rules can be reused across presets without pulling in unrelated checks.
 - **Precise reporting** — Users see exactly which sub-check failed, not just "husky: fail" with no detail.
 - **Testability** — Each rule can be unit tested independently.
 - **Grouped display** — The `domain` (+ `files`) fields on each rule control TUI rendering (`renderByDomains` / `renderByFiles`), giving visual clarity without coupling checks.
 
 ## Consequences
 
-- Templates will have many rules (the `package` preset has 40+ across 13 plugins). This is fine — the grouped TUI display makes this scannable.
-- Rule IDs must be globally unique within a template. Convention: `pluginId:ruleId` (e.g., `husky:dev-deps`), enforced by `Plugin` namespacing.
+- presets will have many rules (the `package` preset has 40+ across 13 plugins). This is fine — the grouped TUI display makes this scannable.
+- Rule IDs must be globally unique within a preset. Convention: `pluginId:ruleId` (e.g., `husky:dev-deps`), enforced by `Plugin` namespacing.
 
 ## Amendment 2026-08-24
 

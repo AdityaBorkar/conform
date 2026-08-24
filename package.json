@@ -15,7 +15,7 @@
     "js-yaml": "^5.3.0",
     "nanoid": "^6.0.1"
   },
-  "description": "CLI tool that checks repositories against conformance templates",
+  "description": "CLI tool that checks repositories against conformance presets",
   "devDependencies": {
     "@biomejs/biome": "^2.5.9",
     "@changesets/changelog-git": "^1.0.0",
@@ -34,7 +34,7 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "files": ["src", "templates"],
+  "files": ["src", "README.md"],
   "homepage": "https://github.com/AdityaBorkar/conform#readme",
   "keywords": ["conform", "check"],
   "license": "MIT",
@@ -46,7 +46,7 @@
     }
   ],
   "module": "src/index.ts",
-  "name": "@adityab/conform",
+  "name": "@adistack/conform",
   "publishConfig": {
     "access": "public",
     "provenance": true

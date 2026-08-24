@@ -1,4 +1,4 @@
-# @adityab/conform
+# @adistack/conform
 
 ## Unreleased
 

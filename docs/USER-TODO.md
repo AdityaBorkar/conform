@@ -6,15 +6,10 @@ Ensure rules are first-principles like rules that can be easily extended and com
 SKILL: /write-rule
 SKILL: /write-preset
 
-Move the @scripts to @package_json
-
-Remove the @testing @jsr @bin @slow-types @bin
-
 /init
 improve-codebase-architecture
 
 Refactor gitignore docs files
-
 Refactor tsconfig for STRING MATCH
 Refactor biome for STRING MATCH
 
@@ -47,6 +42,10 @@ Generated files are git ignored "*.gen.ts"
   - package.json infra:*
   - Pulumi.dev and Pulumi.production and Pulumi.preview
 
+Create: monorepo support baked into the Engine/API
+
+Create: @tanstack-start-website @tanstack-start-webapp
+
 /init
 improve-codebase-architecture
 deslop
@@ -56,14 +55,15 @@ deslop
   - github actions
 - GitHub Repo Config checks
   - CODEOWNERS
-- Testing Config
-  - vitest
-  - tests/setup/. e2e/ integration/
 
 ## Phase 2
 
-- Create a plan-of-action for docs under @adistack/*
+- Output of the Tool must be optimized for AI agents
 - Create a skill to use this repo and a wiki for ai agents to navigate this repo
-- Manual Research:
+- Create a plan-of-action for docs under @adistack/*
+- Plugin Extensions:
   - JSR Scoring Factors
   - NPM Package
+  - Testing Config
+    - vitest
+    - tests/setup/. e2e/ integration/

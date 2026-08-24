@@ -25,29 +25,22 @@ export function isDefined(value: unknown): boolean {
 }
 
 export function resolveFields(
-  options?: unknown[],
+  params?: string[] | { fields: string[] },
   fallback: readonly string[] = DEFAULT_REQUIRED_PACKAGE_FIELDS,
 ): string[] {
-  if (!options || options.length === 0) {
+  if (!params) {
     return [...fallback];
   }
-  const [first] = options;
-  if (Array.isArray(first) && first.every((v) => typeof v === "string")) {
-    return first as string[];
+  if (Array.isArray(params)) {
+    return [...params];
   }
   if (
-    first !== null &&
-    typeof first === "object" &&
-    !Array.isArray(first) &&
-    "fields" in (first as Record<string, unknown>)
+    params !== null &&
+    typeof params === "object" &&
+    "fields" in params &&
+    Array.isArray((params as { fields: unknown }).fields)
   ) {
-    const fields = (first as Record<string, unknown>)["fields"];
-    if (Array.isArray(fields) && fields.every((v) => typeof v === "string")) {
-      return fields as string[];
-    }
-  }
-  if (options.every((v) => typeof v === "string")) {
-    return options as string[];
+    return [...(params as { fields: string[] }).fields];
   }
   return [...fallback];
 }

@@ -1,11 +1,11 @@
-# @adityab/conform
+# @adistack/conform
 
-CLI tool that checks repositories against conformance templates.
+CLI tool that checks repositories against conformance presets.
 
 ## Install
 
 ```sh
-bun add -d @adityab/conform
+bun add -d @adistack/conform
 ```
 
 ## Usage
@@ -29,12 +29,12 @@ bunx conform check -v
 ### Programmatic API
 
 ```ts
-import { defineConfig, defineTemplate, rule } from "@adityab/conform";
+import { defineConfig, definePreset, rule } from "@adistack/conform";
 ```
 
-## Built-in Templates
+## Built-in Presets
 
-| Template | Description |
+| Preset | Description |
 |----------|-------------|
 | `npm-pkg` | Conformance rules for publishing an NPM package |
 
@@ -46,7 +46,7 @@ Create a `conform.config.ts` in your repository root:
 import { defineConfig } from "@/api/index.ts";
 
 export default defineConfig({
-  template: "npm-pkg",
+  preset: "npm-pkg",
 });
 ```
 

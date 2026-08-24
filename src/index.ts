@@ -3,7 +3,6 @@ export {
   definePlugin,
   definePreset,
   defineRule as rule,
-  defineTemplate,
   Plugin,
   RuleSet,
   Status,
@@ -23,5 +22,4 @@ export type {
   RuleResult,
   RuleSeverity,
   Severity,
-  Template,
 } from "./types.ts";

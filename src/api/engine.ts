@@ -1,4 +1,10 @@
-import type { Preset, RuleOverrides, RuleResult, Severity } from "@/types.ts";
+import type {
+  CheckResult,
+  Preset,
+  RuleOverrides,
+  RuleResult,
+  Severity,
+} from "@/types.ts";
 
 function normalizeSeverity(
   value: import("@/types.ts").RuleConfig,
@@ -33,15 +39,17 @@ export async function runChecks(
     const rawOverride = overrides[rule.id];
     const override =
       rawOverride === undefined ? undefined : normalizeSeverity(rawOverride);
-    const ruleOptions: unknown[] = Array.isArray(rawOverride)
-      ? rawOverride.slice(1)
-      : [];
+    const rawParams: unknown = Array.isArray(rawOverride)
+      ? rawOverride[1]
+      : undefined;
 
     if (override === "off") {
       continue;
     }
 
-    const result = await rule.check(targetPath, ...ruleOptions);
+    const result = await (
+      rule.check as (ctx: string, params: unknown) => Promise<CheckResult>
+    )(targetPath, rawParams);
 
     let status: Severity = result.status;
     // If a rule is configured to a different severity, coerce non-passing

@@ -26,7 +26,7 @@ Rules come in two kinds `deterministic | ai` sharing the same `Rule` type, disti
 Rule { id, group, description, severity, kind, check, prompt?, files? }
 AiCheckResult extends CheckResult { confidence: 0-1, reasoning }
 RuleResult { …, kind, confidence?, reasoning? }
-ConformConfig { template, ai?: { model, apiKey?, apiKeyEnvVar? } }
+ConformConfig { preset, ai?: { model, apiKey?, apiKeyEnvVar? } }
 ```
 
 ## Current Decision

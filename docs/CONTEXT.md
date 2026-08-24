@@ -1,20 +1,20 @@
-# CONTEXT.md — @adityab/conform
+# CONTEXT.md — @adistack/conform
 
 ## What It Is
 
-`@adityab/conform` is a CLI that checks whether a repository conforms to a predefined **template** (a named collection of `Plugin`s). It detects drift between a repo's actual state and the expected state, and reports that drift in the terminal (TUI) or as JSON.
+`@adistack/conform` is a CLI that checks whether a repository conforms to a predefined **preset** (a named collection of `Plugin`s). It detects drift between a repo's actual state and the expected state, and reports that drift in the terminal (TUI) or as JSON.
 
 ## Core Problem
 
-Teams scaffold repos from templates but drift accumulates — missing hooks, dropped config fields, absent CI files, weak `tsconfig` settings, supply-chain risky lifecycle scripts. There is no automated way to verify conformance. Conform fills that gap, CI-friendly, no auto-fix.
+Teams scaffold repos from presets but drift accumulates — missing hooks, dropped config fields, absent CI files, weak `tsconfig` settings, supply-chain risky lifecycle scripts. There is no automated way to verify conformance. Conform fills that gap, CI-friendly, no auto-fix.
 
 ## Design Principles
 
-1. **Templates are code** — TypeScript modules exporting a `Template`, not YAML/data files. Rules can inspect anything on disk.
+1. **presets are code** — TypeScript modules exporting a `preset`, not YAML/data files. Rules can inspect anything on disk.
 2. **Check-only, no auto-fix** — Report drift. Humans fix it. Simpler, safer, deterministic.
-3. **Opinionated with oxc-style overrides** — `Template.rules` and `ConformConfig.rules` are `RuleOverrides` (`Record<string, RuleSeverity | [RuleSeverity, ...opts]>`) where severity `"off"` skips, `"warn"/"error"/"fail"` coerce non-pass, `"pass"` keeps pass. Per-repo tuning is allowed but explicit.
+3. **Opinionated with oxc-style overrides** — `preset.rules` and `ConformConfig.rules` are `RuleOverrides` (`Record<string, RuleSeverity | [RuleSeverity, ...opts]>`) where severity `"off"` skips, `"warn"/"error"/"fail"` coerce non-pass, `"pass"` keeps pass. Per-repo tuning is allowed but explicit.
 4. **Atomic rules, grouped display** — Each check is one atomic `Rule`. The TUI groups by `domain` then `files` (or by `files` with `--group files`). See ADR 002.
-5. **Zero config from CLI** — Template selection lives in `conform.config.ts` (`template: string`). No `--template` flag. Additional `plugins`/`rules` can be merged there.
+5. **Zero config from CLI** — preset selection lives in `conform.config.ts` (`preset: string`). No `--preset` flag. Additional `plugins`/`rules` can be merged there.
 6. **Plugins own context** — A `Plugin<T>` declares `context: (targetPath: string) => T`; each rule receives `{ context: T }` via its `test` function. Standalone rules (`defineRule`) receive `targetPath: string` directly. All FS access goes through `src/utils/fs.ts` (`fileExists`, `readFile`, `readJson`, `packageJson`).
 
 ## Domain Model
@@ -42,7 +42,7 @@ export type RuleSeverity = Severity | "off" | "error"; // "error" → "fail"
 export type RuleConfig = RuleSeverity | [RuleSeverity, ...unknown[]];
 export type RuleOverrides = Record<string, RuleConfig>;
 
-export interface Template {
+export interface preset {
   name: string;
   description: string;
   plugins: Plugin[];
@@ -59,13 +59,13 @@ export interface RuleResult {
 }
 
 export interface ConformConfig {
-  template: string;
+  preset: string;
   plugins?: Plugin[];
   rules?: RuleOverrides;
 }
 
 export interface ConformOutput {
-  template: string;
+  preset: string;
   path: string;
   results: RuleResult[]; // filtered by verbose (hidden pass unless -v)
   summary: { pass: number; warn: number; fail: number };
@@ -85,7 +85,7 @@ export const DOMAIN = { BUILD, CODE_QUALITY, DEV_ENVIRONMENT, DOCUMENTATION, GIT
 Preferred path — `definePlugin` / `Plugin`:
 
 ```ts
-import { definePlugin, Status } from "@adityab/conform";
+import { definePlugin, Status } from "@adistack/conform";
 import { fileExists, packageJson } from "@/utils/fs.ts";
 import { DOMAIN } from "@/plugins/utils/domain.ts";
 
@@ -111,7 +111,7 @@ husky.defineRule({
 Standalone rule:
 
 ```ts
-import { defineRule, Status } from "@adityab/conform";
+import { defineRule, Status } from "@adistack/conform";
 export const myRule = defineRule({
   id: "my-plugin:my-rule",
   domain: DOMAIN.STYLE,
@@ -121,13 +121,13 @@ export const myRule = defineRule({
 });
 ```
 
-Template:
+preset:
 
 ```ts
-import { defineTemplate } from "@adityab/conform";
+import { definepreset } from "@adistack/conform";
 import { husky } from "@/plugins/husky.ts";
 // ... other plugins
-export default defineTemplate({
+export default definepreset({
   name: "package",
   description: "Conformance rules for publishing an NPM package",
   plugins: [husky /* …12 more */],
@@ -135,12 +135,12 @@ export default defineTemplate({
 });
 ```
 
-IDs are namespaced as `pluginId:ruleId` by `Plugin`. `defineTemplateLegacy` exists for back-compat with old `{ rules: Rule[] }` shape.
+IDs are namespaced as `pluginId:ruleId` by `Plugin`. `definepresetLegacy` exists for back-compat with old `{ rules: Rule[] }` shape.
 
-## Template & Plugin Layout
+## preset & Plugin Layout
 
 ```
-src/presets/        — flat files, each default-exports a Template (defineTemplate)
+src/presets/        — flat files, each default-exports a preset (definepreset)
   package.ts        — only complete preset (13 plugins); astro-site/monorepo/react-site/webapp are stubs (plugins: [])
 src/plugins/ — one file per plugin/domain + utils/domain.ts
   package_json.ts, biome.ts, tsconfig.ts, husky.ts, scripts.ts, bin.ts,
@@ -148,7 +148,7 @@ src/plugins/ — one file per plugin/domain + utils/domain.ts
   utils/domain.ts   — DOMAIN constants (human display strings)
 ```
 
-`src/api/resolver.ts` currently resolves `templates/<name>.ts` or `templates/<name>/index.ts` from repo root (`templates/`). That directory does not exist in the repo — `files: ["src","templates"]` in `package.json` lists it but it is absent. Dogfooded `conform.config.ts` (`template: "package"`) therefore always fails to resolve today (see Gotchas).
+`src/api/resolver.ts` currently resolves `presets/<name>.ts` or `presets/<name>/index.ts` from repo root (`presets/`). That directory does not exist in the repo — `files: ["src","presets"]` in `package.json` lists it but it is absent. Dogfooded `conform.config.ts` (`preset: "package"`) therefore always fails to resolve today (see Gotchas).
 
 `src/utils/fs.ts` — `fileExists(targetPath, rel)`, `readFile`, `readJson` (strips `//` and `/* */` comments), `packageJson`. `src/utils/config.ts` — `loadConfig(targetPath)` dynamic-imports `conform.config.ts`.
 
@@ -156,16 +156,16 @@ src/plugins/ — one file per plugin/domain + utils/domain.ts
 
 ```ts
 // conform.config.ts in target repo
-import { defineConfig } from "@adityab/conform";
+import { defineConfig } from "@adistack/conform";
 export default defineConfig({
-  template: "package",
-  // optional, merged by mergeTemplateWithConfig in src/cli/check.ts
+  preset: "package",
+  // optional, merged by mergepresetWithConfig in src/cli/check.ts
   // plugins: [myPlugin],
   // rules: { "biome:dev-deps": "error", "package-json:no-install-hooks": "off" },
 });
 ```
 
-`loadConfig` requires `config.template: string`; missing/invalid config causes exit 2. `mergeTemplateWithConfig` appends `config.plugins` to `template.plugins` and shallow-merges `rules`.
+`loadConfig` requires `config.preset: string`; missing/invalid config causes exit 2. `mergepresetWithConfig` appends `config.plugins` to `preset.plugins` and shallow-merges `rules`.
 
 ## CLI
 
@@ -173,7 +173,7 @@ export default defineConfig({
 conform check [--path <dir>] [--json] [-v|--verbose] [--group domains|files]
 ```
 
-- `check` — Run conformance checks against the configured template.
+- `check` — Run conformance checks against the configured preset.
 - `--path <dir>` — Target directory (default `process.cwd()`).
 - `--json` — Machine-readable JSON via `renderJson` (mutually exclusive with `--group`; exit 1 if combined).
 - `-v, --verbose` — Show `pass` results (default: only `warn`+`fail` are visible; summary counts always include all).
@@ -181,9 +181,9 @@ conform check [--path <dir>] [--json] [-v|--verbose] [--group domains|files]
 
 Entry point is `src/cli/index.ts` (`commander`). Note `package.json` `bin.conform` declares `src/cli.ts` which does not exist; correct invocation is `bun run src/cli/index.ts check` (and `import.meta.dir` version read is `join(..,"package.json")` which resolves to `src/package.json`; it should be `../..`).
 
-`src/cli/check.ts` flow: `loadConfig → resolver → mergeTemplateWithConfig → runChecks → exit code`. **`renderTui`/`renderJson` are not called today** — results only affect the exit code (see Gotchas).
+`src/cli/check.ts` flow: `loadConfig → resolver → mergepresetWithConfig → runChecks → exit code`. **`renderTui`/`renderJson` are not called today** — results only affect the exit code (see Gotchas).
 
-Engine: `src/api/engine.ts` flattens `template.plugins[].rules`, applies `RuleOverrides` (`off` skips, other severities coerce non-pass), awaits `rule.check(targetPath)`.
+Engine: `src/api/engine.ts` flattens `preset.plugins[].rules`, applies `RuleOverrides` (`off` skips, other severities coerce non-pass), awaits `rule.check(targetPath)`.
 
 ## Exit Codes
 
@@ -191,14 +191,14 @@ Engine: `src/api/engine.ts` flattens `template.plugins[].rules`, applies `RuleOv
 |------|---------|
 | 0 | All rules `pass` |
 | 1 | One or more `fail` (takes priority) — also `--json`+`--group` misuse |
-| 2 | `warn` only, **or** no `conform.config.ts`, **or** template not found (`resolver` returns null) |
+| 2 | `warn` only, **or** no `conform.config.ts`, **or** preset not found (`resolver` returns null) |
 
 ## TUI Output
 
-`src/cli/reporter/tui.ts` — `renderTui(templateName, results, { verbose, groupBy })`. Pass hidden unless verbose; divider `━×50`; summary `N passed · N warned · N failed`.
+`src/cli/reporter/tui.ts` — `renderTui(presetName, results, { verbose, groupBy })`. Pass hidden unless verbose; divider `━×50`; summary `N passed · N warned · N failed`.
 
 ```
-@adityab/conform — package template
+@adistack/conform — package preset
 
 Build & Tasks
   package.json
@@ -222,11 +222,11 @@ Actual grouping: `renderByDomains` (default) uses `Map<domain, Map<filesKey, Rul
 
 ## JSON Output
 
-`src/cli/reporter/json.ts` — `renderJson(templateName, targetPath, results, { verbose, groupBy })`. `visible` obeys `verbose`; `summary` always counts all; `groupBy` only emitted when `"files"`.
+`src/cli/reporter/json.ts` — `renderJson(presetName, targetPath, results, { verbose, groupBy })`. `visible` obeys `verbose`; `summary` always counts all; `groupBy` only emitted when `"files"`.
 
 ```json
 {
-  "template": "package",
+  "preset": "package",
   "path": "/path/to/repo",
   "results": [
     { "id": "husky:dev-deps", "domain": "Dev Environment", "files": [], "description": "husky in devDependencies", "status": "fail", "message": "husky not found in devDependencies" }
@@ -299,6 +299,6 @@ Other presets (`astro-site`, `monorepo`, `react-site`, `webapp`) are empty stubs
 ## Known Gotchas (verify before fixing — from AGENTS.md)
 
 1. **Bin + version path broken:** `package.json` `bin.conform = src/cli.ts` missing; `src/cli/index.ts:11` reads `../package.json` (i.e. `src/package.json`). Should be `../../package.json`. `bun run src/cli/index.ts check` crashes with `ENOENT` before checks unless patched.
-2. **Resolver mismatch:** looks in `templates/` (nonexistent); presets live in `src/presets/`. Fix: point resolver at `src/presets/` or add `templates/` shim.
+2. **Resolver mismatch:** looks in `presets/` (nonexistent); presets live in `src/presets/`. Fix: point resolver at `src/presets/` or add `presets/` shim.
 3. **Reporters not wired:** `CheckCommand` computes `results` but never calls `renderTui`/`renderJson`; only exit code varies, no stdout. Add `process.stdout.write(renderTui(...))` / `renderJson(...)` branch.
-4. **Docs drift:** `Target`/`CheckContext`, `RuleSet` old name, `templates/rules/` → now `src/plugins/`, `group` → `domain`+`files`, `kind`/`aiRule` never existed.
+4. **Docs drift:** `Target`/`CheckContext`, `RuleSet` old name, `presets/rules/` → now `src/plugins/`, `group` → `domain`+`files`, `kind`/`aiRule` never existed.

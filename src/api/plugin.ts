@@ -1,14 +1,18 @@
+import type { Type } from "arktype";
+import { type } from "arktype";
+
 import type { CheckResult, Plugin as PluginInterface, Rule } from "@/types.ts";
 import { Target } from "@/utils/fs.ts";
 
-interface RuleSetRuleDef {
+interface RuleSetRuleDef<P = unknown> {
   domain: string;
   files?: string[];
   id: string;
   name: string;
+  params?: Type<P>;
   test: (args: {
     context: unknown;
-    options?: unknown[];
+    params?: P;
   }) => CheckResult | Promise<CheckResult>;
 }
 
@@ -19,7 +23,7 @@ export class Plugin<T = unknown> implements PluginInterface {
     domain: string;
     id: string;
   };
-  private readonly ruleDefs: RuleSetRuleDef[] = [];
+  private readonly ruleDefs: RuleSetRuleDef<unknown>[] = [];
 
   constructor(config: {
     // biome-ignore lint/suspicious/noExplicitAny: backward compat requires any
@@ -30,17 +34,18 @@ export class Plugin<T = unknown> implements PluginInterface {
     this.config = config;
   }
 
-  defineRule(def: {
+  defineRule<P = unknown>(def: {
     domain: string;
     files?: string[];
     id: string;
     name: string;
+    params?: Type<P>;
     test: (args: {
       context: T;
-      options?: unknown[];
+      params?: P;
     }) => CheckResult | Promise<CheckResult>;
   }): void {
-    this.ruleDefs.push(def as RuleSetRuleDef);
+    this.ruleDefs.push(def as unknown as RuleSetRuleDef<unknown>);
   }
 
   get id(): string {
@@ -48,9 +53,9 @@ export class Plugin<T = unknown> implements PluginInterface {
   }
 
   get rules(): Rule[] {
-    return this.ruleDefs.map(
-      (ruleDef): Rule => ({
-        check: async (targetPath: string, ...options: unknown[]) => {
+    return this.ruleDefs.map((ruleDef): Rule => {
+      const base: Rule = {
+        check: async (targetPath: string, params: unknown) => {
           const target = new Target(targetPath);
           let ctx: T;
           try {
@@ -58,19 +63,67 @@ export class Plugin<T = unknown> implements PluginInterface {
           } catch {
             ctx = this.config.context(targetPath);
           }
-          return await ruleDef.test({ context: ctx, options });
+
+          if (ruleDef.params) {
+            if (params === undefined) {
+              return await (
+                ruleDef.test as (args: {
+                  context: T;
+                  params: unknown;
+                }) => CheckResult | Promise<CheckResult>
+              )({
+                context: ctx,
+                params: undefined,
+              });
+            }
+            const parsed = (
+              ruleDef.params as unknown as (data: unknown) => unknown
+            )(params);
+            if (parsed instanceof type.errors) {
+              const message = Object.entries(parsed.flatProblemsByPath)
+                .map(
+                  ([path, problems]) =>
+                    `${path}: ${(problems as string[]).join(", ")}`,
+                )
+                .join("; ");
+              return { message: `Invalid params: ${message}`, status: "fail" };
+            }
+            return await (
+              ruleDef.test as (args: {
+                context: T;
+                params: unknown;
+              }) => CheckResult | Promise<CheckResult>
+            )({
+              context: ctx,
+              params: parsed,
+            });
+          }
+
+          return await (
+            ruleDef.test as (args: {
+              context: T;
+              params: unknown;
+            }) => CheckResult | Promise<CheckResult>
+          )({
+            context: ctx,
+            params,
+          });
         },
         description: ruleDef.name,
         domain: ruleDef.domain ?? this.config.domain,
         files: ruleDef.files ?? [],
         id: `${this.config.id}:${ruleDef.id}`,
-      }),
-    );
+      };
+      if (ruleDef.params) {
+        (base as Rule & { paramsSchema: Type }).paramsSchema = ruleDef.params;
+      }
+      return base;
+    });
   }
 }
 
 // Backward compatibility: RuleSet was the previous name for Plugin.
-// Keeping the alias makes existing imports and templates continue to work
+// Keeping the alias makes existing imports and presets continue to work
 // while new code should prefer `Plugin` / `definePlugin`.
 export const RuleSet = Plugin;
 

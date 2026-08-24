@@ -15,7 +15,7 @@ const program = new Command();
 
 program
   .name("conform")
-  .description("@adityab/conform — repository conformance checker")
+  .description("@adistack/conform — repository conformance checker")
   .version(pkg.version);
 
 program

@@ -5,7 +5,11 @@ import type { PackageJson } from "@/types.ts";
 import type { Target } from "@/utils/fs.ts";
 
 import { DOMAIN } from "./utils/domain.ts";
-import { isDefined, resolveFields, summarize } from "./utils/package.ts";
+import {
+  DEFAULT_REQUIRED_PACKAGE_FIELDS,
+  isDefined,
+  summarize,
+} from "./utils/package.ts";
 
 const requiredStructure = type({
   bugs: "unknown",
@@ -134,12 +138,21 @@ _packageJson.defineRule({
   domain: DOMAIN.BUILD,
   id: "required-fields",
   name: "required package.json fields are defined",
-  test({ context, options }) {
+  params: type("string[]").or(type({ fields: "string[]" })),
+  test({ context, params }) {
     const pkg = context.packageJson();
     if (!pkg) {
       return Status.fail("package.json not found");
     }
-    const fields = resolveFields(options);
+    const fields: string[] = (() => {
+      if (!params) {
+        return [...DEFAULT_REQUIRED_PACKAGE_FIELDS];
+      }
+      if (Array.isArray(params)) {
+        return params as string[];
+      }
+      return (params as { fields: string[] }).fields;
+    })();
     const missing = fields.filter(
       (field) => !isDefined((pkg as Record<string, unknown>)[field]),
     );
@@ -147,6 +160,38 @@ _packageJson.defineRule({
       return Status.fail(`missing required fields: ${missing.join(", ")}`);
     }
     return Status.pass(`all required fields present: ${fields.join(", ")}`);
+  },
+});
+
+_packageJson.defineRule({
+  domain: DOMAIN.BUILD,
+  id: "typecheck",
+  name: "typecheck script exists",
+  test({ context }) {
+    const scripts = context.packageJson()?.scripts ?? {};
+    const typecheckScript =
+      scripts["typecheck"] ?? scripts["check:types"] ?? scripts["types"];
+    if (typecheckScript) {
+      return Status.pass(typecheckScript);
+    }
+    return Status.warn(
+      "no typecheck script found — add a typecheck or check:types script running tsc --noEmit",
+    );
+  },
+});
+
+_packageJson.defineRule({
+  domain: DOMAIN.BUILD,
+  id: "no-prepublish",
+  name: "deprecated prepublish script is not used",
+  test({ context }) {
+    const scripts = context.packageJson()?.scripts;
+    if (scripts?.["prepublish"]) {
+      return Status.fail(
+        'prepublish script is deprecated — it runs on both "npm install" and "npm publish". Use prepublishOnly instead.',
+      );
+    }
+    return Status.pass();
   },
 });
 

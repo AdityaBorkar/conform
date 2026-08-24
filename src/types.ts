@@ -1,3 +1,5 @@
+import type { Type } from "arktype";
+
 export type Severity = "pass" | "warn" | "fail";
 
 export type GroupBy = "domains" | "files";
@@ -31,15 +33,13 @@ export interface PackageJson {
   version?: string;
 }
 
-export interface Rule {
-  check: (
-    ctx: string,
-    ...options: unknown[]
-  ) => CheckResult | Promise<CheckResult>;
+export interface Rule<P = unknown> {
+  check: (ctx: string, params?: P) => CheckResult | Promise<CheckResult>;
   description: string;
   domain: string;
   files: string[];
   id: string;
+  paramsSchema?: Type;
 }
 
 export interface Plugin {
@@ -61,7 +61,7 @@ export interface Preset {
 }
 
 /** @deprecated Use Preset instead. */
-export type Template = Preset;
+export type preset = Preset;
 
 export interface RuleResult {
   description: string;
