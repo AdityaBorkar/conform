@@ -6,9 +6,7 @@ import { husky } from "./husky.ts";
 import { packageJson } from "./package_json.ts";
 import { tsconfig } from "./tsconfig.ts";
 
-export { biome, docs, github, gitignore, husky, packageJson, tsconfig };
-
-export const allBuiltinPlugins = [
+const allBuiltinPlugins = [
   packageJson,
   biome,
   tsconfig,

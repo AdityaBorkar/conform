@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 import type {
-  Plugin,
+  AnyPlugin,
   Preset,
   PresetWithPlugins,
   StrictPresetRules,
@@ -52,9 +52,7 @@ export async function presetResolver(name: string): Promise<Preset | null> {
   return null;
 }
 
-export function definePreset<
-  const Ps extends readonly Plugin<any, any>[],
->(preset: {
+export function definePreset<const Ps extends readonly AnyPlugin[]>(preset: {
   description: string;
   name: string;
   plugins: Ps;

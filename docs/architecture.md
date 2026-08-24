@@ -31,7 +31,7 @@ export interface Rule<P = unknown> {
 export interface Plugin { id: string; rules: Rule[] } // impl: class Plugin<T> { context:(Target)=>T, defineRule }
 
 export type RuleLevel = "warn" | "off" | "error";
-export type RuleConfig<P = unknown> = P extends Record<string, any>
+export type RuleConfig<P = unknown> = P extends Record<string, unknown>
   ? RuleLevel | ({ level?: RuleLevel } & Partial<P>)
   : RuleLevel | ({ level?: RuleLevel } & Record<string, unknown>);
 export type RuleOverrides = Record<string, RuleConfig>;

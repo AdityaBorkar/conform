@@ -49,7 +49,7 @@ interface PluginRuleDef<P = unknown> {
 export class Plugin<
   Id extends string = string,
   T = unknown,
-  M extends Record<string, any> = Record<string, any>,
+  M extends Record<string, unknown> = Record<string, unknown>,
 > implements PluginInterface<Id, M>
 {
   declare _paramMap: M;
@@ -90,9 +90,9 @@ export class Plugin<
     }) => CheckResult | Promise<CheckResult>;
   }): Plugin<Id, T, M>;
 
-  defineRule(def: any): Plugin<Id, T, any> {
-    this.ruleDefs.push(def as unknown as PluginRuleDef<unknown>);
-    return this as unknown as Plugin<Id, T, any>;
+  defineRule(def: unknown): Plugin<Id, T, Record<string, unknown>> {
+    this.ruleDefs.push(def as PluginRuleDef<unknown>);
+    return this as unknown as Plugin<Id, T, Record<string, unknown>>;
   }
 
   get id(): Id {
@@ -151,6 +151,6 @@ export class Plugin<
 export function definePlugin<const Id extends string, T>(config: {
   context: (target: Target) => T;
   id: Id;
-}): Plugin<Id, T, {}> {
-  return new Plugin<Id, T, {}>(config);
+}): Plugin<Id, T, Record<never, never>> {
+  return new Plugin<Id, T, Record<never, never>>(config);
 }

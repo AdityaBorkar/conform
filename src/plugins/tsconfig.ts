@@ -50,32 +50,25 @@ export const tsconfig = definePlugin({
     name: "compilerOptions in tsconfig",
     params: tsconfigOptionsSchema,
     test({ context, params }) {
-      const tsconfig = context.readJson<{
+      const content = context.readJson<{
         compilerOptions?: Record<string, unknown>;
       }>("tsconfig.json");
-      if (!tsconfig?.compilerOptions) {
+      if (!content?.compilerOptions) {
         return Status.pass(
           "no tsconfig.json found — skipping compilerOptions check",
         );
       }
 
-      const options = params?.options ?? {
-        isolatedModules: true,
-        noUncheckedIndexedAccess: true,
-        strict: true,
-      };
-      const warnOptions = params?.warnOptions ?? {
-        sourceMap: true,
-        verbatimModuleSyntax: true,
-      };
+      const options = params?.options ?? {};
+      const warnOptions = params?.warnOptions ?? {};
 
       const effectiveWarn: Record<string, unknown> = { ...warnOptions };
-      if (tsconfig.compilerOptions["noEmit"] === true) {
+      if (content.compilerOptions["noEmit"] === true) {
         effectiveWarn["sourceMap"] = undefined;
       }
 
       const missing = Object.entries(options).filter(
-        ([k, v]) => tsconfig.compilerOptions?.[k] !== v,
+        ([k, v]) => content.compilerOptions?.[k] !== v,
       );
       if (missing.length > 0) {
         const details = missing
@@ -96,7 +89,7 @@ export const tsconfig = definePlugin({
       }
 
       const warnMissing = Object.entries(effectiveWarn).filter(
-        ([k, v]) => tsconfig.compilerOptions?.[k] !== v,
+        ([k, v]) => content.compilerOptions?.[k] !== v,
       );
       if (warnMissing.length > 0) {
         const details = warnMissing

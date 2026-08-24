@@ -2,7 +2,7 @@ import type { Type } from "arktype";
 
 import type { AllBuiltinPlugins } from "@/plugins/index.ts";
 
-type AnyPlugin = Plugin<any, any>;
+export type AnyPlugin = Plugin<string, Record<string, unknown>>;
 
 export type Severity = "pass" | "warn" | "fail";
 
@@ -48,17 +48,17 @@ export interface Rule<P = unknown> {
 
 export interface Plugin<
   Id extends string = string,
-  ParamMap extends Record<string, any> = Record<string, any>,
+  ParamMap extends Record<string, unknown> = Record<string, unknown>,
 > {
   _paramMap: ParamMap;
   id: Id;
-  rules: Rule<any>[];
+  rules: Rule<unknown>[];
 }
 
 export type RuleLevel = "warn" | "off" | "error";
 
 export type RuleConfig<P = unknown> =
-  P extends Record<string, any>
+  P extends Record<string, unknown>
     ? RuleLevel | ({ level?: RuleLevel } & Partial<P>)
     : RuleLevel | ({ level?: RuleLevel } & Record<string, unknown>);
 
