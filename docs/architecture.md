@@ -31,14 +31,25 @@ export interface Rule<P = unknown> {
 export interface Plugin { id: string; rules: Rule[] }
 
 export type RuleSeverity = Severity | "off" | "error"; // "error" → "fail"
-export type RuleConfig = RuleSeverity | [RuleSeverity, ...unknown[]];
+export type RuleConfig<P = unknown> = RuleSeverity | [RuleSeverity, P, ...unknown[]];
 export type RuleOverrides = Record<string, RuleConfig>;
+
+// param-typed IDs
+export interface HuskyHookSpec { file: string; contains: string }
+export type RequiredFieldsParams = string[] | { fields: string[] };
+export interface RuleRegistry {
+  "husky:hook": HuskyHookSpec[];
+  "package-json:required-fields": RequiredFieldsParams;
+}
+export type StrictRuleOverrides = {
+  [K in keyof RuleRegistry]?: RuleConfig<RuleRegistry[K]>;
+} & Record<string, RuleConfig>;
 
 export interface Preset {
   name: string;
   description: string;
   plugins: Plugin[];
-  rules?: RuleOverrides;
+  rules?: StrictRuleOverrides; // typed overrides; underlying shape is RuleOverrides
 }
 
 export interface RuleResult {
@@ -46,7 +57,7 @@ export interface RuleResult {
   description: string; status: Severity; message?: string;
 }
 
-export interface ConformConfig { preset: string; plugins?: Plugin[]; rules?: RuleOverrides; }
+export interface ConformConfig { preset: string; plugins?: Plugin[]; rules?: StrictRuleOverrides; }
 
 export interface ConformOutput {
   preset: string; path: string;
@@ -76,6 +87,7 @@ export const husky = definePlugin({
 
 husky.defineRule({
   id: "dev-deps",
+  domain: DOMAIN.DEV_ENVIRONMENT,
   name: "husky in devDependencies",
   test({ context }) {
     const v = context.packageJson()?.devDependencies?.["husky"];
@@ -90,6 +102,7 @@ With params (arktype validated):
 import { type } from "arktype";
 husky.defineRule({
   id: "hook-pattern",
+  domain: DOMAIN.DEV_ENVIRONMENT,
   name: "hook matches pattern",
   params: type({ pattern: "string" }),
   test({ context, params }) {
@@ -130,14 +143,15 @@ export default definePreset({
 
 ```
 src/presets/        — flat files, each default-exports a Preset
-  package.ts        — only complete preset (13 plugins); astro-site/monorepo/react-site/webapp are stubs
-src/plugins/        — one file per plugin + utils/domain.ts
-  package_json.ts, biome.ts, tsconfig.ts, husky.ts, scripts.ts, bin.ts,
-  testing.ts, jsr.ts, docs.ts, gitignore.ts, github.ts, github-config.ts, files.ts
-  utils/domain.ts   — DOMAIN display strings
+  package.ts        — only complete preset (7 plugins, 36 rules)
+  monorepo.ts       — stub (plugins: [])
+src/plugins/        — one file per plugin + utils/
+  package_json.ts, biome.ts, tsconfig.ts, husky.ts, docs.ts, gitignore.ts, github.ts
+  utils/domain.ts   — DOMAIN display strings ("Build & Tasks", "Code Quality", …)
+  utils/markdown.ts, utils/package.ts, utils/workflows.ts — shared helpers
 ```
 
-`src/api/preset.ts` resolves `src/presets/<name>.ts` or `src/presets/<name>/index.ts` at repo root. `src/utils/fs.ts` exposes `fileExists`, `readFile`, `readJson` (strips `//`/`/* */`), `packageJson`. `src/utils/config.ts` dynamic-imports `conform.config.ts`.
+`src/api/preset.ts` (`presetResolver`) resolves `src/presets/<name>.ts` or `src/presets/<name>/index.ts` from repo root (`join(import.meta.dir, "../..", "src/presets")`). `src/utils/fs.ts` exposes `Target` plus `fileExists`, `readFile`, `readJson` (strips `//`/`/* */`), `packageJson`. `src/utils/config.ts` dynamic-imports `conform.config.ts` and requires `config.preset: string` else returns null (treated as `no-config`).
 
 ## Config File
 
@@ -212,35 +226,47 @@ Build & Tasks
 
 ## Package Preset — Rule Set
 
-`src/presets/package.ts` — 13 plugins, 40+ rules (see `src/plugins/*` for exact messages):
+`src/presets/package.ts` — 7 plugins, 36 rules (see `src/plugins/*` for exact messages). Every rule's `files` is `[]` except `husky:hook` which is `[".husky/pre-commit", ".husky/commit-msg"]`.
 
 | Plugin | Domain | Rule | One-line |
 |---|---|---|---|
-| `package-json` | Build/Security | `structure` | `name/version/license/type=module/bugs` required |
-| | | `entry-point` | `main\|module\|exports` present |
-| | | `build-script` | `prepare\|build` script |
-| | | `files-or-npmignore` | `files` or `.npmignore` (warn) |
-| | | `no-install-hooks` | no `preinstall/postinstall/install` |
-| `biome` | Style | `dev-deps` | `@biomejs/biome` in devDeps |
-| | | `config-file` | `biome.json\|.jsonc` (warn) |
-| | | `lint-script` | `lint\|check` runs biome |
-| | | `format-script` | `format\|check:format\|check:lint` runs biome (warn) |
-| `typescript` | Code Quality | `deps` | `typescript` in deps |
-| | | `tsconfig` | `tsconfig.json` exists |
-| | | `strict` | `strict:true` |
-| | | `no-unchecked-indexed-access` | `noUncheckedIndexedAccess:true` |
-| | | `isolated-modules` | `isolatedModules:true` |
-| | | `verbatim-module-syntax` | `verbatimModuleSyntax:true` (warn) |
-| | | `source-map` | `sourceMap:true` when not `noEmit` (warn) |
-| `husky` | Dev Env | `dev-deps`/`hooks-dir`/`prepare-script`/`pre-commit`/`commit-msg` | husky wiring |
-| `scripts` | Build | `typecheck`/`no-prepublish` | typecheck script, no deprecated prepublish |
-| `bin` | Build | `file-exists`/`shebang` | bin target & shebang |
-| `testing` | Testing | `test-runner`/`test-script` | vitest/bun test |
-| `jsr` | Build | `jsr`/`no-slow-types`/`provenance` | jsr.json |
-| `docs` | Docs | `readme`/`readme-install`/`readme-usage`/`has-description`/`changelog` | docs |
-| `gitignore` | Dev Env | `exists`/`node-modules`/`env` | gitignore |
-| `github` | GitHub | `ci-workflow`/`ci-lint`/`ci-typecheck`/`release-workflow`/`dependabot` | workflows |
-| `github-config` | GitHub | `github`/`contributing`/`security-md`/`docs` | repo config |
-| `files` | varies | `license`/`readme`/`gitignore` | top-level files |
+| `package-json` | Build & Tasks | `structure` | `name/version/license/type=module/bugs` required; recommended `description/engines/homepage/repository/sideEffects` (warn) |
+| | Build & Tasks | `entry-point` | `main\|module\|exports` present |
+| | Build & Tasks | `build-script` | `prepare\|build` script |
+| | Build & Tasks | `files-or-npmignore` | `files` or `.npmignore` (warn) |
+| | Security & Governance | `no-install-hooks` | no `preinstall/postinstall/install` (supply-chain) |
+| | Build & Tasks | `required-fields` | `params: string[] \| {fields:string[]}` — required `package.json` fields (default via `DEFAULT_REQUIRED_PACKAGE_FIELDS`) |
+| | Build & Tasks | `typecheck` | `typecheck\|check:types\|types` script (warn) |
+| | Build & Tasks | `no-prepublish` | no deprecated `prepublish` script |
+| `biome` | Style & Validation | `dev-deps` | `@biomejs/biome` in devDeps |
+| | Style & Validation | `config-file` | `biome.json\|.jsonc` (warn) |
+| | Style & Validation | `lint-script` | `lint\|check` runs `biome` |
+| | Style & Validation | `format-script` | `format\|check:format\|check:lint` runs `biome` (warn) |
+| `typescript` | Code Quality | `deps` | `typescript` in dev/peerDeps |
+| | Code Quality | `tsconfig` | `tsconfig.json` exists |
+| | Code Quality | `strict` | `strict:true` |
+| | Code Quality | `no-unchecked-indexed-access` | `noUncheckedIndexedAccess:true` |
+| | Code Quality | `isolated-modules` | `isolatedModules:true` |
+| | Code Quality | `verbatim-module-syntax` | `verbatimModuleSyntax:true` (warn) |
+| | Observability | `source-map` | `sourceMap:true` when not `noEmit` (warn) |
+| `husky` | Dev Environment | `dev-deps` | `husky` in devDeps |
+| | Dev Environment | `hooks-dir` | `.husky/` directory exists |
+| | Dev Environment | `prepare-script` | `prepare` script calls `husky` |
+| | Dev Environment | `hook` | `params: HuskyHookSpec[]` (`{file, contains}[]`), defaults to pre-commit `bun run format` + commit-msg `bun commitlint --edit "$1"` |
+| `docs` | Documentation | `readme` | `README.md` exists and non-empty |
+| | Documentation | `changelog` | `CHANGELOG.md` / `HISTORY.md` (warn) |
+| | Documentation | `contributing` | `CONTRIBUTING.md` or `.github/CONTRIBUTING.md` (warn) |
+| | Security & Governance | `license` | `LICENSE` / `LICENSE.md` / `LICENSE.txt` |
+| | Security & Governance | `security-md` | `SECURITY.md` or `.github/SECURITY.md` (warn) |
+| `gitignore` | Dev Environment | `exists` | `.gitignore` exists |
+| | Dev Environment | `node-modules` | `.gitignore` contains `node_modules` |
+| | Dev Environment | `env` | `.gitignore` contains `.env` / `.env*` |
+| `github` | GitHub Configuration | `ci-workflow` | `.github/workflows/{ci,test,build,check}.{yml,yaml}` |
+| | GitHub Configuration | `release-workflow` | `.github/workflows/{release,publish,deploy}.{yml,yaml}` (warn) |
+| | GitHub Configuration | `ci-lint` | CI workflow runs `biome`/`lint` (warn) |
+| | GitHub Configuration | `ci-typecheck` | CI workflow runs `tsc`/`typecheck` (warn) |
+| | GitHub Configuration | `dependabot` | `dependabot.yml`/`yaml` or `renovate.json` (warn) |
 
-Other presets (`astro-site`, `monorepo`, `react-site`, `webapp`) are stubs.
+Shipped preset overrides (`src/presets/package.ts:rules`): `husky:hook: ["error", [{contains:"bun run format",file:".husky/pre-commit"},…]]` and `package-json:required-fields: ["error", ["license","name","author","contributors","repository"]]` (both `error`→`fail`). Generic example in §Preset above (`"package-json:files-or-npmignore": "warn"`) is illustrative only.
+
+Other preset: `monorepo.ts` is a stub (`plugins: []`). No `astro-site`/`react-site`/`webapp` presets exist on disk.

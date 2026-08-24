@@ -35,6 +35,15 @@ CLI that checks a repository against a named Preset and reports Drift.
 **RuleOverrides**:
  Map of Rule ID → RuleConfig that coerces non-pass results to the configured severity (pass stays pass). Shares the same shape on Preset and on ConformConfig.
 
+**StrictRuleOverrides**:
+ Typed RuleOverrides where known IDs (`husky:hook`, `package-json:required-fields`) enforce their param type via RuleRegistry; other IDs accept any RuleConfig.
+
+**RuleRegistry**:
+ Static map of rule IDs to their param types: `husky:hook → HuskyHookSpec[]`, `package-json:required-fields → RequiredFieldsParams`. Drives `StrictRuleOverrides` typing.
+
+**Target**:
+ Filesystem view rooted at a repository path. Wraps `fileExists`, `readFile`, `readJson`, `packageJson` and is passed to each Plugin's `context` factory.
+
 **Domain**:
  Human display group for a Rule, e.g. `Build & Tasks`, `Style & Validation`, `Dev Environment`.
  _Avoid_: Group
