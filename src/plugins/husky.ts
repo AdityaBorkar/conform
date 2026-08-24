@@ -59,18 +59,20 @@ _husky.defineRule({
   },
 });
 
-export type { HuskyHookSpec } from "@/types.ts";
+export type { HuskyHookParams, HuskyHookSpec } from "@/types.ts";
 
 export const DEFAULT_HUSKY_HOOKS: readonly HuskyHookSpec[] = [
   { contains: "bun run format", file: ".husky/pre-commit" },
   { contains: 'bun commitlint --edit "$1"', file: ".husky/commit-msg" },
 ] as const;
 
-export function resolveHuskyHooks(params?: HuskyHookSpec[]): HuskyHookSpec[] {
-  if (!params || params.length === 0) {
+export function resolveHuskyHooks(params?: {
+  hooks: HuskyHookSpec[];
+}): HuskyHookSpec[] {
+  if (!params?.hooks || params.hooks.length === 0) {
     return [...DEFAULT_HUSKY_HOOKS];
   }
-  return params;
+  return params.hooks;
 }
 
 _husky.defineRule({
@@ -78,7 +80,9 @@ _husky.defineRule({
   files: DEFAULT_HUSKY_HOOKS.map((h) => h.file),
   id: "hook",
   name: "husky hook file exists with expected content",
-  params: type({ contains: "string", file: "string" }).array(),
+  params: type({
+    hooks: type({ contains: "string", file: "string" }).array(),
+  }),
   test({ context, params }) {
     const specs = resolveHuskyHooks(params);
 

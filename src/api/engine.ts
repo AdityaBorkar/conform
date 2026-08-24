@@ -35,21 +35,15 @@ export interface ConformanceError {
   message: string;
 }
 
-function normalizeSeverity(value: RuleConfig): Severity | "off" | null {
-  const raw: string = Array.isArray(value)
-    ? (value[0] as string)
-    : (value as string);
-  if (raw === "off") {
+function normalizeLevel(level: string): Severity | "off" | null {
+  if (level === "off") {
     return "off";
   }
-  if (raw === "error" || raw === "fail") {
+  if (level === "error") {
     return "fail";
   }
-  if (raw === "warn") {
+  if (level === "warn") {
     return "warn";
-  }
-  if (raw === "pass") {
-    return "pass";
   }
   return null;
 }
@@ -61,10 +55,27 @@ function parseOverride(rawOverride: RuleConfig | undefined): {
   if (rawOverride === undefined) {
     return { params: undefined, severity: undefined };
   }
-  return {
-    params: Array.isArray(rawOverride) ? rawOverride[1] : undefined,
-    severity: normalizeSeverity(rawOverride),
+  if (
+    typeof rawOverride !== "object" ||
+    rawOverride === null ||
+    !("level" in rawOverride)
+  ) {
+    return { params: undefined, severity: null };
+  }
+  const rec = rawOverride as {
+    level: unknown;
+    params?: unknown;
+    options?: unknown;
   };
+  const severity = normalizeLevel(String(rec.level));
+  if (severity === null) {
+    return { params: undefined, severity: null };
+  }
+  // `params` and `options` are aliases — `params` wins if both present
+  const hasParams = "params" in rec;
+  const hasOptions = "options" in rec;
+  const params = hasParams ? rec.params : hasOptions ? rec.options : undefined;
+  return { params, severity };
 }
 
 function coerceStatus(
@@ -123,9 +134,12 @@ export async function runChecks(
       parseOverride(rawOverride);
 
     if (rawOverride !== undefined && override === null) {
-      const raw = Array.isArray(rawOverride)
-        ? String((rawOverride as unknown[])[0])
-        : String(rawOverride);
+      const raw =
+        rawOverride !== null &&
+        typeof rawOverride === "object" &&
+        "level" in (rawOverride as Record<string, unknown>)
+          ? String((rawOverride as Record<string, unknown>)["level"])
+          : String(rawOverride);
       results.push({
         description: rule.description,
         domain: rule.domain,

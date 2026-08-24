@@ -34,28 +34,29 @@ Generated files are git ignored "*.gen.ts"
 
 Create: @tanstack-start-website @tanstack-start-webapp
 
+- CHANGELOG.md with changesets
+  - Unreleased section will be contructed by Ai agents using diff directly at release. Do not maintain "unreleased" section in CHANGELOG.md.
+  - [Script] Release -> pi-agent -> SKILLs -> changelog
+    - writes version and changelog -> provenance and publish
+- CI/cd Pipeline
+  - github actions
+- RULE: "check:conform" command runs before version release / deployment
+
 ---
 
 Create: monorepo support baked into the Engine/API
 
 - Not a Monorepo
   - no nested package.json
-- CHANGELOG.md with changesets
-  - Unreleased section will be contructed by Ai agents using diff directly at release. Do not maintain "unreleased" section in CHANGELOG.md.
-  - [Script] Release -> pi-agent -> SKILLs -> changelog
-    - writes version and changelog -> provenance and publish
 - Infra
   - No docker.compose files
   - package.json infra:*
   - Pulumi.dev and Pulumi.production and Pulumi.preview
-- CI/cd Pipeline
-  - github actions
 - GitHub Repo Config checks
   - CODEOWNERS
 
 ## Phase 2
 
-- RULE: "check:conform" command runs before version release / deployment
 - Output of the Tool must be optimized for AI agents
 - Ensure rules are first-principles like rules that can be easily extended and composed together in the preset.
   - SKILL: /write-rule

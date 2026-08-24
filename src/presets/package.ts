@@ -12,17 +12,24 @@ export default definePreset({
   name: "package",
   plugins: [packageJson, biome, tsconfig, husky, docs, gitignore, github],
   rules: {
-    "gitignore:excludes": ["error", ["node_modules", ".env"]],
-    "husky:hook": [
-      "error",
-      [
-        { contains: "bun run format", file: ".husky/pre-commit" },
-        { contains: 'bun commitlint --edit "$1"', file: ".husky/commit-msg" },
-      ],
-    ],
-    "package-json:required-fields": [
-      "error",
-      ["license", "name", "author", "contributors", "repository"],
-    ],
+    "gitignore:excludes": {
+      level: "error",
+      params: { file_expressions: ["node_modules", ".env"] },
+    },
+    "husky:hook": {
+      level: "error",
+      params: {
+        hooks: [
+          { contains: "bun run format", file: ".husky/pre-commit" },
+          { contains: 'bun commitlint --edit "$1"', file: ".husky/commit-msg" },
+        ],
+      },
+    },
+    "package-json:required-fields": {
+      level: "error",
+      params: {
+        fields: ["license", "name", "author", "contributors", "repository"],
+      },
+    },
   },
 });

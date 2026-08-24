@@ -17,8 +17,8 @@ export type {
   Preset,
   Rule,
   RuleConfig,
+  RuleLevel,
   RuleOverrides,
   RuleResult,
-  RuleSeverity,
   Severity,
 } from "./types.ts";

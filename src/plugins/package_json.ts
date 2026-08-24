@@ -136,21 +136,15 @@ _packageJson.defineRule({
   domain: DOMAIN.BUILD,
   id: "required-fields",
   name: "required package.json fields are defined",
-  params: type("string[]").or(type({ fields: "string[]" })),
+  params: type({
+    fields: "string[]",
+  }),
   test({ context, params }) {
     const pkg = context.packageJson();
     if (!pkg) {
       return Status.fail("package.json not found");
     }
-    const fields: string[] = (() => {
-      if (!params) {
-        return [...DEFAULT_REQUIRED_PACKAGE_FIELDS];
-      }
-      if (Array.isArray(params)) {
-        return params as string[];
-      }
-      return (params as { fields: string[] }).fields;
-    })();
+    const fields = params?.fields ?? [...DEFAULT_REQUIRED_PACKAGE_FIELDS];
     const missing = fields.filter(
       (field) => !isDefined((pkg as Record<string, unknown>)[field]),
     );

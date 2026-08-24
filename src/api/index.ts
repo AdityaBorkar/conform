@@ -6,6 +6,7 @@ export type {
   Preset,
   RequiredFieldsParams,
   RuleConfig,
+  RuleLevel,
   RuleOverrides,
   RuleRegistry,
   StrictRuleOverrides,

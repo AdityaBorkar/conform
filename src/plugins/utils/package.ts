@@ -25,24 +25,13 @@ export function isDefined(value: unknown): boolean {
 }
 
 export function resolveFields(
-  params?: string[] | { fields: string[] },
+  params?: { fields: string[] },
   fallback: readonly string[] = DEFAULT_REQUIRED_PACKAGE_FIELDS,
 ): string[] {
-  if (!params) {
+  if (!params?.fields) {
     return [...fallback];
   }
-  if (Array.isArray(params)) {
-    return [...params];
-  }
-  if (
-    params !== null &&
-    typeof params === "object" &&
-    "fields" in params &&
-    Array.isArray((params as { fields: unknown }).fields)
-  ) {
-    return [...(params as { fields: string[] }).fields];
-  }
-  return [...fallback];
+  return [...params.fields];
 }
 
 export function summarize(errors: type.errors): string {

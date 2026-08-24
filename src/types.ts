@@ -47,13 +47,13 @@ export interface Plugin {
   rules: Rule[];
 }
 
-export type RuleSeverity = Severity | "off" | "error";
+export type RuleLevel = "warn" | "off" | "error";
 
 export type RuleConfig<P = unknown> =
-  | RuleSeverity
-  | [RuleSeverity, P, ...unknown[]];
+  | { level: RuleLevel }
+  | ({ level: Exclude<RuleLevel, "off"> } & ({ params: P } | { options: P }));
 
-export type RuleOverrides = Record<string, RuleConfig>;
+export type RuleOverrides = Record<string, RuleConfig<unknown>>;
 
 /**
  * Shared param shapes — single source of truth for Plugin schemas and registry.
@@ -63,9 +63,17 @@ export interface HuskyHookSpec {
   file: string;
 }
 
-export type RequiredFieldsParams = string[] | { fields: string[] };
+export interface RequiredFieldsParams {
+  fields: string[];
+}
 
-export type GitIgnoreExcludesParams = string[];
+export interface GitIgnoreExcludesParams {
+  file_expressions: string[];
+}
+
+export interface HuskyHookParams {
+  hooks: HuskyHookSpec[];
+}
 
 /**
  * Registry that maps known Rule IDs to their validated params type.
@@ -79,17 +87,17 @@ export type GitIgnoreExcludesParams = string[];
  */
 export interface RuleRegistry {
   "gitignore:excludes": GitIgnoreExcludesParams;
-  "husky:hook": HuskyHookSpec[];
+  "husky:hook": HuskyHookParams;
   "package-json:required-fields": RequiredFieldsParams;
 }
 
 export type StrictRuleConfig<K extends string> = K extends keyof RuleRegistry
   ? RuleConfig<RuleRegistry[K]>
-  : RuleConfig;
+  : RuleConfig<unknown>;
 
 export type StrictRuleOverrides = {
   [K in keyof RuleRegistry]?: StrictRuleConfig<K>;
-} & Record<string, RuleConfig>;
+} & Record<string, RuleConfig<unknown>>;
 
 export interface Preset {
   description: string;
