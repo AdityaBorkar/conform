@@ -2,246 +2,303 @@
 
 ## What It Is
 
-`@adityab/conform` is a CLI tool that checks whether a repository conforms to a predefined template. It detects drift between a repo's actual state and the expected state defined by a template, and reports that drift in the terminal.
+`@adityab/conform` is a CLI that checks whether a repository conforms to a predefined **template** (a named collection of `Plugin`s). It detects drift between a repo's actual state and the expected state, and reports that drift in the terminal (TUI) or as JSON.
 
 ## Core Problem
 
-Teams scaffold repos from templates but drift accumulates over time — missing hooks, dropped config fields, absent CI files. There is no automated way to verify conformance. Conform fills this gap.
+Teams scaffold repos from templates but drift accumulates — missing hooks, dropped config fields, absent CI files, weak `tsconfig` settings, supply-chain risky lifecycle scripts. There is no automated way to verify conformance. Conform fills that gap, CI-friendly, no auto-fix.
 
 ## Design Principles
 
-1. **Templates are code** — TypeScript modules, not data files. Rules can inspect anything.
-2. **Check-only, no auto-fix** — Report drift. Let humans fix it. Simpler, safer, CI-friendly.
-3. **Templates are opinionated** — No per-repo overrides. If a template says `license` is a fail, it's a fail. Don't like it? Write a different template.
-4. **Atomic rules, grouped display** — Each check is atomic and independently testable. The TUI groups them for readability.
-5. **Zero config from CLI** — Template selection lives in `conform.config.ts`. No `--template` flag. The config file IS the interface.
+1. **Templates are code** — TypeScript modules exporting a `Template`, not YAML/data files. Rules can inspect anything on disk.
+2. **Check-only, no auto-fix** — Report drift. Humans fix it. Simpler, safer, deterministic.
+3. **Opinionated with oxc-style overrides** — `Template.rules` and `ConformConfig.rules` are `RuleOverrides` (`Record<string, RuleSeverity | [RuleSeverity, ...opts]>`) where severity `"off"` skips, `"warn"/"error"/"fail"` coerce non-pass, `"pass"` keeps pass. Per-repo tuning is allowed but explicit.
+4. **Atomic rules, grouped display** — Each check is one atomic `Rule`. The TUI groups by `domain` then `files` (or by `files` with `--group files`). See ADR 002.
+5. **Zero config from CLI** — Template selection lives in `conform.config.ts` (`template: string`). No `--template` flag. Additional `plugins`/`rules` can be merged there.
+6. **Plugins own context** — A `Plugin<T>` declares `context: (targetPath: string) => T`; each rule receives `{ context: T }` via its `test` function. Standalone rules (`defineRule`) receive `targetPath: string` directly. All FS access goes through `src/utils/fs.ts` (`fileExists`, `readFile`, `readJson`, `packageJson`).
 
 ## Domain Model
 
-```
-Template
-  name: string
-  description: string
-  rules: Rule[]
-
-Rule
-  id: string              — e.g. "package-json:name-field"
-  group: string           — e.g. "package.json"
-  description: string     — Human-readable explanation
-  severity: Fail | Warn   — Expected severity if the check doesn't pass
-  kind: "deterministic" | "ai"
-  check: (ctx) => CheckResult | Promise<CheckResult>   — deterministic rules
-  prompt?: string         — ai only: instruction to the AI
-  files?: string[]        — ai only: which files to feed to the AI
-
-CheckResult
-  status: Pass | Warn | Fail
-  message?: string        — Why it passed/failed
-
-AiCheckResult extends CheckResult
-  confidence: number      — 0-1, how confident the AI is
-  reasoning: string       — Why the AI reached this conclusion
-
-CheckContext
-  targetPath: string
-  readFile(relPath): string | null
-  readJson(relPath): JsonValue | null
-  fileExists(relPath): boolean
-  packageJson: PackageJson | null
-
-RuleResult
-  id: string
-  group: string
-  description: string
-  severity: RuleSeverity
-  status: Severity
-  message?: string
-  kind: "deterministic" | "ai"
-  confidence?: number     — ai only
-  reasoning?: string      — ai only
-
-ConformConfig
-  template: string
-  ai?: {
-    model: string                              — e.g. "anthropic/claude-sonnet-4-5-20250929"
-    apiKey?: string                            — inline key (not recommended for committed configs)
-    apiKeyEnvVar?: string                      — env var name, default "CONFORM_AI_API_KEY"
-  }
-
-Severity = Pass | Warn | Fail
-```
-
-## Template Structure
-
-Templates live in `./templates/` at the package root. Each template is a directory containing an `index.ts` that exports a `Template`:
-
-```
-templates/
-  npm-publish/
-    index.ts
-```
-
-A template file looks like:
+Source of truth: `src/types.ts` + `src/api/*`. This section mirrors those types verbatim.
 
 ```ts
-import { defineTemplate, rule, aiRule } from "@adityab/conform";
+// src/types.ts
+export type Severity = "pass" | "warn" | "fail";
+export type GroupBy = "domains" | "files";
 
-export default defineTemplate({
-  name: "npm-publish",
-  description: "Conformance rules for publishing an NPM package",
-  rules: [
-    rule({
-      id: "package-json:name-field",
-      group: "package.json",
-      description: "name field is present in package.json",
-      severity: "fail",
-      check: (ctx) => {
-        if (!ctx.packageJson?.name) {
-          return { status: "fail", message: "name field is missing" };
-        }
-        return { status: "pass", message: ctx.packageJson.name };
-      },
-    }),
-    aiRule({
-      id: "husky:conventional-commits",
-      group: "husky",
-      description: "commit-msg hook enforces conventional commits",
-      severity: "fail",
-      files: [".husky/commit-msg"],
-      prompt:
-        "Does this commit-msg hook enforce conventional commits format (type(scope)!: description)? Check if it uses commitlint or a similar tool.",
-    }),
-  ],
+export interface CheckResult { status: Severity; message?: string }
+
+export interface Rule {
+  id: string;            // namespaced as `pluginId:ruleId`
+  domain: string;        // e.g. DOMAIN.BUILD = "Build & Tasks"
+  files: string[];       // file paths the rule concerns
+  description: string;
+  check: (ctx: string) => CheckResult | Promise<CheckResult>;
+}
+
+export interface Plugin { id: string; rules: Rule[] }
+
+export type RuleSeverity = Severity | "off" | "error"; // "error" → "fail"
+export type RuleConfig = RuleSeverity | [RuleSeverity, ...unknown[]];
+export type RuleOverrides = Record<string, RuleConfig>;
+
+export interface Template {
+  name: string;
+  description: string;
+  plugins: Plugin[];
+  rules?: RuleOverrides; // oxc-style severity overrides
+}
+
+export interface RuleResult {
+  id: string;
+  domain: string;
+  files: string[];
+  description: string;
+  status: Severity;
+  message?: string;
+}
+
+export interface ConformConfig {
+  template: string;
+  plugins?: Plugin[];
+  rules?: RuleOverrides;
+}
+
+export interface ConformOutput {
+  template: string;
+  path: string;
+  results: RuleResult[]; // filtered by verbose (hidden pass unless -v)
+  summary: { pass: number; warn: number; fail: number };
+  groupBy?: GroupBy;     // only "files" is emitted; "domains" is default
+}
+
+export interface PackageJson { name?: string; version?: string; description?: string; license?: string; type?: string; main?: string; module?: string; exports?: unknown; bin?: unknown; files?: string[]; homepage?: string; repository?: unknown; bugs?: unknown; sideEffects?: boolean | string[]; engines?: Record<string, string>; dependencies?: Record<string,string>; devDependencies?: Record<string,string>; peerDependencies?: Record<string,string>; scripts?: Record<string,string>; }
+// helpers
+export const Status = { pass(msg?): CheckResult, warn(msg?): CheckResult, fail(msg?): CheckResult }
+export const DOMAIN = { BUILD, CODE_QUALITY, DEV_ENVIRONMENT, DOCUMENTATION, GITHUB_CONFIG, OBSERVABILITY, SECURITY, STYLE, TESTING } // src/inbuilt-plugins/utils/domain.ts
+```
+
+`CheckContext` from earlier drafts does not exist. Rules do not receive `readFile`/`readJson`/`packageJson` directly; they receive either `targetPath: string` (standalone `defineRule`) or `{ context: T }` where `T` is the plugin's context object built from `src/utils/fs.ts` helpers.
+
+## Plugin & Rule Authoring API
+
+Preferred path — `definePlugin` / `Plugin`:
+
+```ts
+import { definePlugin, Status } from "@adityab/conform";
+import { fileExists, packageJson } from "@/utils/fs.ts";
+import { DOMAIN } from "@/inbuilt-plugins/utils/domain.ts";
+
+export const husky = definePlugin({
+  id: "husky",
+  domain: DOMAIN.DEV_ENVIRONMENT,
+  context: (targetPath) => ({
+    fileExists: (p: string) => fileExists(targetPath, p),
+    packageJson: () => packageJson(targetPath),
+  }),
 });
-```
 
-## Config File
-
-Target repos declare which template they conform to via `conform.config.ts`:
-
-```ts
-import { defineConfig } from "@adityab/conform";
-
-export default defineConfig({
-  template: "npm-publish",
-  ai: {
-    model: "anthropic/claude-sonnet-4-5-20250929",
-    // Option 1: env var (recommended) — reads CONFORM_AI_API_KEY by default
-    // Option 2: inline key (not recommended for committed configs)
-    // apiKey: "sk-...",
+husky.defineRule({
+  id: "dev-deps",
+  name: "husky in devDependencies",
+  test({ context }) {
+    const v = context.packageJson()?.devDependencies?.["husky"];
+    return v ? Status.pass(v) : Status.fail("husky not found in devDependencies");
   },
 });
 ```
 
+Standalone rule:
+
+```ts
+import { defineRule, Status } from "@adityab/conform";
+export const myRule = defineRule({
+  id: "my-plugin:my-rule",
+  domain: DOMAIN.STYLE,
+  files: ["biome.json"],
+  description: "biome.json exists",
+  check: (targetPath) => Status.pass(),
+});
+```
+
+Template:
+
+```ts
+import { defineTemplate } from "@adityab/conform";
+import { husky } from "@/inbuilt-plugins/husky.ts";
+// ... other plugins
+export default defineTemplate({
+  name: "package",
+  description: "Conformance rules for publishing an NPM package",
+  plugins: [husky /* …12 more */],
+  rules: { "package-json:files-or-npmignore": "warn" }, // optional overrides
+});
+```
+
+IDs are namespaced as `pluginId:ruleId` by `Plugin`. `defineTemplateLegacy` exists for back-compat with old `{ rules: Rule[] }` shape.
+
+## Template & Plugin Layout
+
+```
+src/presets/        — flat files, each default-exports a Template (defineTemplate)
+  package.ts        — only complete preset (13 plugins); astro-site/monorepo/react-site/webapp are stubs (plugins: [])
+src/inbuilt-plugins/ — one file per plugin/domain + utils/domain.ts
+  package_json.ts, biome.ts, tsconfig.ts, husky.ts, scripts.ts, bin.ts,
+  testing.ts, jsr.ts, docs.ts, gitignore.ts, github.ts, github-config.ts, files.ts
+  utils/domain.ts   — DOMAIN constants (human display strings)
+```
+
+`src/api/resolver.ts` currently resolves `templates/<name>.ts` or `templates/<name>/index.ts` from repo root (`templates/`). That directory does not exist in the repo — `files: ["src","templates"]` in `package.json` lists it but it is absent. Dogfooded `conform.config.ts` (`template: "package"`) therefore always fails to resolve today (see Gotchas).
+
+`src/utils/fs.ts` — `fileExists(targetPath, rel)`, `readFile`, `readJson` (strips `//` and `/* */` comments), `packageJson`. `src/utils/config.ts` — `loadConfig(targetPath)` dynamic-imports `conform.config.ts`.
+
+## Config File
+
+```ts
+// conform.config.ts in target repo
+import { defineConfig } from "@adityab/conform";
+export default defineConfig({
+  template: "package",
+  // optional, merged by mergeTemplateWithConfig in src/cli/check.ts
+  // plugins: [myPlugin],
+  // rules: { "biome:dev-deps": "error", "package-json:no-install-hooks": "off" },
+});
+```
+
+`loadConfig` requires `config.template: string`; missing/invalid config causes exit 2. `mergeTemplateWithConfig` appends `config.plugins` to `template.plugins` and shallow-merges `rules`.
+
 ## CLI
 
 ```
-conform check [--path <dir>] [--json] [--disable-ai]
+conform check [--path <dir>] [--json] [-v|--verbose] [--group domains|files]
 ```
 
-- `check` — Run conformance checks against the configured template
-- `--path` — Target directory (default: CWD)
-- `--json` — Machine-readable JSON output instead of TUI table
-- `--disable-ai` — Skip all AI-powered rules (they are excluded from results entirely)
+- `check` — Run conformance checks against the configured template.
+- `--path <dir>` — Target directory (default `process.cwd()`).
+- `--json` — Machine-readable JSON via `renderJson` (mutually exclusive with `--group`; exit 1 if combined).
+- `-v, --verbose` — Show `pass` results (default: only `warn`+`fail` are visible; summary counts always include all).
+- `--group <mode>` — TUI grouping: `domains` (default, groups by `domain` then `files`) or `files` (groups by `files`).
+
+Entry point is `src/cli/index.ts` (`commander`). Note `package.json` `bin.conform` declares `src/cli.ts` which does not exist; correct invocation is `bun run src/cli/index.ts check` (and `import.meta.dir` version read is `join(..,"package.json")` which resolves to `src/package.json`; it should be `../..`).
+
+`src/cli/check.ts` flow: `loadConfig → resolver → mergeTemplateWithConfig → runChecks → exit code`. **`renderTui`/`renderJson` are not called today** — results only affect the exit code (see Gotchas).
+
+Engine: `src/api/engine.ts` flattens `template.plugins[].rules`, applies `RuleOverrides` (`off` skips, other severities coerce non-pass), awaits `rule.check(targetPath)`.
 
 ## Exit Codes
 
 | Code | Meaning |
 |------|---------|
-| 0 | All rules pass |
-| 1 | One or more failures (takes priority over warnings) |
-| 2 | Warnings only, no failures |
+| 0 | All rules `pass` |
+| 1 | One or more `fail` (takes priority) — also `--json`+`--group` misuse |
+| 2 | `warn` only, **or** no `conform.config.ts`, **or** template not found (`resolver` returns null) |
 
 ## TUI Output
 
+`src/cli/reporter/tui.ts` — `renderTui(templateName, results, { verbose, groupBy })`. Pass hidden unless verbose; divider `━×50`; summary `N passed · N warned · N failed`.
+
 ```
-@adityab/conform — npm-publish template
+@adityab/conform — package template
 
-package.json
-  ✓ name-field          @adityab/conform
-  ✓ version-field       1.0.0
-  ✗ license-field       license field is missing
-  ⚠ description-field   description field is missing
+Build & Tasks
+  package.json
+    ✓ structure          package.json structure ok
+    ✗ entry-point        no main, module, or exports field defined
 
-husky
-  ✓ dev-deps            husky in devDependencies
-  ✗ hooks-dir           .husky/ directory missing
-  ✗ conventional-commits ✱ commit-msg hook does not enforce conventional commits
+Dev Environment
+  .husky
+    ✗ hooks-dir          .husky/ directory not found
 
-biome
-  ✓ dev-deps            @biomejs/biome in devDependencies
-  ⚠ config-file         biome.json not found
+Style & Validation
+  biome.json
+    ✓ dev-deps           @biomejs/biome in devDependencies
+    ⚠ config-file        no biome.json or biome.jsonc found
 
-typescript
-  ✓ deps                typescript in peerDependencies
-  ✓ tsconfig            tsconfig.json exists
-  ✓ strict-mode         strict: true in tsconfig
-
-files
-  ✗ license             LICENSE file missing
-  ⚠ readme              README.md is empty
-  ✓ gitignore           .gitignore exists
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  12 passed  ·  3 warned  ·  5 failed   (1 AI)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  12 passed  ·  3 warned  ·  5 failed
 ```
 
-✱ = AI-evaluated rule
+Actual grouping: `renderByDomains` (default) uses `Map<domain, Map<filesKey, RuleResult[]>>`; `renderByFiles` uses `Map<filesKey, RuleResult[]>`. No `✱` AI indicator — not implemented.
 
 ## JSON Output
 
+`src/cli/reporter/json.ts` — `renderJson(templateName, targetPath, results, { verbose, groupBy })`. `visible` obeys `verbose`; `summary` always counts all; `groupBy` only emitted when `"files"`.
+
 ```json
 {
-  "template": "npm-publish",
+  "template": "package",
   "path": "/path/to/repo",
   "results": [
-    {
-      "id": "package-json:name-field",
-      "group": "package.json",
-      "description": "name field is present in package.json",
-      "status": "pass",
-      "message": "@adityab/conform",
-      "kind": "deterministic"
-    },
-    {
-      "id": "husky:conventional-commits",
-      "group": "husky",
-      "description": "commit-msg hook enforces conventional commits",
-      "status": "fail",
-      "message": "commit-msg hook does not enforce conventional commits",
-      "kind": "ai",
-      "confidence": 0.87,
-      "reasoning": "The .husky/commit-msg file contains only an echo statement with no commitlint or similar validation tool configured."
-    }
+    { "id": "husky:dev-deps", "domain": "Dev Environment", "files": [], "description": "husky in devDependencies", "status": "fail", "message": "husky not found in devDependencies" }
   ],
-  "summary": { "pass": 12, "warn": 3, "fail": 5, "ai": 1 }
+  "summary": { "pass": 12, "warn": 3, "fail": 5 }
 }
 ```
 
-## NPM Package Publishing Template — Rule Set
+No `kind`/`confidence`/`reasoning`/`ai` fields — those belonged to a removed AI proposal (ADR 003 superseded).
 
-| Group | Rule ID | Description | Severity |
-|-------|---------|-------------|----------|
-| package.json | `package-json:name` | `name` field present | fail |
-| package.json | `package-json:version` | `version` field present | fail |
-| package.json | `package-json:description` | `description` field present | warn |
-| package.json | `package-json:license` | `license` field present | fail |
-| package.json | `package-json:entry-point` | `main`/`module`/`exports` entry defined | fail |
-| package.json | `package-json:files-or-npmignore` | `files` field or `.npmignore` exists | warn |
-| package.json | `package-json:repository` | `repository` field present | warn |
-| package.json | `package-json:type-module` | `type` is `"module"` | fail |
-| package.json | `package-json:build-script` | `scripts.prepare` or `scripts.build` exists | fail |
-| husky | `husky:dev-deps` | `husky` in devDependencies | fail |
-| husky | `husky:hooks-dir` | `.husky/` directory exists | fail |
-| husky | `husky:prepare-script` | `prepare` script calls `husky` | fail |
-| husky | `husky:pre-commit-hook` | pre-commit hook exists | warn |
-| husky | `husky:commit-msg-hook` | commit-msg hook exists | warn |
-| biome | `biome:dev-deps` | `@biomejs/biome` in devDependencies | fail |
-| biome | `biome:config-file` | `biome.json` or `biome.jsonc` exists | warn |
-| biome | `biome:lint-script` | lint command in scripts | fail |
-| typescript | `typescript:deps` | `typescript` in devDeps or peerDeps | fail |
-| typescript | `typescript:tsconfig` | `tsconfig.json` exists | fail |
-| typescript | `typescript:strict` | `strict: true` in tsconfig | fail |
-| files | `files:license` | `LICENSE` file exists | fail |
-| files | `files:readme` | `README.md` exists | warn |
-| files | `files:gitignore` | `.gitignore` exists | fail |
+## Package Preset — Rule Set
+
+`src/presets/package.ts` is the only complete preset. 13 plugins, 40+ atomic rules (namespaced `pluginId:ruleId`). Short summary (see `src/inbuilt-plugins/*` for exact `test` logic and `Status` messages):
+
+| Plugin (`id`) | Domain | Rule (`id`) | One-line |
+|---|---|---|---|
+| `package-json` | Build & Tasks / Security | `structure` | `name/version/license/type=module/bugs` required; `description/engines/homepage/repository/sideEffects` recommended |
+| | | `entry-point` | `main|module|exports` present |
+| | | `build-script` | `prepare|build` script |
+| | | `files-or-npmignore` | `files` or `.npmignore` (warn) |
+| | | `no-install-hooks` | no `preinstall/postinstall/install` (supply-chain) |
+| `biome` | Style & Validation | `dev-deps` | `@biomejs/biome` in devDeps |
+| | | `config-file` | `biome.json|.jsonc` (warn) |
+| | | `lint-script` | `lint|check` runs biome |
+| | | `format-script` | `format|check:format|check:lint` runs biome (warn) |
+| `typescript` | Code Quality / Observability | `deps` | `typescript` in dev/peerDeps |
+| | | `tsconfig` | `tsconfig.json` exists |
+| | | `strict` | `strict:true` |
+| | | `no-unchecked-indexed-access` | `noUncheckedIndexedAccess:true` |
+| | | `isolated-modules` | `isolatedModules:true` |
+| | | `verbatim-module-syntax` | `verbatimModuleSyntax:true` (warn) |
+| | | `source-map` | `sourceMap:true` when not `noEmit` (warn) |
+| `husky` | Dev Environment | `dev-deps` | `husky` devDep |
+| | | `hooks-dir` | `.husky/` exists |
+| | | `prepare-script` | `prepare` calls husky |
+| | | `pre-commit` | `.husky/pre-commit` |
+| | | `commit-msg` | `.husky/commit-msg` |
+| `scripts` | Build & Tasks | `typecheck` | `typecheck|check:types|types` (warn) |
+| | | `no-prepublish` | no deprecated `prepublish` |
+| `bin` | Build & Tasks | `file-exists` | `bin` target exists |
+| | | `shebang` | bin has shebang |
+| `testing` | Testing | `test-runner` | vitest/bun test dep |
+| | | `test-script` | `test` script |
+| `jsr` | Build & Tasks | `jsr` | `jsr.json` fields |
+| | | `no-slow-types` | `noSlowTypes` |
+| | | `provenance` | `publishing.provenance` |
+| `docs` | Documentation | `readme` | `README.md` |
+| | | `readme-install` | install section |
+| | | `readme-usage` | usage section |
+| | | `has-description` | `package.json` description |
+| | | `changelog` | `CHANGELOG.md` / changesets |
+| `gitignore` | Dev Environment | `exists` | `.gitignore` |
+| | | `node-modules` | ignores `node_modules` |
+| | | `env` | ignores `.env*` |
+| `github` | GitHub Configuration | `ci-workflow` | `.github/workflows/ci.yml` |
+| | | `ci-lint` | CI runs lint |
+| | | `ci-typecheck` | CI runs typecheck |
+| | | `release-workflow` | `.github/workflows/release.yml` |
+| | | `dependabot` | `dependabot.yml` |
+| `github-config` | GitHub Configuration | `github` | `.github/` dir |
+| | | `contributing` | `CONTRIBUTING.md` |
+| | | `security-md` | `SECURITY.md` |
+| | | `docs` | `docs/` |
+| `files` | (varies) | `license` | `LICENSE` |
+| | | `readme` | `README.md` |
+| | | `gitignore` | `.gitignore` |
+
+Other presets (`astro-site`, `monorepo`, `react-site`, `webapp`) are empty stubs (`plugins: []`). See `src/presets/*.ts`.
+
+## Known Gotchas (verify before fixing — from AGENTS.md)
+
+1. **Bin + version path broken:** `package.json` `bin.conform = src/cli.ts` missing; `src/cli/index.ts:11` reads `../package.json` (i.e. `src/package.json`). Should be `../../package.json`. `bun run src/cli/index.ts check` crashes with `ENOENT` before checks unless patched.
+2. **Resolver mismatch:** looks in `templates/` (nonexistent); presets live in `src/presets/`. Fix: point resolver at `src/presets/` or add `templates/` shim.
+3. **Reporters not wired:** `CheckCommand` computes `results` but never calls `renderTui`/`renderJson`; only exit code varies, no stdout. Add `process.stdout.write(renderTui(...))` / `renderJson(...)` branch.
+4. **Docs drift:** `Target`/`CheckContext`, `RuleSet` old name, `templates/rules/` → now `src/inbuilt-plugins/`, `group` → `domain`+`files`, `kind`/`aiRule` never existed.

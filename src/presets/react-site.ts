@@ -1,6 +1,6 @@
-import { defineTemplate } from "@/api/index.ts";
+import { definePreset } from "@/api/index.ts";
 
-export default defineTemplate({
+export default definePreset({
   description: "Conformance rules for React sites",
   name: "react-site",
   plugins: [],

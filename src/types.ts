@@ -48,12 +48,15 @@ export type RuleConfig = RuleSeverity | [RuleSeverity, ...unknown[]];
 
 export type RuleOverrides = Record<string, RuleConfig>;
 
-export interface Template {
+export interface Preset {
   description: string;
   name: string;
   plugins: Plugin[];
   rules?: RuleOverrides;
 }
+
+/** @deprecated Use Preset instead. */
+export type Template = Preset;
 
 export interface RuleResult {
   description: string;
@@ -66,18 +69,18 @@ export interface RuleResult {
 
 export interface ConformConfig {
   plugins?: Plugin[];
+  preset: string;
   rules?: RuleOverrides;
-  template: string;
 }
 
 export interface ConformOutput {
   groupBy?: GroupBy;
   path: string;
+  preset: string;
   results: RuleResult[];
   summary: {
     pass: number;
     warn: number;
     fail: number;
   };
-  template: string;
 }

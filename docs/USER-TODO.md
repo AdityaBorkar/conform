@@ -1,54 +1,42 @@
-Change the domain syntax. attach domain to the rule itself and remove the code for creation of domains.
-Remove the "context" from engine and the code. Insted, fetch the file on demand.
+# TODO
 
-update the repo context and glossary
+## Phase 1
 
-- Check for /docs/CONTEXT.md /plans /adr glossary.md USER-TODO.md
+improve-codebase-architecture
+deslop
 
 - husky with conventional-commits
 - CHANGELOG.md with changesets
-- changeset and CI/cd Pipeline
-- github actions
-- 
+- CI/cd Pipeline
+  - github actions
+- GitHub Repo Config checks
+  - CODEOWNERS
 - Not a Monorepo
   - no nested package.json or tsconfig.json or biome.json
-- 
-- package.json check:* build
-- 
-- ensure .npmrc with "//registry.npmjs.org/:_authToken=${NPM_TOKEN}"
-- 
-- No "#!/usr/bin/env bun" in any file header
-- 
-- tests/setup/. e2e/ integration/
-- 
 - PACKAGE.json
+  - check:* build
   - author and contributors information
+- Testing Config
+  - vitest
+  - tests/setup/. e2e/ integration/
 - gitignores
   - .gen.ts is always git ignored
   - .env*
-  - !.env.example
   - *.gen.ts
 - bunfig.toml
+- .zed/settings.json
 - Infra
   - No docker.compose files
   - package.json infra:*
-  - Pulumi.dev and Pulumi.production and Pulumi.staging
-
----
-
-- GitHub Repo Config checks
-- CODEOWNERS
-
----
-
-- package.json check:* build infra:*
+  - Pulumi.dev and Pulumi.production and Pulumi.preview
 - components.json
 - vite.config.ts
 - Breaking down of rules and composing templates out of them
 
----
+## Phase 2
 
+- Create a plan-of-action for docs under @adistack/*
+- Create a skill to use this repo and a wiki for ai agents to navigate this repo
 - Manual Research:
   - JSR Scoring Factors
   - NPM Package
--

@@ -1,7 +1,7 @@
 import type { ConformOutput, GroupBy, RuleResult } from "@/types.ts";
 
 export function renderJson(
-  templateName: string,
+  presetName: string,
   targetPath: string,
   results: RuleResult[],
   options: { verbose?: boolean; groupBy?: GroupBy } = {},
@@ -17,13 +17,13 @@ export function renderJson(
 
   const output: ConformOutput = {
     path: targetPath,
+    preset: presetName,
     results: visible,
     summary: {
       fail: failed,
       pass: passed,
       warn: warned,
     },
-    template: templateName,
   };
 
   if (groupBy === "files") {

@@ -1,4 +1,4 @@
-import type { RuleOverrides, RuleResult, Severity, Template } from "@/types.ts";
+import type { Preset, RuleOverrides, RuleResult, Severity } from "@/types.ts";
 
 function normalizeSeverity(
   value: import("@/types.ts").RuleConfig,
@@ -22,12 +22,12 @@ function normalizeSeverity(
 }
 
 export async function runChecks(
-  template: Template,
+  preset: Preset,
   targetPath: string,
 ): Promise<RuleResult[]> {
   const results: RuleResult[] = [];
-  const overrides: RuleOverrides = template.rules ?? {};
-  const allRules = template.plugins.flatMap((plugin) => plugin.rules);
+  const overrides: RuleOverrides = preset.rules ?? {};
+  const allRules = preset.plugins.flatMap((plugin) => plugin.rules);
 
   for await (const rule of allRules) {
     const rawOverride = overrides[rule.id];

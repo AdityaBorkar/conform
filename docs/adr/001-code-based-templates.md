@@ -22,8 +22,12 @@ Templates are code-based TypeScript modules.
 ## Consequences
 
 - Templates cannot be inspected/parsed without executing TypeScript. No static analysis of template contents.
-- Template authors can introduce side effects or non-deterministic behavior in check functions. We mitigate this by keeping the CheckContext API read-only.
+- Template authors can introduce side effects or non-deterministic behavior in check functions. We mitigate this by keeping the plugin context read-only (`src/utils/fs.ts` only).
 - Template versioning is just package versioning — no separate schema version needed.
+
+## Amendment 2026-08-24
+
+- Canonical locations are `src/presets/*.ts` (templates) composing `src/inbuilt-plugins/*.ts` (plugins) — not `templates/` at repo root as originally written. `src/api/resolver.ts` still looks in `templates/` (known gotcha; should be `src/presets/`). See CONTEXT.md and ADR 004.
 
 ## Alternatives Considered
 

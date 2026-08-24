@@ -8,7 +8,7 @@ import { Command } from "commander";
 import { CheckCommand } from "@/cli/check.ts";
 
 const pkg = JSON.parse(
-  readFileSync(join(import.meta.dir, "..", "package.json"), "utf-8"),
+  readFileSync(join(import.meta.dir, "../..", "package.json"), "utf-8"),
 );
 
 const program = new Command();

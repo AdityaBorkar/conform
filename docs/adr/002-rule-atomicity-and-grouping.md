@@ -10,19 +10,23 @@ A template like "husky is implemented" is really multiple distinct checks (devDe
 
 ## Decision
 
-Rules are atomic — each rule performs exactly one check. The TUI output groups rules by their `group` field for readability.
+Rules are atomic — each rule performs exactly one check. The TUI output groups rules for readability — now by `domain` then `files` (default) or by `files` (`--group files`), not a single `group` field.
 
 ## Rationale
 
 - **Composability** — Atomic rules can be reused across templates without pulling in unrelated checks.
 - **Precise reporting** — Users see exactly which sub-check failed, not just "husky: fail" with no detail.
 - **Testability** — Each rule can be unit tested independently.
-- **Grouped display** — The `group` field on each rule controls TUI rendering, giving the visual clarity of grouped rules without coupling the checks themselves.
+- **Grouped display** — The `domain` (+ `files`) fields on each rule control TUI rendering (`renderByDomains` / `renderByFiles`), giving visual clarity without coupling checks.
 
 ## Consequences
 
-- Templates will have many rules (the npm-publish template has 23). This is fine — the grouped TUI display makes this scannable.
-- Rule IDs must be globally unique within a template. Convention: `<group-shorthand>:<specific-check>` (e.g., `husky:dev-deps`).
+- Templates will have many rules (the `package` preset has 40+ across 13 plugins). This is fine — the grouped TUI display makes this scannable.
+- Rule IDs must be globally unique within a template. Convention: `pluginId:ruleId` (e.g., `husky:dev-deps`), enforced by `Plugin` namespacing.
+
+## Amendment 2026-08-24
+
+- Original `group` field is now `domain: string` (e.g. `DOMAIN.DEV_ENVIRONMENT`) plus `files: string[]`. `GroupBy = "domains" | "files"` selects `renderByDomains` vs `renderByFiles`. See ADR 004 and `src/types.ts:32-38`.
 
 ## Alternatives Considered
 

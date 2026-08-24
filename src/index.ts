@@ -1,6 +1,7 @@
 export {
   defineConfig,
   definePlugin,
+  definePreset,
   defineRule as rule,
   defineTemplate,
   Plugin,
@@ -15,6 +16,7 @@ export type {
   GroupBy,
   PackageJson,
   Plugin as PluginType,
+  Preset,
   Rule,
   RuleConfig,
   RuleOverrides,

@@ -1,4 +1,4 @@
-import { defineTemplate } from "@/api/index.ts";
+import { definePreset } from "@/api/index.ts";
 import { bin } from "@/inbuilt-plugins/bin.ts";
 import { biome } from "@/inbuilt-plugins/biome.ts";
 import { docs } from "@/inbuilt-plugins/docs.ts";
@@ -13,7 +13,7 @@ import { scripts } from "@/inbuilt-plugins/scripts.ts";
 import { testing } from "@/inbuilt-plugins/testing.ts";
 import { tsconfig } from "@/inbuilt-plugins/tsconfig.ts";
 
-export default defineTemplate({
+export default definePreset({
   description: "Conformance rules for publishing an NPM package",
   name: "package",
   plugins: [

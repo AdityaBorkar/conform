@@ -2,31 +2,31 @@ import { resolve } from "node:path";
 import process from "node:process";
 
 import { runChecks } from "@/api/engine.ts";
-import { resolver } from "@/api/resolver.ts";
-import type { Plugin, RuleOverrides, Template } from "@/types.ts";
+import { presetResolver } from "@/api/preset.ts";
+import type { Plugin, Preset, RuleOverrides } from "@/types.ts";
 import { loadConfig } from "@/utils/config.ts";
 
-function mergeTemplateWithConfig(
-  template: Template,
+function mergePresetWithConfig(
+  preset: Preset,
   config: { plugins?: Plugin[]; rules?: RuleOverrides },
-): Template {
+): Preset {
   const plugins =
     config.plugins && config.plugins.length > 0
-      ? [...template.plugins, ...config.plugins]
-      : template.plugins;
+      ? [...preset.plugins, ...config.plugins]
+      : preset.plugins;
 
   const rules: RuleOverrides | undefined =
-    config.rules || template.rules
-      ? { ...(template.rules ?? {}), ...(config.rules ?? {}) }
+    config.rules || preset.rules
+      ? { ...(preset.rules ?? {}), ...(config.rules ?? {}) }
       : undefined;
 
-  if (plugins === template.plugins && rules === template.rules) {
-    return template;
+  if (plugins === preset.plugins && rules === preset.rules) {
+    return preset;
   }
 
   return {
-    description: template.description,
-    name: template.name,
+    description: preset.description,
+    name: preset.name,
     plugins,
     ...(rules ? { rules } : {}),
   };
@@ -57,14 +57,14 @@ export async function CheckCommand({
     process.exit(2);
   }
 
-  const template = await resolver(config.template);
-  if (!template) {
+  const preset = await presetResolver(config.preset);
+  if (!preset) {
     process.exit(2);
   }
 
-  const effectiveTemplate = mergeTemplateWithConfig(template, config);
+  const effectivePreset = mergePresetWithConfig(preset, config);
 
-  const results = await runChecks(effectiveTemplate, targetPath);
+  const results = await runChecks(effectivePreset, targetPath);
 
   const hasFail = results.some((r) => r.status === "fail");
   const hasWarn = results.some((r) => r.status === "warn");
