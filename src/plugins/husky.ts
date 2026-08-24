@@ -1,65 +1,9 @@
 import { type } from "arktype";
 
-import { Plugin, Status } from "@/api/index.ts";
-import type { HuskyHookSpec, PackageJson } from "@/types.ts";
+import { definePlugin, Status } from "@/api/index.ts";
+import type { HuskyHookSpec } from "@/types.ts";
 import type { Target } from "@/utils/fs.ts";
 import { DOMAIN } from "./utils/domain.ts";
-
-const _husky = new Plugin<{
-  fileExists: (path: string) => boolean;
-  packageJson: () => PackageJson | null;
-  readFile: (path: string) => string | null;
-}>({
-  context: (target: Target) => ({
-    fileExists: (path: string) => target.fileExists(path),
-    packageJson: () => target.packageJson(),
-    readFile: (path: string) => target.readFile(path),
-  }),
-  id: "husky",
-});
-
-_husky.defineRule({
-  domain: DOMAIN.DEV_ENVIRONMENT,
-  id: "dev-deps",
-  name: "husky in devDependencies",
-  test({ context }) {
-    const huskyVersion = context.packageJson()?.devDependencies?.["husky"];
-    if (huskyVersion) {
-      return Status.pass(huskyVersion);
-    }
-    return Status.fail("husky not found in devDependencies");
-  },
-});
-
-_husky.defineRule({
-  domain: DOMAIN.DEV_ENVIRONMENT,
-  id: "hooks-dir",
-  name: ".husky/ directory exists",
-  test({ context }) {
-    if (context.fileExists(".husky")) {
-      return Status.pass();
-    }
-    return Status.fail(".husky/ directory not found");
-  },
-});
-
-_husky.defineRule({
-  domain: DOMAIN.DEV_ENVIRONMENT,
-  id: "prepare-script",
-  name: "prepare script calls husky",
-  test({ context }) {
-    const prepare = context.packageJson()?.scripts?.["prepare"];
-    if (prepare?.includes("husky")) {
-      return Status.pass(prepare);
-    }
-    if (!prepare) {
-      return Status.fail("no prepare script found");
-    }
-    return Status.fail(`prepare is "${prepare}", expected to call husky`);
-  },
-});
-
-export type { HuskyHookParams, HuskyHookSpec } from "@/types.ts";
 
 export const DEFAULT_HUSKY_HOOKS: readonly HuskyHookSpec[] = [
   { contains: "bun run format", file: ".husky/pre-commit" },
@@ -75,42 +19,86 @@ export function resolveHuskyHooks(params?: {
   return params.hooks;
 }
 
-_husky.defineRule({
-  domain: DOMAIN.DEV_ENVIRONMENT,
-  files: DEFAULT_HUSKY_HOOKS.map((h) => h.file),
-  id: "hook",
-  name: "husky hook file exists with expected content",
-  params: type({
-    hooks: type({ contains: "string", file: "string" }).array(),
+export const husky = definePlugin({
+  context: (target: Target) => ({
+    fileExists: (path: string) => target.fileExists(path),
+    packageJson: () => target.packageJson(),
+    readFile: (path: string) => target.readFile(path),
   }),
-  test({ context, params }) {
-    const specs = resolveHuskyHooks(params);
-
-    const failures: string[] = [];
-    for (const { file, contains } of specs) {
-      if (!context.fileExists(file)) {
-        failures.push(`${file} not found`);
-        continue;
+  id: "husky",
+})
+  .defineRule({
+    domain: DOMAIN.DEV_ENVIRONMENT,
+    id: "dev-deps",
+    name: "husky in devDependencies",
+    test({ context }) {
+      const huskyVersion = context.packageJson()?.devDependencies?.["husky"];
+      if (huskyVersion) {
+        return Status.pass(huskyVersion);
       }
-      const content = context.readFile(file);
-      if (!content) {
-        failures.push(`${file} is empty or unreadable`);
-        continue;
+      return Status.fail("husky not found in devDependencies");
+    },
+  })
+  .defineRule({
+    domain: DOMAIN.DEV_ENVIRONMENT,
+    id: "hooks-dir",
+    name: ".husky/ directory exists",
+    test({ context }) {
+      if (context.fileExists(".husky")) {
+        return Status.pass();
       }
-      if (!content.includes(contains)) {
-        failures.push(`${file} does not contain "${contains}"`);
+      return Status.fail(".husky/ directory not found");
+    },
+  })
+  .defineRule({
+    domain: DOMAIN.DEV_ENVIRONMENT,
+    id: "prepare-script",
+    name: "prepare script calls husky",
+    test({ context }) {
+      const prepare = context.packageJson()?.scripts?.["prepare"];
+      if (prepare?.includes("husky")) {
+        return Status.pass(prepare);
       }
-    }
+      if (!prepare) {
+        return Status.fail("no prepare script found");
+      }
+      return Status.fail(`prepare is "${prepare}", expected to call husky`);
+    },
+  })
+  .defineRule({
+    domain: DOMAIN.DEV_ENVIRONMENT,
+    files: DEFAULT_HUSKY_HOOKS.map((h) => h.file),
+    id: "hook",
+    name: "husky hook file exists with expected content",
+    params: type({
+      hooks: type({ contains: "string", file: "string" }).array(),
+    }),
+    test({ context, params }) {
+      const specs = resolveHuskyHooks(params);
 
-    if (failures.length === 0) {
-      const summary = specs
-        .map((s) => `${s.file}: contains "${s.contains}"`)
-        .join(", ");
-      return Status.pass(summary);
-    }
+      const failures: string[] = [];
+      for (const { file, contains } of specs) {
+        if (!context.fileExists(file)) {
+          failures.push(`${file} not found`);
+          continue;
+        }
+        const content = context.readFile(file);
+        if (!content) {
+          failures.push(`${file} is empty or unreadable`);
+          continue;
+        }
+        if (!content.includes(contains)) {
+          failures.push(`${file} does not contain "${contains}"`);
+        }
+      }
 
-    return Status.fail(failures.join("; "));
-  },
-});
+      if (failures.length === 0) {
+        const summary = specs
+          .map((s) => `${s.file}: contains "${s.contains}"`)
+          .join(", ");
+        return Status.pass(summary);
+      }
 
-export const husky = _husky;
+      return Status.fail(failures.join("; "));
+    },
+  });

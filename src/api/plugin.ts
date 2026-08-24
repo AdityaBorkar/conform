@@ -46,35 +46,56 @@ interface PluginRuleDef<P = unknown> {
   }) => CheckResult | Promise<CheckResult>;
 }
 
-export class Plugin<T = unknown> implements PluginInterface {
+export class Plugin<
+  Id extends string = string,
+  T = unknown,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  M extends Record<string, any> = Record<string, any>,
+> implements PluginInterface<Id, M>
+{
   private readonly config: {
     context: (target: Target) => T;
-    id: string;
+    id: Id;
   };
   private readonly ruleDefs: PluginRuleDef<unknown>[] = [];
 
   constructor(config: {
     context: (target: Target) => T;
-    id: string;
+    id: Id;
   }) {
     this.config = config;
   }
 
-  defineRule<P = unknown>(def: {
+  defineRule<P, const RId extends string>(def: {
     domain: string;
     files?: string[];
-    id: string;
+    id: RId;
     name: string;
-    params?: Type<P>;
+    params: Type<P>;
     test: (args: {
       context: T;
       params?: P;
     }) => CheckResult | Promise<CheckResult>;
-  }): void {
+  }): Plugin<Id, T, M & Record<`${Id}:${RId}`, P>>;
+
+  defineRule<const RId extends string>(def: {
+    domain: string;
+    files?: string[];
+    id: RId;
+    name: string;
+    params?: undefined;
+    test: (args: {
+      context: T;
+      params?: never;
+    }) => CheckResult | Promise<CheckResult>;
+  }): Plugin<Id, T, M>;
+
+  defineRule(def: any): Plugin<Id, T, any> {
     this.ruleDefs.push(def as unknown as PluginRuleDef<unknown>);
+    return this as unknown as Plugin<Id, T, any>;
   }
 
-  get id(): string {
+  get id(): Id {
     return this.config.id;
   }
 
@@ -127,9 +148,9 @@ export class Plugin<T = unknown> implements PluginInterface {
   }
 }
 
-export function definePlugin<T>(config: {
+export function definePlugin<const Id extends string, T>(config: {
   context: (target: Target) => T;
-  id: string;
-}): Plugin<T> {
-  return new Plugin(config);
+  id: Id;
+}): Plugin<Id, T, {}> {
+  return new Plugin<Id, T, {}>(config);
 }

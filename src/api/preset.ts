@@ -1,7 +1,12 @@
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import type { Preset } from "@/types.ts";
+import type {
+  Plugin,
+  Preset,
+  PresetWithPlugins,
+  StrictPresetRules,
+} from "@/types.ts";
 
 const packageRoot = resolve(import.meta.dir, "..", "..");
 const presetsDir = join(packageRoot, "src", "presets");
@@ -47,6 +52,13 @@ export async function presetResolver(name: string): Promise<Preset | null> {
   return null;
 }
 
-export function definePreset(preset: Preset): Preset {
-  return preset;
+export function definePreset<
+  const Ps extends readonly Plugin<any, any>[],
+>(preset: {
+  description: string;
+  name: string;
+  plugins: Ps;
+  rules?: StrictPresetRules<Ps>;
+}): PresetWithPlugins<Ps> {
+  return preset as unknown as PresetWithPlugins<Ps>;
 }

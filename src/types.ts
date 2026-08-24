@@ -39,12 +39,18 @@ export interface Rule<P = unknown> {
   domain: string;
   files: string[];
   id: string;
-  paramsSchema?: Type;
+  paramsSchema?: Type<P>;
 }
 
-export interface Plugin {
-  id: string;
-  rules: Rule[];
+export interface Plugin<
+  Id extends string = string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ParamMap extends Record<string, any> = Record<string, any>,
+> {
+  _paramMap?: ParamMap;
+  id: Id;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rules: Rule<any>[];
 }
 
 export type RuleLevel = "warn" | "off" | "error";
@@ -99,11 +105,44 @@ export type StrictRuleOverrides = {
   [K in keyof RuleRegistry]?: StrictRuleConfig<K>;
 } & Record<string, RuleConfig<unknown>>;
 
+// Auto-inferred param maps from plugins (full type-safe, no hardcoding)
+export type InferPluginParamMap<P> =
+  P extends Plugin<string, infer M> ? M : never;
+
+export type UnionToIntersection<U> = (
+  U extends unknown
+    ? (k: U) => void
+    : never
+) extends (k: infer I) => void
+  ? I
+  : never;
+
+export type InferPresetParamMap<Ps extends readonly Plugin<any, any>[]> =
+  UnionToIntersection<InferPluginParamMap<Ps[number]>>;
+
+export type AutoRuleRegistry<Ps extends readonly Plugin<any, any>[]> =
+  InferPresetParamMap<Ps> & RuleRegistry;
+
+export type StrictPresetRules<Ps extends readonly Plugin<any, any>[]> = {
+  [K in keyof AutoRuleRegistry<Ps>]?: RuleConfig<AutoRuleRegistry<Ps>[K]>;
+} & {
+  [K in string as K extends keyof AutoRuleRegistry<Ps>
+    ? never
+    : K]?: RuleConfig<unknown>;
+};
+
 export interface Preset {
   description: string;
   name: string;
   plugins: Plugin[];
   rules?: StrictRuleOverrides;
+}
+
+export interface PresetWithPlugins<Ps extends readonly Plugin<any, any>[]> {
+  description: string;
+  name: string;
+  plugins: Ps;
+  rules?: StrictPresetRules<Ps>;
 }
 
 export interface RuleResult {
