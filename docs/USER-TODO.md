@@ -3,7 +3,7 @@
 ## Phase 1
 
 @husky Check if formatting on commit exists in pre-commit hook using "bun run format"
-@husky Check if commit message is
+@husky Check if commit message is linted using commitlint
 
 - husky with conventional-commits
 - CHANGELOG.md with changesets
