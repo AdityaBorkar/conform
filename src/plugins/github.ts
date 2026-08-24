@@ -19,7 +19,6 @@ const _github = new Plugin<{
     target,
     targetPath: target.path,
   }),
-  domain: DOMAIN.GITHUB_CONFIG,
   id: "github",
 });
 

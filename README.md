@@ -46,19 +46,17 @@ export default defineConfig({
 });
 ```
 
-`rules` values are `off | warn | error | fail | pass` or `[severity, params]` where `params` is validated by the rule's arktype schema. Non-pass results are coerced to the configured severity; `pass` stays `pass`.
+`rules` values are `off | warn | error | fail | pass` or `[severity, params]` where `params` is validated by the rule's arktype schema. Non-pass results are coerced to the configured severity; `pass` stays `pass` (intentionally allowing `pass` to suppress `warn`/`fail`). Unknown severity strings fail the rule with `Invalid severity "…"` (fail-closed).
 
 ### Programmatic API
 
 ```ts
-import { defineConfig, definePreset, definePlugin, Status, presetResolver } from "@adistack/conform";
-import { DOMAIN } from "@adistack/conform/plugins/utils/domain.ts";
-import type { Target } from "@adistack/conform/utils/fs.ts";
+import { defineConfig, definePreset, definePlugin, DOMAIN, Status } from "@adistack/conform";
+import type { Target } from "@adistack/conform";
 
 // Plugin-owned rule (all Rules must belong to a Plugin)
 export const myPlugin = definePlugin({
   id: "my-plugin",
-  domain: DOMAIN.STYLE,
   context: (target: Target) => ({ target }),
 });
 

@@ -10,7 +10,6 @@ const _gitignore = new Plugin<{
     fileExists: (path: string) => target.fileExists(path),
     readFile: (path: string) => target.readFile(path),
   }),
-  domain: DOMAIN.DEV_ENVIRONMENT,
   id: "gitignore",
 });
 

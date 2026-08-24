@@ -49,14 +49,12 @@ interface PluginRuleDef<P = unknown> {
 export class Plugin<T = unknown> implements PluginInterface {
   private readonly config: {
     context: (target: Target) => T;
-    domain: string;
     id: string;
   };
   private readonly ruleDefs: PluginRuleDef<unknown>[] = [];
 
   constructor(config: {
     context: (target: Target) => T;
-    domain: string;
     id: string;
   }) {
     this.config = config;
@@ -117,7 +115,7 @@ export class Plugin<T = unknown> implements PluginInterface {
           });
         },
         description: ruleDef.name,
-        domain: ruleDef.domain ?? this.config.domain,
+        domain: ruleDef.domain,
         files: ruleDef.files ?? [],
         id: `${this.config.id}:${ruleDef.id}`,
       };
@@ -131,7 +129,6 @@ export class Plugin<T = unknown> implements PluginInterface {
 
 export function definePlugin<T>(config: {
   context: (target: Target) => T;
-  domain: string;
   id: string;
 }): Plugin<T> {
   return new Plugin(config);

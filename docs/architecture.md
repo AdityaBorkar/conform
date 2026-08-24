@@ -1,15 +1,15 @@
 # Architecture — @adistack/conform
 
-Source of truth: `src/types.ts` + `src/api/*`. For terminology see `/CONTEXT.md`.
+Source of truth: `src/types.ts` + `src/api/*` + `src/utils/*` + `src/cli/*`. For terminology see `/CONTEXT.md`.
 
 ## Design Principles
 
 1. **Presets are code** — TypeScript modules exporting a Preset, not YAML/data files. Rules can inspect anything on disk.
 2. **Check-only, no auto-fix** — Report drift. Humans fix it.
-3. **Opinionated with oxc-style overrides** — `Preset.rules` and `ConformConfig.rules` are `RuleOverrides`. Severity `off` skips, `warn`/`error`/`fail` coerce non-pass, `pass` keeps pass. Tuple `[severity, ...opts]` passes `opts[0]` as validated `params`.
+3. **Opinionated with oxc-style overrides** — `Preset.rules` and `ConformConfig.rules` are `StrictRuleOverrides`/`RuleOverrides`. Severity `off` skips, any defined `pass`/`warn`/`error`(`→fail`) coerces non-`pass` results (`pass` results never rewritten; `off` never reaches coercion). Unknown severity → fail-closed (`engine.ts:120` emits `fail` with `Invalid severity "…"`) . Tuple `[severity, ...opts]` passes `opts[0]` (`rawOverride[1]`) as `params` validated in `src/api/plugin.ts` (not engine). See Params & Overrides detail below.
 4. **Atomic rules, grouped display** — Each check is one atomic Rule. TUI groups by `domain` then `files` (or by `files` with `--group files`). See ADR 002.
-5. **Zero config from CLI** — Preset selection lives in `conform.config.ts` (`preset: string`). No `--preset` flag. Additional `plugins`/`rules` are merged there.
-6. **Plugins own context** — `Plugin<T>` declares `context: (target: Target) => T`; each rule receives `{ context: T, params? }` via `test`. All Rules must be defined via `Plugin#defineRule`; standalone `defineRule` does not exist. All FS access goes through `src/utils/fs.ts` (`Target`).
+5. **Zero config from CLI** — Preset selection lives in `conform.config.ts` (`preset: string`, truthy check). No `--preset` flag. Additional `plugins`/`rules` are merged via `mergePresetWithConfig` (`src/api/engine.ts:80`).
+6. **Plugins own context** — `Plugin<T>` declares `id`+`context: (target: Target) => T`; each rule declares its own `domain` (required, no plugin-level default). Each rule receives `{ context: T, params? }` via `test`. All Rules must be defined via `Plugin#defineRule`; standalone `defineRule` does not exist. All FS access goes through `src/utils/fs.ts` (`Target`).
 
 ## Types (mirrors `src/types.ts`)
 
@@ -23,12 +23,12 @@ export interface Rule<P = unknown> {
   id: string;            // namespaced as `pluginId:ruleId` when via Plugin
   domain: string;        // e.g. DOMAIN.BUILD = "Build & Tasks"
   files: string[];
-  description: string;
-  check: (ctx: string, params?: P) => CheckResult | Promise<CheckResult>;
-  paramsSchema?: import("arktype").Type;
+  description: string;   // authoring uses `name` (Plugin#defineRule) → materialized as `description`
+  check: (ctx: string, params?: P) => CheckResult | Promise<CheckResult>; // authoring uses `test({context, params?})`
+  paramsSchema?: import("arktype").Type; // authoring uses `params: Type<P>`
 }
 
-export interface Plugin { id: string; rules: Rule[] }
+export interface Plugin { id: string; rules: Rule[] } // impl: class Plugin<T> { context:(Target)=>T, defineRule }
 
 export type RuleSeverity = Severity | "off" | "error"; // "error" → "fail"
 export type RuleConfig<P = unknown> = RuleSeverity | [RuleSeverity, P, ...unknown[]];
@@ -72,13 +72,11 @@ export interface ConformOutput {
 Preferred — `definePlugin` / `Plugin`:
 
 ```ts
-import { definePlugin, Status } from "@adistack/conform";
+import { definePlugin, DOMAIN, Status } from "@adistack/conform";
 import { fileExists, packageJson } from "@/utils/fs.ts";
-import { DOMAIN } from "@/plugins/utils/domain.ts";
 
 export const husky = definePlugin({
   id: "husky",
-  domain: DOMAIN.DEV_ENVIRONMENT,
   context: (target) => ({
     fileExists: (p: string) => fileExists(target, p),
     packageJson: () => packageJson(target),
@@ -137,7 +135,7 @@ src/plugins/        — one file per plugin + utils/
   utils/markdown.ts, utils/package.ts, utils/workflows.ts — shared helpers
 ```
 
-`src/api/preset.ts` (`presetResolver`) resolves `src/presets/<name>.ts` or `src/presets/<name>/index.ts` from repo root (`join(import.meta.dir, "../..", "src/presets")`). `src/utils/fs.ts` exposes `Target` plus `fileExists`, `readFile`, `readJson` (strips `//`/`/* */`), `packageJson`. `src/utils/config.ts` dynamic-imports `conform.config.ts` and requires `config.preset: string` else returns null (treated as `no-config`).
+`src/api/preset.ts:6-7` (`presetResolver`) resolves `src/presets/<name>.ts` or `src/presets/<name>/index.ts` from repo root (`resolve(import.meta.dir,"..","..")` + `join(packageRoot,"src","presets")`); candidates are `existsSync`-filtered then tried sequentially with `isValidPreset` gating (`name:string` + `plugins:array` + optional `rules:object`; `description` not validated). `src/utils/fs.ts:10` exposes `Target` plus `fileExists`, `readFile`, `readJson` (`JSON.parse` first, falls back to `stripJsonComments` for `//`/`/* */` on failure), `packageJson`. `src/utils/config.ts:8` dynamic-imports `conform.config.ts` and requires truthy `config.preset` else returns null (treated as `no-config`).
 
 ## Config File
 
@@ -151,7 +149,7 @@ export default defineConfig({
 });
 ```
 
-`loadConfig` requires `config.preset: string`; missing/invalid → `no-config` error (exit 2). Merging is in `src/api/conformance.ts:mergePresetWithConfig`.
+`loadConfig` (`src/utils/config.ts:12`) requires truthy `config.preset`; missing/falsy → `no-config` error (exit 2). Merging is in `src/api/engine.ts:80 mergePresetWithConfig` (shallow `plugins` append + `rules` spread; returns original ref if unchanged).
 
 ## CLI
 
@@ -162,13 +160,13 @@ conform check [--path <dir>] [--json] [-v|--verbose] [--group domains|files]
 - `--path <dir>` — Target directory (default `process.cwd()`).
 - `--json` — Machine-readable JSON via `renderJson` (mutually exclusive with `--group`; misuse exits 1).
 - `-v, --verbose` — Show `pass` results (default hides them; `summary` always counts all).
-- `--group <mode>` — TUI grouping: `domains` (default) or `files`.
+- `--group <mode>` — TUI grouping: `domains` (default) or `files` (no validation; unknown values fall through to `domains` via `src/cli/reporter/tui.ts:122`).
 
 Entry is `src/cli/index.ts` (`commander`); `package.json:bin.conform` is `src/cli/index.ts`.
 
 Flow: `src/cli/check.ts` → `check()` (`loadConfig → presetResolver → mergePresetWithConfig → runChecks → renderTui/renderJson`) → `process.stdout.write(rendered)` → exit code.
 
-Engine (`src/api/engine.ts`): flattens `preset.plugins[].rules`, normalizes severity (`error`→`fail`), skips `off`, validates `params` via arktype (invalid → `fail` with `Invalid params: …`), coerces non-pass status to override, calls `rule.check(targetPath, params?)`.
+Engine (`src/api/engine.ts:38-160`): flattens `preset.plugins[].rules`, parses override via `parseOverride`/`normalizeSeverity` (`error`→`fail`, unknown → `null` fail-closed), rejects unknown severity as `fail` `Invalid severity "…"`, skips `off`, forwards `rawParams` (`rawOverride[1]`) to `rule.check(targetPath, params?)`, coerces non-`pass` result via `coerceStatus`. Param validation lives in `src/api/plugin.ts:12 validateParams` inside the `Plugin.rules` getter wrapper (invalid → `fail` with `Invalid params: …` without calling `test`); engine does not validate.
 
 ## Exit Codes
 
@@ -178,11 +176,11 @@ Engine (`src/api/engine.ts`): flattens `preset.plugins[].rules`, normalizes seve
 | 1 | One or more `fail` (takes priority over `warn`), **or** `--json`+`--group` misuse |
 | 2 | `warn` only (no `fail`), **or** no `conform.config.ts` (`no-config`), **or** preset not found |
 
-`hasFail` dominates `hasWarn` in `src/api/conformance.ts` and `src/cli/check.ts`.
+`hasFail` dominates `hasWarn` in `src/api/engine.ts:180` and `src/cli/check.ts:46`.
 
 ## TUI & JSON
 
-`renderTui(presetName, results, { verbose, groupBy })` — `renderByDomains` (default) uses `Map<domain, Map<filesKey, RuleResult[]>>`, `renderByFiles` uses `Map<filesKey, RuleResult[]>`. Summary `N passed · N warned · N failed`.
+`renderTui(presetName, results, { verbose, groupBy })` (`src/cli/reporter/tui.ts:30-137`) — `renderByDomains` (default) uses `Map<domain, Map<filesKey, RuleResult[]>>` preserving insertion order via `domainOrder[]`/`groupOrder[]`, `renderByFiles` uses `Map<filesKey, RuleResult[]>`. Keys are `files.join(", ")`. Header `@adistack/conform — ${preset} preset`, divider `━×50`, summary `N passed · N warned · N failed` (all counts from full `results`, not `visible`).
 
 ```
 @adistack/conform — package preset
@@ -206,9 +204,9 @@ Build & Tasks
 
 ### Params & Overrides detail
 
-- Rule may declare `params?: Type<P>` (arktype) via `Plugin#defineRule`.
-- Override tuple is `[RuleSeverity, paramsValue]`. Engine takes `rawOverride[1]` as `rawParams`, validates against `paramsSchema` before `test()` via `validateParams` (`src/api/validate.ts`). Invalid → `Status.fail("Invalid params: …")` without calling `test`.
-- Severity coercion: if override is `warn`/`fail`/`error` and result is `warn`/`fail`, status is rewritten to override. `pass` is never coerced. `off` skips the rule entirely. All Rules are plugin-owned; standalone `defineRule` does not exist.
+- Rule may declare `params?: Type<P>` (arktype) via `Plugin#defineRule` (`src/api/plugin.ts:65-77`); materialized `Rule` exposes it as `paramsSchema`.
+- Override tuple is `[RuleSeverity, paramsValue]`. Engine takes `rawOverride[1]` as `rawParams` via `parseOverride` (`src/api/engine.ts:57-68`); validation happens in the `Plugin.rules` wrapper via `validateParams` (`src/api/plugin.ts:12`) before `test()`. Invalid → `Status.fail("Invalid params: …")` without calling `test`. When `params` schema exists but `rawParams === undefined`, validation is skipped and `undefined` is forwarded (`plugin.ts:18-20`); when no schema exists, `rawParams` is forwarded unvalidated (`plugin.ts:16-17`).
+- Severity coercion (`src/api/engine.ts:38-78`): `normalizeSeverity` maps `error`→`fail`, `off`→`off`, unknown string → `null` (fail-closed). Unknown severity does not coerce — engine emits `fail` with `Invalid severity "…" for rule "…"` without calling `check` (`engine.ts:121-135`). `off` skips the rule. Any defined override (`pass`/`warn`/`fail`/`error`→`fail`) coerces a non-`pass` result to that severity (`coerceStatus`); `pass` results are never rewritten regardless of override. This means `["pass", …]` or `"pass"` intentionally suppresses a `warn`/`fail` to `pass`. `pass` staying `pass` is the only invariant.
 
 ## Package Preset — Rule Set
 

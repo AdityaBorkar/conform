@@ -9,7 +9,7 @@ CLI that checks a repository against a named Preset and reports Drift.
  _Avoid_: Template, preset (lowercase alias)
 
 **Plugin**:
- Unit that owns one domain of checks. Declares a context function and exposes multiple atomic Rules via `defineRule`. Rule IDs are namespaced `pluginId:ruleId`.
+ Unit that groups related Rules. Declares a context function and exposes multiple atomic Rules via `defineRule`; each Rule declares its own `domain`. Rule IDs are namespaced `pluginId:ruleId`.
  _Avoid_: RuleSet
 
 **Rule**:
@@ -27,13 +27,13 @@ CLI that checks a repository against a named Preset and reports Drift.
  Result status: `pass | warn | fail`.
 
 **RuleSeverity**:
- Override severity: `Severity | off | error` where `error` maps to `fail` and `off` skips the Rule.
+ Override severity: `Severity | off | error` where `error` maps to `fail` and `off` skips the Rule. Unknown strings fail the rule with `Invalid severity "…"` (fail-closed).
 
 **RuleConfig**:
  One override entry: `RuleSeverity` or `[RuleSeverity, ...opts]` where `opts[0]` is validated as Rule `params`.
 
 **RuleOverrides**:
- Map of Rule ID → RuleConfig that coerces non-pass results to the configured severity (pass stays pass). Shares the same shape on Preset and on ConformConfig.
+ Map of Rule ID → RuleConfig that coerces non-pass results to the configured severity (pass stays pass, intentionally allowing suppression). Shares the same shape on Preset and on ConformConfig. Unknown severity values are fail-closed.
 
 **StrictRuleOverrides**:
  Typed RuleOverrides where known IDs (`husky:hook`, `package-json:required-fields`) enforce their param type via RuleRegistry; other IDs accept any RuleConfig.

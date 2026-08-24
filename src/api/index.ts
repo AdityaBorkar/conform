@@ -1,3 +1,4 @@
+export { DOMAIN } from "@/plugins/utils/domain.ts";
 export type {
   ConformConfig,
   HuskyHookSpec,
@@ -9,6 +10,7 @@ export type {
   RuleRegistry,
   StrictRuleOverrides,
 } from "@/types.ts";
+export { Target } from "@/utils/fs.ts";
 export { defineConfig } from "./config.ts";
 export { definePlugin, Plugin } from "./plugin.ts";
 export {

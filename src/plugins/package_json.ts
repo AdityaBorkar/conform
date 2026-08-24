@@ -34,7 +34,6 @@ const _packageJson = new Plugin<{
     fileExists: (path: string) => target.fileExists(path),
     packageJson: () => target.packageJson(),
   }),
-  domain: DOMAIN.BUILD,
   id: "package-json",
 });
 

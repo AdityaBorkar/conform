@@ -5,6 +5,8 @@ export {
   Plugin,
   Status,
 } from "@/api/index.ts";
+export { DOMAIN } from "@/plugins/utils/domain.ts";
+export { createTarget, Target } from "@/utils/fs.ts";
 export type {
   CheckResult,
   ConformConfig,

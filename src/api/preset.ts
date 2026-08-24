@@ -13,6 +13,7 @@ function isValidPreset(value: unknown): value is Preset {
   const v = value as Record<string, unknown>;
   return (
     typeof v["name"] === "string" &&
+    typeof v["description"] === "string" &&
     Array.isArray(v["plugins"]) &&
     (v["rules"] === undefined ||
       (typeof v["rules"] === "object" &&

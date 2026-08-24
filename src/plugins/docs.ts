@@ -10,7 +10,6 @@ export const docs = new Plugin<{
     fileExists: (path: string) => target.fileExists(path),
     readFile: (path: string) => target.readFile(path),
   }),
-  domain: DOMAIN.DOCUMENTATION,
   id: "docs",
 });
 

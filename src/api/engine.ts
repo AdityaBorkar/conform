@@ -122,6 +122,21 @@ export async function runChecks(
     const { severity: override, params: rawParams } =
       parseOverride(rawOverride);
 
+    if (rawOverride !== undefined && override === null) {
+      const raw = Array.isArray(rawOverride)
+        ? String((rawOverride as unknown[])[0])
+        : String(rawOverride);
+      results.push({
+        description: rule.description,
+        domain: rule.domain,
+        files: rule.files,
+        id: rule.id,
+        message: `Invalid severity "${raw}" for rule "${rule.id}"`,
+        status: "fail",
+      });
+      continue;
+    }
+
     if (override === "off") {
       continue;
     }

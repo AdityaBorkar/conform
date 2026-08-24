@@ -15,7 +15,6 @@ const _husky = new Plugin<{
     packageJson: () => target.packageJson(),
     readFile: (path: string) => target.readFile(path),
   }),
-  domain: DOMAIN.DEV_ENVIRONMENT,
   id: "husky",
 });
 

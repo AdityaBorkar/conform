@@ -13,7 +13,6 @@ const _tsconfig = new Plugin<{
     packageJson: () => target.packageJson(),
     readJson: <T = unknown>(path: string) => target.readJson<T>(path),
   }),
-  domain: DOMAIN.CODE_QUALITY,
   id: "typescript",
 });
 

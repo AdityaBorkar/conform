@@ -3,7 +3,7 @@
 ## Docs Map
 
 1. `/CONTEXT.md` — ubiquitous language (canonical terms). Read first.
-2. `docs/architecture.md` — types, plugin authoring, preset layout, engine, CLI, TUI/JSON, params.
+2. `docs/architecture.md` — types, plugin authoring, preset layout, engine, CLI, TUI/JSON.
 3. `README.md` — install/usage (`preset: "package"`).
 4. `docs/adr/` — 001 code presets, 002 atomic rules, 004 plugin overrides (003 superseded).
 
@@ -11,7 +11,7 @@ Deprecated: `docs/CONTEXT.md` / `docs/glossary.md` → `/CONTEXT.md`.
 
 ## Project
 
-`@adistack/conform` — CLI that checks repos against conformance Presets. Bun + TypeScript ESM (`"type": "module"`). No build: `noEmit: true`, `exports: "." → ./src/index.ts`, `files: ["src","README.md"]`, bin `conform → src/cli/index.ts` (re-exports `src/cli/index.ts`).
+`@adistack/conform` — CLI that checks repos against conformance Presets. Bun + TypeScript ESM (`"type": "module"`). No build: `noEmit: true`, `exports: "." → ./src/index.ts`, `files: ["src","README.md"]`, bin `conform → src/cli/index.ts`.
 
 ## Commands
 
@@ -21,31 +21,31 @@ Deprecated: `docs/CONTEXT.md` / `docs/glossary.md` → `/CONTEXT.md`.
 - CLI: `bun run src/cli/index.ts check [--path <dir>] [--json] [-v] [--group domains|files]`
 - Tests: `bun run test` (`vitest run`) · `bun run test:unit` (`--exclude 'tests/e2e/**'`) · `bun run test:e2e` · `bun run test:integration` (`--passWithNoTests`, dir empty) · `bun run test:watch`
 - Single test: `bunx vitest run tests/e2e/check.test.ts -t "<name>"`
-- Changeset: `bun run changeset` · Version: `bun run version` (`changeset version`) · Publish: `bun run release`
+- Changeset: `bun run changeset` · Version: `bun run version` · Publish: `bun run release`
 
 Required order: `check:lint` → `check:types` → `test`. CI (`release.yml:22`) runs only `check:lint` + `check:types` before `changesets/action`.
 
 ## Architecture
 
 - `src/cli/index.ts` — `commander` entrypoint (reads `../../package.json` via `import.meta.dir`); `src/cli/check.ts` — rejects `--json`+`--group` (exit 1), calls `check()` → `stdout.write(rendered)` → exit 0 pass / 1 fail / 2 warn|no-config|preset-not-found.
-- `src/api/conformance.ts` — `loadConfig → presetResolver → mergePresetWithConfig → runChecks → renderTui/renderJson`. `output.results` filtered by `verbose`; `summary` always counts all; `hasFail` dominates `hasWarn`.
+- `src/api/engine.ts` — `check()` = `loadConfig → presetResolver → mergePresetWithConfig → runChecks → renderTui/renderJson`. `output.results` filtered by `verbose`; `summary` always counts all; `hasFail` dominates `hasWarn`.
 - `src/utils/config.ts` — dynamic-imports `conform.config.ts` from target dir; requires `config.preset: string` else `no-config` (exit 2).
-- `src/api/preset.ts` — resolves `src/presets/<name>.ts` or `src/presets/<name>/index.ts` at repo root. Dogfood `conform.config.ts:4` uses `preset: "package"`.
-- `src/api/engine.ts` — flattens `preset.plugins[].rules`, applies `preset.rules` overrides (`RuleOverrides`: `off` skips, `warn`/`error`/`fail` coerce non-pass, `["warn", params]` passes `params` as `opts[0]`). Validation in `src/api/plugin.ts` via arktype — invalid params → `fail` with `Invalid params: …` without calling `test`; `rule.check(targetPath, params?)`.
+- `src/api/preset.ts:6` — resolves `src/presets/<name>.ts` or `src/presets/<name>/index.ts` at repo root (`resolve(import.meta.dir,"..","..")`+`join`); `isValidPreset` requires `name:string` + `description:string` + `plugins:array`. Dogfood `conform.config.ts:4` uses `preset: "package"`.
+- `src/api/plugin.ts:12` — `validateParams` via arktype; invalid params → `fail` with `Invalid params: …` without calling `test`. `src/api/engine.ts:80` flattens `preset.plugins[].rules`, applies `preset.rules` overrides (`off` skips, `pass`/`warn`/`error→fail` coerce non-pass with `pass` results never rewritten; unknown severity → `fail` `Invalid severity "…"`, `["warn", params]` passes `params` as `opts[0]`).
 - `src/types.ts` — `Rule {id,domain,files,description,check,paramsSchema?}`, `Plugin {id,rules}`, `Preset {name,description,plugins,rules?: StrictRuleOverrides}`, `ConformConfig {preset,plugins?,rules?}`. `RuleRegistry` maps `husky:hook` and `package-json:required-fields` to typed params.
-- `src/api/index.ts` — re-exports `defineConfig`, `definePlugin`/`Plugin`, `definePreset`/`presetResolver`, `Status`.
+- `src/api/index.ts` + `src/index.ts` — re-exports `defineConfig`, `definePlugin`/`Plugin`, `definePreset`/`presetResolver`, `Status`, plus `DOMAIN` and `Target` (avoid deep imports).
 - Presets: `src/presets/package.ts` (complete, 7 plugins). Plugins: `src/plugins/*.ts` — `package_json`, `biome`, `tsconfig`, `husky`, `docs`, `gitignore`, `github`.
 
 For authoring examples see `docs/architecture.md`.
 
 ## Rules & Presets
 
-- `definePlugin({id,domain,context: (target: Target) => T})` + `.defineRule({id,name,domain,files?,params?,test: ({context:T,params?}) => CheckResult})` (`src/api/plugin.ts`) — IDs `pluginId:ruleId`. All Rules must be defined via a Plugin; standalone `defineRule` does not exist.
+- `definePlugin({id,context: (target: Target) => T})` + `.defineRule({id,name,domain,files?,params?,test: ({context:T,params?}) => CheckResult})` (`src/api/plugin.ts`) — `domain` required per rule (no plugin-level default). IDs `pluginId:ruleId`. All Rules must be defined via a Plugin; standalone `defineRule` does not exist.
 - `Status.pass/warn/fail(message?)` → `{status,message?}`.
 - `definePreset({name,description,plugins,rules?})` — `rules: Record<string, RuleSeverity | [RuleSeverity, ...unknown[]]>` (`RuleSeverity="pass"|"warn"|"fail"|"off"|"error"`, `error`→`fail`).
 - Domains: `src/plugins/utils/domain.ts` — `STYLE`, `BUILD`, `CODE_QUALITY`, `DEV_ENVIRONMENT`, `DOCUMENTATION`, `GITHUB_CONFIG`, `OBSERVABILITY`, `SECURITY`, `TESTING`.
 
-Canonical: `Preset` not `preset`, `Plugin` not `RuleSet`, `presetResolver` not `resolver`, `domain`+`files` not `group`, `package` not `npm-pkg`. No aliases remain.
+Canonical: `Preset` not `preset`, `Plugin` not `RuleSet`, `presetResolver` not `resolver`, `domain`+`files` not `group`, `package` not `npm-pkg`.
 
 ## Exit Codes
 

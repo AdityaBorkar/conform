@@ -11,7 +11,6 @@ const _biome = new Plugin<{
     fileExists: (path: string) => target.fileExists(path),
     packageJson: () => target.packageJson(),
   }),
-  domain: DOMAIN.STYLE,
   id: "biome",
 });
 
