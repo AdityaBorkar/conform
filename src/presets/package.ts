@@ -12,6 +12,7 @@ export default definePreset({
   name: "package",
   plugins: [packageJson, biome, tsconfig, husky, docs, gitignore, github],
   rules: {
+    "gitignore:excludes": ["error", ["node_modules", ".env"]],
     "husky:hook": [
       "error",
       [

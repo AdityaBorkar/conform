@@ -65,6 +65,8 @@ export interface HuskyHookSpec {
 
 export type RequiredFieldsParams = string[] | { fields: string[] };
 
+export type GitIgnoreExcludesParams = string[];
+
 /**
  * Registry that maps known Rule IDs to their validated params type.
  * Extend via declaration merging in plugins or custom presets:
@@ -76,6 +78,7 @@ export type RequiredFieldsParams = string[] | { fields: string[] };
  * Known keys are strictly typed; unknown keys fall back to `RuleConfig<unknown>`.
  */
 export interface RuleRegistry {
+  "gitignore:excludes": GitIgnoreExcludesParams;
   "husky:hook": HuskyHookSpec[];
   "package-json:required-fields": RequiredFieldsParams;
 }
