@@ -21,12 +21,13 @@ Rules are atomic — each rule performs exactly one check. The TUI output groups
 
 ## Consequences
 
-- presets will have many rules (the `package` preset has 36 across 7 plugins). This is fine — the grouped TUI display makes this scannable.
+- presets will have many rules (the `package` preset has 37 across 9 plugins). This is fine — the grouped TUI display makes this scannable.
 - Rule IDs must be globally unique within a preset. Convention: `pluginId/ruleId` (e.g., `husky/dev-deps`), enforced by `Plugin` namespacing.
 
-## Amendment 2026-08-24 (current)
+## Amendment 2026-08-24 (current), updated 2026-08-25
 
 - Original `group` field is now `domain: string` (e.g. `DOMAIN.DEV_ENVIRONMENT`) plus `files: string[]`. `GroupBy = "domains" | "files"` selects `renderByDomains` vs `renderByFiles`. See ADR 004 and `src/types.ts`.
+- `package` preset grew from 36 rules / 7 plugins to 37 rules / 9 plugins (`zed`, `bun` added); see `src/presets/package.ts` and `docs/architecture.md`.
 
 ## Alternatives Considered
 
