@@ -28,7 +28,9 @@ Create: @tanstack-start-website @tanstack-start-webapp
     - writes version and changelog -> provenance and publish
 - CI/cd Pipeline
   - github actions
-- RULE: "check:conform" command runs before version release / deployment
+  - RULE: "check:conform" command runs before merging to main
+  - GitHub Repo Config checks
+    - CODEOWNERS
 
 ---
 
@@ -40,8 +42,6 @@ Create: monorepo support baked into the Engine/API
   - No docker.compose files
   - package.json infra:*
   - Pulumi.dev and Pulumi.production and Pulumi.preview
-- GitHub Repo Config checks
-  - CODEOWNERS
 
 ## Phase 2
 

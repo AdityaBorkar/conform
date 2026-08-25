@@ -4,10 +4,59 @@ import { definePlugin, Status } from "@/api/index.ts";
 import type { Target } from "@/utils/fs.ts";
 import { DOMAIN } from "./utils/domain.ts";
 
-export const tsconfigOptionsSchema = type({
-  "options?": "Record<string, unknown>",
-  "warnOptions?": "Record<string, unknown>",
+export const tsconfigCompilerOptionsSchema = type({
+  "compilerOptions?": "Record<string, unknown>",
 });
+
+const EXPECTED_COMPILER_OPTIONS: Record<string, unknown> = {
+  allowImportingTsExtensions: true,
+  allowJs: true,
+  allowUnreachableCode: false,
+  allowUnusedLabels: false,
+  composite: true,
+  declaration: true,
+  declarationMap: true,
+  exactOptionalPropertyTypes: true,
+  forceConsistentCasingInFileNames: true,
+  incremental: true,
+  isolatedModules: true,
+  jsx: "react-jsx",
+  lib: ["ESNext"],
+  module: "Preserve",
+  moduleDetection: "force",
+  moduleResolution: "bundler",
+  noEmit: true,
+  noEmitOnError: true,
+  noFallthroughCasesInSwitch: true,
+  noImplicitAny: true,
+  noImplicitOverride: true,
+  noImplicitReturns: true,
+  noImplicitThis: true,
+  noPropertyAccessFromIndexSignature: true,
+  noUncheckedIndexedAccess: true,
+  noUnusedLocals: true,
+  noUnusedParameters: true,
+  paths: {
+    "@/*": ["./src/*"],
+  },
+  resolveJsonModule: true,
+  skipLibCheck: true,
+  strict: true,
+  strictBindCallApply: true,
+  strictBuiltinIteratorReturn: true,
+  strictFunctionTypes: true,
+  strictNullChecks: true,
+  strictPropertyInitialization: true,
+  stripInternal: true,
+  target: "ESNext",
+  types: ["@types/bun"],
+  useUnknownInCatchVariables: true,
+  verbatimModuleSyntax: true,
+};
+
+function isEqual(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
 
 export const tsconfig_json = definePlugin({
   context: (target: Target) => ({
@@ -35,6 +84,7 @@ export const tsconfig_json = definePlugin({
   })
   .defineRule({
     domain: DOMAIN.CODE_QUALITY,
+    files: ["tsconfig.json"],
     id: "tsconfig",
     name: "tsconfig.json exists",
     test({ context }) {
@@ -46,69 +96,46 @@ export const tsconfig_json = definePlugin({
   })
   .defineRule({
     domain: DOMAIN.CODE_QUALITY,
+    files: ["tsconfig.json"],
     id: "compiler-options",
-    name: "compilerOptions in tsconfig",
-    params: tsconfigOptionsSchema,
+    name: "tsconfig.json compilerOptions matches repo config",
+    params: tsconfigCompilerOptionsSchema,
     test({ context, params }) {
       const content = context.readJson<{
         compilerOptions?: Record<string, unknown>;
       }>("tsconfig.json");
       if (!content?.compilerOptions) {
-        return Status.pass(
-          "no tsconfig.json found — skipping compilerOptions check",
-        );
+        return Status.fail("tsconfig.json missing compilerOptions");
       }
 
-      const options = params?.options ?? {};
-      const warnOptions = params?.warnOptions ?? {};
+      const expected: Record<string, unknown> = params?.compilerOptions
+        ? { ...EXPECTED_COMPILER_OPTIONS, ...params.compilerOptions }
+        : EXPECTED_COMPILER_OPTIONS;
 
-      const effectiveWarn: Record<string, unknown> = { ...warnOptions };
-      if (content.compilerOptions["noEmit"] === true) {
-        effectiveWarn["sourceMap"] = undefined;
+      const diffs: string[] = [];
+
+      for (const [key, expectedValue] of Object.entries(expected)) {
+        const actualValue = content.compilerOptions[key];
+        if (!isEqual(actualValue, expectedValue)) {
+          diffs.push(
+            `"${key}": expected ${JSON.stringify(expectedValue)} got ${JSON.stringify(actualValue)}`,
+          );
+        }
       }
 
-      const missing = Object.entries(options).filter(
-        ([k, v]) => content.compilerOptions?.[k] !== v,
+      const extraKeys = Object.keys(content.compilerOptions).filter(
+        (k) => !(k in expected),
       );
-      if (missing.length > 0) {
-        const details = missing
-          .map(([k, v]) => {
-            if (k === "strict") {
-              return `"${k}: ${String(v)}" — strict mode not enabled`;
-            }
-            if (k === "noUncheckedIndexedAccess") {
-              return `"${k}: ${String(v)}" — array/object index access should return T | undefined`;
-            }
-            if (k === "isolatedModules") {
-              return `"${k}: ${String(v)}" — required for Bun, esbuild, and SWC`;
-            }
-            return `"${k}: ${String(v)}"`;
-          })
-          .join("; ");
-        return Status.fail(`tsconfig missing compilerOptions: ${details}`);
+      if (extraKeys.length > 0) {
+        diffs.push(`unexpected compilerOptions: ${extraKeys.join(", ")}`);
       }
 
-      const warnMissing = Object.entries(effectiveWarn).filter(
-        ([k, v]) => content.compilerOptions?.[k] !== v,
-      );
-      if (warnMissing.length > 0) {
-        const details = warnMissing
-          .map(([k, v]) => {
-            if (k === "verbatimModuleSyntax") {
-              return `"${k}: ${String(v)}" — prevents CJS/ESM mismatches`;
-            }
-            if (k === "sourceMap") {
-              return `"${k}: ${String(v)}" — without source maps, production stack traces are nearly impossible to debug`;
-            }
-            return `"${k}: ${String(v)}"`;
-          })
-          .join("; ");
-        return Status.warn(`tsconfig missing compilerOptions: ${details}`);
+      if (diffs.length > 0) {
+        return Status.fail(`tsconfig drift: ${diffs.join("; ")}`);
       }
 
-      const all = { ...options, ...effectiveWarn };
       return Status.pass(
-        `all compilerOptions present: ${Object.keys(all).join(", ")}`,
+        `all compilerOptions match: ${Object.keys(expected).join(", ")}`,
       );
     },
   });
