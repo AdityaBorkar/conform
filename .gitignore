@@ -5,6 +5,7 @@ coverage
 *.lcov
 .env*
 *.env
+!.env.example
 *.gen.ts
 *.tsbuildinfo
 .DS_Store

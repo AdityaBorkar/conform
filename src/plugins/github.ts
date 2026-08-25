@@ -1,164 +1,36 @@
-import { type } from "arktype";
+import { definePlugin } from "@/api/index.ts";
+import { withActionsRules } from "./github/actions.ts";
+import { createGithubContext } from "./github/context.ts";
+import { withGeneralRules } from "./github/general.ts";
+import { withReviewRules } from "./github/review.ts";
+import { withSecurityRules } from "./github/security.ts";
+import { withWorkflowRules } from "./github/workflows.ts";
 
-import { definePlugin, Status } from "@/api/index.ts";
-import { DOMAIN } from "@/plugins/utils/domain.ts";
-import type { Target } from "@/utils/fs.ts";
+export {
+  githubApiScopeSchema,
+  githubCodeownersSchema,
+  githubDefaultBranchSchema,
+  githubEnvironmentsSchema,
+  githubPrChecksSchema,
+  githubRetentionSchema,
+  githubWorkflowContentSchema,
+  githubWorkflowSchema,
+} from "./github/schemas.ts";
 
-export const githubWorkflowSchema = type({
-  file_expressions: "string[]",
-});
-
-export const githubWorkflowContentSchema = type({
-  contains: "string[]",
-  file_expressions: "string[]",
-});
-
-export const github = definePlugin({
-  context: (target: Target) => ({
-    fileExists: (path: string) => target.fileExists(path),
-    readFile: (path: string) => target.readFile(path),
-  }),
-  id: "github",
-})
-  .defineRule({
-    domain: DOMAIN.GITHUB_CONFIG,
-    id: "ci-workflow",
-    name: "CI workflow file exists",
-    params: githubWorkflowSchema,
-    test({ context, params }) {
-      const candidates = params?.file_expressions ?? [
-        ".github/workflows/ci.yml",
-        ".github/workflows/ci.yaml",
-        ".github/workflows/test.yml",
-        ".github/workflows/test.yaml",
-        ".github/workflows/build.yml",
-        ".github/workflows/build.yaml",
-        ".github/workflows/check.yml",
-        ".github/workflows/check.yaml",
-      ];
-      const found = candidates.find((p) => context.fileExists(p));
-      if (found) {
-        return Status.pass(found);
-      }
-      return Status.fail(
-        `no CI workflow found — expected ${candidates.join(", ")}`,
-      );
-    },
-  })
-  .defineRule({
-    domain: DOMAIN.GITHUB_CONFIG,
-    id: "release-workflow",
-    name: "Release/publish workflow file exists",
-    params: githubWorkflowSchema,
-    test({ context, params }) {
-      const candidates = params?.file_expressions ?? [
-        ".github/workflows/release.yml",
-        ".github/workflows/release.yaml",
-        ".github/workflows/publish.yml",
-        ".github/workflows/publish.yaml",
-        ".github/workflows/deploy.yml",
-        ".github/workflows/deploy.yaml",
-      ];
-      const found = candidates.find((p) => context.fileExists(p));
-      if (found) {
-        return Status.pass(found);
-      }
-      return Status.warn(
-        `no release/publish workflow found — expected ${candidates.join(", ")}`,
-      );
-    },
-  })
-  .defineRule({
-    domain: DOMAIN.GITHUB_CONFIG,
-    id: "ci-lint",
-    name: "CI workflow runs lint",
-    params: githubWorkflowContentSchema,
-    test({ context, params }) {
-      const candidates = params?.file_expressions ?? [
-        ".github/workflows/ci.yml",
-        ".github/workflows/ci.yaml",
-        ".github/workflows/test.yml",
-        ".github/workflows/test.yaml",
-        ".github/workflows/build.yml",
-        ".github/workflows/build.yaml",
-        ".github/workflows/check.yml",
-        ".github/workflows/check.yaml",
-      ];
-      const contains = params?.contains ?? ["biome", "lint", "check:lint"];
-      const ciFile = candidates.find((p) => context.fileExists(p));
-      if (!ciFile) {
-        return Status.pass("no CI workflow found — skipping content checks");
-      }
-      const content = context.readFile(ciFile);
-      if (!content) {
-        return Status.pass(
-          "could not read CI workflow — skipping content checks",
-        );
-      }
-      const matched = contains.find((c) => content.includes(c));
-      if (matched) {
-        return Status.pass(`contains "${matched}"`);
-      }
-      return Status.warn(
-        `CI workflow does not appear to run lint — expected to contain ${contains.map((c) => `"${c}"`).join(" or ")}`,
-      );
-    },
-  })
-  .defineRule({
-    domain: DOMAIN.GITHUB_CONFIG,
-    id: "ci-typecheck",
-    name: "CI workflow runs typecheck",
-    params: githubWorkflowContentSchema,
-    test({ context, params }) {
-      const candidates = params?.file_expressions ?? [
-        ".github/workflows/ci.yml",
-        ".github/workflows/ci.yaml",
-        ".github/workflows/test.yml",
-        ".github/workflows/test.yaml",
-        ".github/workflows/build.yml",
-        ".github/workflows/build.yaml",
-        ".github/workflows/check.yml",
-        ".github/workflows/check.yaml",
-      ];
-      const contains = params?.contains ?? ["tsc", "typecheck", "check:types"];
-      const ciFile = candidates.find((p) => context.fileExists(p));
-      if (!ciFile) {
-        return Status.pass("no CI workflow found — skipping content checks");
-      }
-      const content = context.readFile(ciFile);
-      if (!content) {
-        return Status.pass(
-          "could not read CI workflow — skipping content checks",
-        );
-      }
-      const matched = contains.find((c) => content.includes(c));
-      if (matched) {
-        return Status.pass(`contains "${matched}"`);
-      }
-      return Status.warn(
-        `CI workflow does not appear to run typecheck — expected to contain ${contains.map((c) => `"${c}"`).join(" or ")}`,
-      );
-    },
-  })
-  .defineRule({
-    domain: DOMAIN.GITHUB_CONFIG,
-    id: "dependabot",
-    name: "Dependabot or Renovate config exists",
-    params: githubWorkflowSchema,
-    test({ context, params }) {
-      const candidates = params?.file_expressions ?? [
-        ".github/dependabot.yml",
-        ".github/dependabot.yaml",
-        "renovate.json",
-        ".renovaterc",
-        ".renovaterc.json",
-      ];
-      const found = candidates.find((p) => context.fileExists(p));
-      if (found) {
-        return Status.pass(found);
-      }
-      return Status.warn(
-        `no ${candidates.join(" or ")} found — automated dependency updates prevent security drift`,
-      );
-    },
-  });
+/**
+ * GitHub configuration plugin. Local workflow rules always run; the
+ * settings rules query the GitHub REST/GraphQL API using the
+ * `CONFORM_GITHUB_API_TOKEN` environment variable (admin read access
+ * required). Missing tokens or unresolvable owner/repo identities fail.
+ */
+export const github = withSecurityRules(
+  withActionsRules(
+    withGeneralRules(
+      withReviewRules(
+        withWorkflowRules(
+          definePlugin({ context: createGithubContext, id: "github" }),
+        ),
+      ),
+    ),
+  ),
+);

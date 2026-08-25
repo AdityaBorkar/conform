@@ -17,6 +17,9 @@ CLEANUP
 - Create: @tanstack-start-website @tanstack-start-webapp
 - shadcn = components.json
 - vite.config.ts
+- wrangler
+- github-actions: workflows, dependebot, codeowners
+- .commitlintrc.json
 
 - GitHub Repo Config checks
   - PR Checks: No linting errors, ensure formatting, no type errors, no conform errors

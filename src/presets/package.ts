@@ -132,10 +132,14 @@ const BIOME_CONFIG = {
       },
     },
     {
-      includes: ["src/plugins/*.ts"],
+      includes: ["src/plugins/*.ts", "src/plugins/**/*.ts"],
       linter: {
         rules: {
+          complexity: {
+            noExcessiveLinesPerFunction: "off",
+          },
           style: {
+            noExcessiveLinesPerFile: "off",
             useExportsLast: "off",
           },
         },
