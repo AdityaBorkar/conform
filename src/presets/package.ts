@@ -9,7 +9,7 @@ import { packageJson } from "@/plugins/package_json.ts";
 import { tsconfig_json } from "@/plugins/tsconfig_json.ts";
 import { zed } from "@/plugins/zed.ts";
 
-const plugins = [
+export default definePreset([
   packageJson,
   biome,
   tsconfig_json,
@@ -19,9 +19,7 @@ const plugins = [
   github,
   zed,
   bun,
-] as const;
-
-export default definePreset(plugins)({
+] as const)({
   description: "Conformance rules for publishing an NPM package",
   name: "package",
   rules: {

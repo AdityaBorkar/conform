@@ -1,6 +1,8 @@
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 
+import { type } from "arktype";
+
 import type {
   AnyPlugin,
   Preset,
@@ -11,20 +13,25 @@ import type {
 const packageRoot = resolve(import.meta.dir, "..", "..");
 const presetsDir = join(packageRoot, "src", "presets");
 
+const presetSchema = type({
+  description: "string",
+  name: "string",
+  plugins: "unknown[]",
+  "rules?": type("object")
+    .narrow((data, ctx) => {
+      if (typeof data !== "object" || data === null) {
+        return ctx.mustBe("an object");
+      }
+      if (Array.isArray(data)) {
+        return ctx.mustBe("an object (was array)");
+      }
+      return true;
+    })
+    .or("undefined"),
+});
+
 function isValidPreset(value: unknown): value is Preset {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v["name"] === "string" &&
-    typeof v["description"] === "string" &&
-    Array.isArray(v["plugins"]) &&
-    (v["rules"] === undefined ||
-      (typeof v["rules"] === "object" &&
-        v["rules"] !== null &&
-        !Array.isArray(v["rules"])))
-  );
+  return !(presetSchema(value) instanceof type.errors);
 }
 
 export async function presetResolver(name: string): Promise<Preset | null> {
