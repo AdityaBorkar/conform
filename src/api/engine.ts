@@ -1,3 +1,5 @@
+import { type } from "arktype";
+
 import { isMonorepoConfig } from "@/api/config.ts";
 import { presetResolver } from "@/api/preset.ts";
 import { renderJson } from "@/cli/reporter/json.ts";
@@ -57,17 +59,27 @@ export interface ConformanceError {
   message: string;
 }
 
-function normalizeLevel(level: string): Severity | "off" | null {
-  if (level === "off") {
-    return "off";
+const ruleLevelSchema = type("'warn'|'off'|'error'");
+
+const ruleOverrideObjectSchema = type({
+  "[string]": "unknown",
+  "level?": "'warn'|'off'|'error'|undefined",
+}).narrow((data, ctx) => {
+  if (data === null || typeof data !== "object" || Array.isArray(data)) {
+    return ctx.mustBe("an object");
+  }
+  return true;
+});
+
+function normalizeLevel(level: unknown): Severity | "off" | null {
+  const parsed = ruleLevelSchema(level);
+  if (parsed instanceof type.errors) {
+    return null;
   }
   if (level === "error") {
     return "fail";
   }
-  if (level === "warn") {
-    return "warn";
-  }
-  return null;
+  return level as Severity | "off";
 }
 
 function parseOverride(rawOverride: RuleConfig | undefined): {
@@ -84,7 +96,7 @@ function parseOverride(rawOverride: RuleConfig | undefined): {
     }
     return { params: undefined, severity };
   }
-  if (typeof rawOverride !== "object" || rawOverride === null) {
+  if (ruleOverrideObjectSchema(rawOverride) instanceof type.errors) {
     return { params: undefined, severity: null };
   }
   const rec = rawOverride as Record<string, unknown>;
@@ -95,7 +107,7 @@ function parseOverride(rawOverride: RuleConfig | undefined): {
     if (rawLevel === undefined) {
       severity = undefined;
     } else {
-      const normalized = normalizeLevel(String(rawLevel));
+      const normalized = normalizeLevel(rawLevel);
       if (normalized === null) {
         return { params: undefined, severity: null };
       }

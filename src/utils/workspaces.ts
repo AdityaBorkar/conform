@@ -3,21 +3,25 @@ import { join, resolve } from "node:path";
 // biome-ignore lint/correctness/noUnresolvedImports: Bun.Glob is provided by Bun runtime
 import { Glob } from "bun";
 
+import { type } from "arktype";
+
 import type { PackageJson } from "@/types.ts";
 import { Target } from "@/utils/fs.ts";
+
+const workspacesArraySchema = type("unknown[]");
+const workspacesObjectSchema = type({
+  packages: "unknown[]",
+});
 
 export function getWorkspacesPatterns(pkg: PackageJson): string[] | null {
   const ws = pkg.workspaces;
   if (!ws) {
     return null;
   }
-  if (Array.isArray(ws)) {
-    return ws.filter((p) => typeof p === "string") as string[];
+  if (!(workspacesArraySchema(ws) instanceof type.errors)) {
+    return (ws as unknown[]).filter((p) => typeof p === "string") as string[];
   }
-  if (
-    typeof ws === "object" &&
-    Array.isArray((ws as { packages?: unknown }).packages)
-  ) {
+  if (!(workspacesObjectSchema(ws) instanceof type.errors)) {
     const pkgs = (ws as { packages: unknown[] }).packages;
     return pkgs.filter((p) => typeof p === "string") as string[];
   }

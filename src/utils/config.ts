@@ -10,8 +10,8 @@ export async function loadConfig(
   const configPath = join(targetPath, "conform.config.ts");
   try {
     const mod = await import(configPath);
-    const config: ConformConfig = mod.default ?? mod;
-    if (config.preset) {
+    const config: unknown = mod.default ?? mod;
+    if (isConformConfig(config)) {
       return config;
     }
     return null;

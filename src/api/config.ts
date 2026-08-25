@@ -1,3 +1,5 @@
+import { type } from "arktype";
+
 import type { ConformConfig, MonorepoConfig } from "@/types.ts";
 
 export function defineConfig(config: ConformConfig): ConformConfig {
@@ -8,35 +10,30 @@ export function defineMonorepoConfig(config: MonorepoConfig): MonorepoConfig {
   return config;
 }
 
-export function isConformConfig(value: unknown): value is ConformConfig {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return false;
+const conformConfigSchema = type({
+  preset: "string>0",
+});
+
+const monorepoConfigSchema = type({
+  "[string]": conformConfigSchema,
+}).narrow((data, ctx) => {
+  if (data === null || typeof data !== "object" || Array.isArray(data)) {
+    return ctx.mustBe("an object");
   }
-  const v = value as Record<string, unknown>;
-  return typeof v["preset"] === "string" && (v["preset"] as string).length > 0;
+  // Single config has top-level preset; monorepo must not
+  if ("preset" in (data as Record<string, unknown>)) {
+    return ctx.mustBe("a monorepo mapping (must not have top-level preset)");
+  }
+  if (Object.keys(data as object).length === 0) {
+    return ctx.mustBe("non-empty");
+  }
+  return true;
+});
+
+export function isConformConfig(value: unknown): value is ConformConfig {
+  return !(conformConfigSchema(value) instanceof type.errors);
 }
 
 export function isMonorepoConfig(value: unknown): value is MonorepoConfig {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return false;
-  }
-  const rec = value as Record<string, unknown>;
-  // Single config has top-level preset; monorepo must not
-  if ("preset" in rec) {
-    return false;
-  }
-  const entries = Object.entries(rec);
-  if (entries.length === 0) {
-    return false;
-  }
-  return entries.every(([, v]) => {
-    if (!v || typeof v !== "object" || Array.isArray(v)) {
-      return false;
-    }
-    const inner = v as Record<string, unknown>;
-    return (
-      typeof inner["preset"] === "string" &&
-      (inner["preset"] as string).length > 0
-    );
-  });
+  return !(monorepoConfigSchema(value) instanceof type.errors);
 }
