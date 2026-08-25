@@ -9,175 +9,13 @@ export const biomeConfigExistsSchema = type({
 });
 
 export const biomeConfigSchema = type({
-  "config?": "Record<string, unknown>",
+  config: "Record<string, unknown>",
 });
 
 export const biomeScriptSchema = type({
   contains: "string",
   file_expressions: "string[]",
 });
-
-const EXPECTED_BIOME_CONFIG: Record<string, unknown> = {
-  assist: {
-    actions: {
-      source: {
-        noDuplicateClasses: "off",
-        organizeImports: {
-          level: "on",
-          options: {
-            groups: [
-              ":URL:",
-              ":BLANK_LINE:",
-              ":NODE:",
-              ":BUN:",
-              ":PACKAGE_WITH_PROTOCOL:",
-              ":BLANK_LINE:",
-              ":PACKAGE:",
-              ":BLANK_LINE:",
-              ":ALIAS:",
-              ":PATH:",
-            ],
-          },
-        },
-        preset: "all",
-        useSortedPackageJson: "off",
-      },
-    },
-  },
-  css: {
-    parser: {
-      cssModules: true,
-      tailwindDirectives: true,
-    },
-  },
-  files: {
-    ignoreUnknown: true,
-    includes: ["**"],
-  },
-  formatter: {
-    attributePosition: "auto",
-    bracketSameLine: false,
-    bracketSpacing: true,
-    enabled: true,
-    expand: "auto",
-    formatWithErrors: false,
-    indentStyle: "space",
-    indentWidth: 2,
-    lineEnding: "lf",
-    lineWidth: 80,
-    useEditorconfig: true,
-  },
-  html: {
-    experimentalFullSupportEnabled: false,
-    formatter: {
-      selfCloseVoidElements: "always",
-    },
-  },
-  javascript: {
-    formatter: {
-      arrowParentheses: "always",
-      jsxQuoteStyle: "double",
-      quoteProperties: "asNeeded",
-      quoteStyle: "double",
-    },
-  },
-  linter: {
-    domains: {
-      types: "all",
-    },
-    enabled: true,
-    rules: {
-      a11y: {
-        preset: "all",
-      },
-      complexity: {
-        preset: "all",
-        useLiteralKeys: "off",
-      },
-      correctness: {
-        noNodejsModules: "off",
-        preset: "all",
-      },
-      nursery: {
-        preset: "recommended",
-      },
-      performance: {
-        noBarrelFile: "off",
-        preset: "all",
-        useTopLevelRegex: "off",
-      },
-      preset: "recommended",
-      security: {
-        noSecrets: "off",
-        preset: "all",
-      },
-      style: {
-        noContinue: "off",
-        noDefaultExport: "off",
-        noNestedTernary: "off",
-        noTernary: "off",
-        preset: "all",
-        useNamingConvention: "off",
-      },
-      suspicious: {
-        noEmptySource: "off",
-        preset: "all",
-      },
-    },
-  },
-  overrides: [
-    {
-      includes: ["**/*.test.ts"],
-      linter: {
-        rules: {
-          complexity: {
-            noExcessiveLinesPerFunction: "off",
-          },
-          style: {
-            noMagicNumbers: "off",
-          },
-        },
-      },
-    },
-    {
-      includes: ["src/plugins/*.ts"],
-      linter: {
-        rules: {
-          style: {
-            useExportsLast: "off",
-          },
-        },
-      },
-    },
-    {
-      includes: ["scripts/**/*.ts"],
-      linter: {
-        rules: {
-          complexity: {
-            noExcessiveLinesPerFunction: "off",
-          },
-          correctness: {
-            noUndeclaredVariables: "off",
-          },
-          style: {
-            noMagicNumbers: "off",
-            noProcessEnv: "off",
-          },
-          suspicious: {
-            noConsole: "off",
-            noShadow: "off",
-            noUnnecessaryConditions: "off",
-          },
-        },
-      },
-    },
-  ],
-  vcs: {
-    clientKind: "git",
-    enabled: true,
-    useIgnoreFile: true,
-  },
-};
 
 function isEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -228,7 +66,7 @@ export const biome = definePlugin({
     domain: DOMAIN.STYLE,
     files: ["biome.json"],
     id: "config",
-    name: "biome.json matches repo config",
+    name: "biome.json matches expected config",
     params: biomeConfigSchema,
     test({ context, params }) {
       const raw = context.readJson<Record<string, unknown>>("biome.json");
@@ -243,9 +81,7 @@ export const biome = definePlugin({
         unknown
       > & { $schema?: unknown };
 
-      const expected: Record<string, unknown> = params?.config
-        ? { ...EXPECTED_BIOME_CONFIG, ...params.config }
-        : EXPECTED_BIOME_CONFIG;
+      const expected = params?.config ?? {};
 
       const diffs: string[] = [];
 

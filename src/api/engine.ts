@@ -346,7 +346,7 @@ export async function checkMonorepo(
   let hasFail = false;
   let hasWarn = false;
 
-  for (const [pkgPath, cfg] of resolved.mapping) {
+  for await (const [pkgPath, cfg] of resolved.mapping) {
     const preset = await presetResolver(cfg.preset);
     if (!preset) {
       return {

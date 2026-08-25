@@ -9,78 +9,48 @@ export const bunfigExistsSchema = type({
 });
 
 export const bunfigContentSchema = type({
-  "consoleDepth?": "number",
-  "installIgnoreScripts?": "boolean",
-  "installMinimumReleaseAge?": "number",
-  "installSaveTextLockfile?": "boolean",
-  "logLevel?": "string",
-  "runBun?": "boolean",
-  "runSilent?": "boolean",
-  "telemetry?": "boolean",
+  content: "Record<string, string | number | boolean>",
 });
 
-const DEFAULT_CONSOLE_DEPTH = 10;
-const DEFAULT_MINIMUM_RELEASE_AGE = 259_200;
-
-function buildBunfigChecks(expected: {
-  consoleDepth: number;
-  installIgnoreScripts: boolean;
-  installMinimumReleaseAge: number;
-  installSaveTextLockfile: boolean;
-  logLevel: string;
-  runBun: boolean;
-  runSilent: boolean;
-  telemetry: boolean;
-}): Array<{ label: string; pattern: RegExp; value: unknown }> {
-  return [
-    {
-      label: "telemetry",
-      pattern: new RegExp(`telemetry\\s*=\\s*${String(expected.telemetry)}`),
-      value: expected.telemetry,
-    },
-    {
-      label: "logLevel",
-      pattern: new RegExp(`logLevel\\s*=\\s*"${String(expected.logLevel)}"`),
-      value: expected.logLevel,
-    },
-    {
-      label: "console.depth",
-      pattern: new RegExp(`depth\\s*=\\s*${String(expected.consoleDepth)}`),
-      value: expected.consoleDepth,
-    },
-    {
-      label: "run.bun",
-      pattern: new RegExp(`bun\\s*=\\s*${String(expected.runBun)}`),
-      value: expected.runBun,
-    },
-    {
-      label: "run.silent",
-      pattern: new RegExp(`silent\\s*=\\s*${String(expected.runSilent)}`),
-      value: expected.runSilent,
-    },
-    {
-      label: "install.minimumReleaseAge",
-      pattern: new RegExp(
-        `minimumReleaseAge\\s*=\\s*${String(expected.installMinimumReleaseAge)}`,
-      ),
-      value: expected.installMinimumReleaseAge,
-    },
-    {
-      label: "install.saveTextLockfile",
-      pattern: new RegExp(
-        `saveTextLockfile\\s*=\\s*${String(expected.installSaveTextLockfile)}`,
-      ),
-      value: expected.installSaveTextLockfile,
-    },
-    {
-      label: "install.ignore-scripts",
-      pattern: new RegExp(
-        `ignore-scripts\\s*=\\s*${String(expected.installIgnoreScripts)}`,
-      ),
-      value: expected.installIgnoreScripts,
-    },
-  ];
+interface BunfigCheck {
+  label: string;
+  pattern: (value: string) => RegExp;
 }
+
+const BUNFIG_CHECKS: Record<string, BunfigCheck> = {
+  consoleDepth: {
+    label: "console.depth",
+    pattern: (value) => new RegExp(`depth\\s*=\\s*${value}`),
+  },
+  installIgnoreScripts: {
+    label: "install.ignore-scripts",
+    pattern: (value) => new RegExp(`ignore-scripts\\s*=\\s*${value}`),
+  },
+  installMinimumReleaseAge: {
+    label: "install.minimumReleaseAge",
+    pattern: (value) => new RegExp(`minimumReleaseAge\\s*=\\s*${value}`),
+  },
+  installSaveTextLockfile: {
+    label: "install.saveTextLockfile",
+    pattern: (value) => new RegExp(`saveTextLockfile\\s*=\\s*${value}`),
+  },
+  logLevel: {
+    label: "logLevel",
+    pattern: (value) => new RegExp(`logLevel\\s*=\\s*"${value}"`),
+  },
+  runBun: {
+    label: "run.bun",
+    pattern: (value) => new RegExp(`bun\\s*=\\s*${value}`),
+  },
+  runSilent: {
+    label: "run.silent",
+    pattern: (value) => new RegExp(`silent\\s*=\\s*${value}`),
+  },
+  telemetry: {
+    label: "telemetry",
+    pattern: (value) => new RegExp(`telemetry\\s*=\\s*${value}`),
+  },
+};
 
 export const bun = definePlugin({
   context: (target: Target) => ({
@@ -108,7 +78,7 @@ export const bun = definePlugin({
     domain: DOMAIN.BUILD,
     files: ["bunfig.toml"],
     id: "bunfig-content",
-    name: "bunfig.toml matches repo config",
+    name: "bunfig.toml matches expected config",
     params: bunfigContentSchema,
     test({ context, params }) {
       const raw = context.readFile("bunfig.toml");
@@ -118,26 +88,24 @@ export const bun = definePlugin({
         );
       }
 
-      const expected = {
-        consoleDepth: params?.consoleDepth ?? DEFAULT_CONSOLE_DEPTH,
-        installIgnoreScripts: params?.installIgnoreScripts ?? true,
-        installMinimumReleaseAge:
-          params?.installMinimumReleaseAge ?? DEFAULT_MINIMUM_RELEASE_AGE,
-        installSaveTextLockfile: params?.installSaveTextLockfile ?? false,
-        logLevel: params?.logLevel ?? "warn",
-        runBun: params?.runBun ?? true,
-        runSilent: params?.runSilent ?? false,
-        telemetry: params?.telemetry ?? false,
-      };
+      const content = params?.content ?? {};
 
-      const checks = buildBunfigChecks(expected);
+      const diffs: string[] = [];
 
-      const missing = checks
-        .filter(({ pattern }) => !pattern.test(raw))
-        .map(({ label, value }) => `"${label} = ${String(value)}"`);
+      for (const [key, value] of Object.entries(content)) {
+        const check = BUNFIG_CHECKS[key];
+        if (!check) {
+          diffs.push(`unknown bunfig key "${key}"`);
+          continue;
+        }
+        const serialized = String(value);
+        if (!check.pattern(serialized).test(raw)) {
+          diffs.push(`"${check.label} = ${serialized}"`);
+        }
+      }
 
-      if (missing.length > 0) {
-        return Status.fail(`bunfig.toml drift: missing ${missing.join("; ")}`);
+      if (diffs.length > 0) {
+        return Status.fail(`bunfig.toml drift: missing ${diffs.join("; ")}`);
       }
 
       return Status.pass("bunfig.toml matches expected config");

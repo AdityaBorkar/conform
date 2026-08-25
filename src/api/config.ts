@@ -2,14 +2,6 @@ import { type } from "arktype";
 
 import type { ConformConfig, MonorepoConfig } from "@/types.ts";
 
-export function defineConfig(config: ConformConfig): ConformConfig {
-  return config;
-}
-
-export function defineMonorepoConfig(config: MonorepoConfig): MonorepoConfig {
-  return config;
-}
-
 const conformConfigSchema = type({
   preset: "string>0",
 });
@@ -36,4 +28,12 @@ export function isConformConfig(value: unknown): value is ConformConfig {
 
 export function isMonorepoConfig(value: unknown): value is MonorepoConfig {
   return !(monorepoConfigSchema(value) instanceof type.errors);
+}
+
+export function defineConfig(config: ConformConfig): ConformConfig {
+  return config;
+}
+
+export function defineMonorepoConfig(config: MonorepoConfig): MonorepoConfig {
+  return config;
 }

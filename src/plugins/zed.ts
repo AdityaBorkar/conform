@@ -13,41 +13,8 @@ export const zedSettingsExistsSchema = type({
 });
 
 export const zedSettingsSchema = type({
-  "code_actions_on_format?": "Record<string, unknown>",
-  "file_scan_exclusions?": "string[]",
-  "format_on_save?": "string",
-  "formatter?": "Record<string, unknown>",
-  "language_servers?": "string[]",
-  "lsp?": "Record<string, unknown>",
+  settings: "Record<string, unknown>",
 });
-
-const EXPECTED_ZED_SETTINGS: Record<string, unknown> = {
-  code_actions_on_format: {
-    "source.fixAll.biome": true,
-    "source.organizeImports.biome": true,
-  },
-  file_scan_exclusions: [
-    "**/.git",
-    "**/.output",
-    "**/node_modules",
-    "codedb.snapshot",
-  ],
-  format_on_save: "on",
-  formatter: {
-    language_server: {
-      name: "biome",
-    },
-  },
-  language_servers: ["!markdownlint", "!oxfmt", "!oxlint", "..."],
-  lsp: {
-    biome: {
-      binary: {
-        arguments: ["lsp-proxy"],
-        path: "./node_modules/@biomejs/cli-linux-x64/biome",
-      },
-    },
-  },
-};
 
 function deepEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -94,7 +61,7 @@ export const zed = definePlugin({
     domain: DOMAIN.DEV_ENVIRONMENT,
     files: [".zed/settings.json"],
     id: "settings",
-    name: ".zed/settings.json matches repo config",
+    name: ".zed/settings.json matches expected config",
     params: zedSettingsSchema,
     test({ context, params }) {
       const raw =
@@ -105,10 +72,7 @@ export const zed = definePlugin({
         );
       }
 
-      const expected: Record<string, unknown> = {
-        ...EXPECTED_ZED_SETTINGS,
-        ...(params ?? {}),
-      };
+      const expected = params?.settings ?? {};
 
       const diffs: string[] = [];
       for (const [key, expectedValue] of Object.entries(expected)) {

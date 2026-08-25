@@ -1,5 +1,4 @@
 {
-  "title": "@adistack/conform",
   "description": "CLI and library to check repositories against conformance Presets",
   "pages": [
     "index",
@@ -17,5 +16,6 @@
     "[GitHub](https://github.com/AdityaBorkar/conform)",
     "[npm](https://www.npmjs.com/package/@adistack/conform)",
     "[Changelog](https://github.com/AdityaBorkar/conform/blob/main/CHANGELOG.md)"
-  ]
+  ],
+  "title": "@adistack/conform"
 }

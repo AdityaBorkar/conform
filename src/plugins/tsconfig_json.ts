@@ -5,54 +5,8 @@ import type { Target } from "@/utils/fs.ts";
 import { DOMAIN } from "./utils/domain.ts";
 
 export const tsconfigCompilerOptionsSchema = type({
-  "compilerOptions?": "Record<string, unknown>",
+  compilerOptions: "Record<string, unknown>",
 });
-
-const EXPECTED_COMPILER_OPTIONS: Record<string, unknown> = {
-  allowImportingTsExtensions: true,
-  allowJs: true,
-  allowUnreachableCode: false,
-  allowUnusedLabels: false,
-  composite: true,
-  declaration: true,
-  declarationMap: true,
-  exactOptionalPropertyTypes: true,
-  forceConsistentCasingInFileNames: true,
-  incremental: true,
-  isolatedModules: true,
-  jsx: "react-jsx",
-  lib: ["ESNext"],
-  module: "Preserve",
-  moduleDetection: "force",
-  moduleResolution: "bundler",
-  noEmit: true,
-  noEmitOnError: true,
-  noFallthroughCasesInSwitch: true,
-  noImplicitAny: true,
-  noImplicitOverride: true,
-  noImplicitReturns: true,
-  noImplicitThis: true,
-  noPropertyAccessFromIndexSignature: true,
-  noUncheckedIndexedAccess: true,
-  noUnusedLocals: true,
-  noUnusedParameters: true,
-  paths: {
-    "@/*": ["./src/*"],
-  },
-  resolveJsonModule: true,
-  skipLibCheck: true,
-  strict: true,
-  strictBindCallApply: true,
-  strictBuiltinIteratorReturn: true,
-  strictFunctionTypes: true,
-  strictNullChecks: true,
-  strictPropertyInitialization: true,
-  stripInternal: true,
-  target: "ESNext",
-  types: ["@types/bun"],
-  useUnknownInCatchVariables: true,
-  verbatimModuleSyntax: true,
-};
 
 function isEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -98,7 +52,7 @@ export const tsconfig_json = definePlugin({
     domain: DOMAIN.CODE_QUALITY,
     files: ["tsconfig.json"],
     id: "compiler-options",
-    name: "tsconfig.json compilerOptions matches repo config",
+    name: "tsconfig.json compilerOptions matches expected config",
     params: tsconfigCompilerOptionsSchema,
     test({ context, params }) {
       const content = context.readJson<{
@@ -108,9 +62,7 @@ export const tsconfig_json = definePlugin({
         return Status.fail("tsconfig.json missing compilerOptions");
       }
 
-      const expected: Record<string, unknown> = params?.compilerOptions
-        ? { ...EXPECTED_COMPILER_OPTIONS, ...params.compilerOptions }
-        : EXPECTED_COMPILER_OPTIONS;
+      const expected = params?.compilerOptions ?? {};
 
       const diffs: string[] = [];
 

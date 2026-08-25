@@ -5,10 +5,8 @@
 - Not a Monorepo
   - no nested package.json
 
-Refactor tsconfig for STRING MATCH
-Refactor biome for STRING MATCH
-- .zed/settings.json
-- bunfig.toml
+CLEANUP
+
 - PACKAGE.json
   - scripts
     - check:*
@@ -40,7 +38,6 @@ Refactor biome for STRING MATCH
       - Allow comments on individual commits 
       - Include Git LFS objects in archives 
       - Limit how many branches and tags can be updated in a single push
-  - Add Collaborator: robo-adi
   - CODE REVIEW
     - Limit to users explicitly granted read or higher access
   - RULESETS
@@ -65,7 +62,6 @@ Refactor biome for STRING MATCH
     - Enable Secret Protection
     - Enable Push protection
   - Secrets and Variables: Actions
-
 
 - Infra
   - No docker.compose files
