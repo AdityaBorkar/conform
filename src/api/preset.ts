@@ -52,11 +52,45 @@ export async function presetResolver(name: string): Promise<Preset | null> {
   return null;
 }
 
-export function definePreset<const Ps extends readonly AnyPlugin[]>(preset: {
+/**
+ * Curried form: `definePreset(plugins)(config)` — plugins are captured first
+ * so `rules` is checked strictly against those plugins' inferred param map.
+ * Object form `definePreset({ plugins, rules })` is preserved for backwards
+ * compatibility; both infer `Ps` as `const` tuple for full type-safety.
+ */
+export function definePreset<const Ps extends readonly AnyPlugin[]>(
+  plugins: Ps,
+): (config: {
+  description: string;
+  name: string;
+  rules?: StrictPresetRules<Ps>;
+}) => PresetWithPlugins<Ps>;
+export function definePreset<const Ps extends readonly AnyPlugin[]>(config: {
   description: string;
   name: string;
   plugins: Ps;
   rules?: StrictPresetRules<Ps>;
-}): PresetWithPlugins<Ps> {
-  return preset as unknown as PresetWithPlugins<Ps>;
+}): PresetWithPlugins<Ps>;
+export function definePreset<const Ps extends readonly AnyPlugin[]>(
+  arg0:
+    | Ps
+    | {
+        description: string;
+        name: string;
+        plugins: Ps;
+        rules?: StrictPresetRules<Ps>;
+      },
+  _arg1?: unknown,
+): unknown {
+  // curried: definePreset(plugins)(config)
+  if (Array.isArray(arg0)) {
+    const plugins = arg0 as Ps;
+    return (config: {
+      description: string;
+      name: string;
+      rules?: StrictPresetRules<Ps>;
+    }) => ({ ...config, plugins }) as unknown as PresetWithPlugins<Ps>;
+  }
+  // object: definePreset({ plugins, ... })
+  return arg0 as unknown as PresetWithPlugins<Ps>;
 }

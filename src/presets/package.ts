@@ -9,20 +9,21 @@ import { packageJson } from "@/plugins/package_json.ts";
 import { tsconfig_json } from "@/plugins/tsconfig_json.ts";
 import { zed } from "@/plugins/zed.ts";
 
-export default definePreset({
+const plugins = [
+  packageJson,
+  biome,
+  tsconfig_json,
+  husky,
+  docs,
+  gitignore,
+  github,
+  zed,
+  bun,
+] as const;
+
+export default definePreset(plugins)({
   description: "Conformance rules for publishing an NPM package",
   name: "package",
-  plugins: [
-    packageJson,
-    biome,
-    tsconfig_json,
-    husky,
-    docs,
-    gitignore,
-    github,
-    zed,
-    bun,
-  ],
   rules: {
     "gitignore/excludes": {
       file_expressions: ["node_modules", ".env*", "*.env", "*.gen.ts"],

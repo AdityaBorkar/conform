@@ -8,7 +8,6 @@ Refactor biome for STRING MATCH
 - bunfig.toml
 
 New rule for Pulumi: No .env* / *.env files
-Generated files are git ignored "*.gen.ts"
 
 - PACKAGE.json
   - scripts
@@ -22,8 +21,13 @@ Generated files are git ignored "*.gen.ts"
 
 Create: @tanstack-start-website @tanstack-start-webapp
 
-- CHANGELOG.md with changesets
-  - Unreleased section will be contructed by Ai agents using diff directly at release. Do not maintain "unreleased" section in CHANGELOG.md.
+GitHub Action Flow:
+When a PR is created on "stable" branch or "beta" branch, Generate a Changelog using "opencode2" and Create a changeset and update CHANGELOG.md
+When the PR is merged, Release, Publish and Provenance. Create a github release with changelog attached.
+
+PR Checks: No linting errors, ensure formatting, no type errors, no conform errors
+
+- CHANGELOG.md with changesets. Unreleased section will be contructed by Ai agents using diff directly at release. Do not maintain "unreleased" section in CHANGELOG.md.
   - [Script] Release -> pi-agent -> SKILLs -> changelog
     - writes version and changelog -> provenance and publish
 - CI/cd Pipeline
