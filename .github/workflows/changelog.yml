@@ -1,0 +1,100 @@
+name: Changelog
+
+on:
+  pull_request:
+    branches: [stable, beta]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# Need to push commits back to the PR branch
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: changelog-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  changelog:
+    name: Generate changeset & CHANGELOG
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          # checkout the PR head (not the merge commit) so we can push back
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Setup Node (for changeset & npm)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - name: Install opencode2
+        run: |
+          # @opencode-ai/cli provides `opencode2` binary
+          bun add -g @opencode-ai/cli@latest
+          opencode2 --version
+
+      - name: Generate changeset & CHANGELOG via opencode2
+        env:
+          # opencode2 will use whichever provider is configured;
+          # set one of these secrets in the repo to enable LLM summarization.
+          # Fallback (no LLM) is deterministic conventional-commit grouping.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BASE_REF="origin/${{ github.base_ref }}"
+          echo "Base: $BASE_REF  Head: HEAD"
+          # Ensure base is fetched (actions/checkout with fetch-depth 0 already has it, but be safe)
+          git fetch origin ${{ github.base_ref }} --depth=100 || true
+          bun run scripts/generate-changelog.ts --base "$BASE_REF" --head HEAD
+          echo "--- generated files ---"
+          ls -la .changeset/*.md 2>/dev/null || true
+          head -n 80 CHANGELOG.md || true
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Stage only changeset + CHANGELOG (avoid committing unrelated changes)
+          git add .changeset/*.md CHANGELOG.md 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No changeset/CHANGELOG changes to commit."
+            exit 0
+          fi
+          # Avoid infinite loop: skip if last commit is already chore(changelog)
+          LAST_MSG=$(git log -1 --pretty=%s || true)
+          if echo "$LAST_MSG" | grep -q "chore(changelog)"; then
+            echo "Last commit already a changelog commit, skipping."
+            git diff --cached --stat
+            exit 0
+          fi
+          git commit -m "chore(changelog): generate changeset and update CHANGELOG.md [skip ci]"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+
+      - name: Comment on PR (optional)
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: "⚠️ Changelog generation failed. Check the `Changelog` workflow logs."
+            })

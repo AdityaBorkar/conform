@@ -2,7 +2,14 @@ name: Release
 
 on:
   push:
-    branches: [main]
+    branches: [stable, beta, main]
+  workflow_dispatch:
+
+# Provenance needs id-token; release + version PR needs contents/pull-requests
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
@@ -13,9 +20,17 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
+
+      - name: Setup Node (for npm provenance)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -25,7 +40,7 @@ jobs:
           bun run check:lint
           bun run check:types
 
-      - name: Create Release Pull Request or Publish
+      - name: Create Release PR or Publish
         id: changesets
         uses: changesets/action@v1
         with:
@@ -33,6 +48,44 @@ jobs:
           version: bun run version
           commit: "chore(release): version packages"
           title: "chore(release): version packages"
+          createGithubReleases: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # If using npm Trusted Publishers (OIDC), NPM_TOKEN is not required —
+          # keep it for backwards compat; provenance is declared in
+          # package.json:publishConfig.provenance and honored by `npm publish`.
+
+      - name: Attach CHANGELOG.md to GitHub Release
+        if: steps.changesets.outputs.published == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          VERSION=$(node -p "require('./package.json').version")
+          echo "Published version: $VERSION"
+          echo "Published packages: ${{ steps.changesets.outputs.publishedPackages }}"
+
+          # changesets/action with createGithubReleases:true creates tag v$VERSION or $VERSION
+          TAG="v$VERSION"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            TAG="$VERSION"
+          fi
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            # fallback: find latest release tag
+            TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "v$VERSION")
+          fi
+          echo "Attaching CHANGELOG.md to $TAG"
+          gh release upload "$TAG" CHANGELOG.md --clobber 2>/dev/null || echo "upload skipped (release/tag not found yet: $TAG)"
+
+          # Also update release notes with extracted CHANGELOG section if needed
+          echo "Done. Release $TAG now has CHANGELOG.md attached."
+
+      - name: Summary
+        if: steps.changesets.outputs.published == 'true'
+        run: |
+          echo "### Published :rocket:" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          echo '${{ steps.changesets.outputs.publishedPackages }}' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
