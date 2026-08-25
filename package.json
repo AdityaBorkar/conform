@@ -8,6 +8,13 @@
     "conform": "src/cli/index.ts"
   },
   "bugs": "https://github.com/AdityaBorkar/conform/issues",
+  "contributors": [
+    {
+      "email": "hello@adityab.tech",
+      "name": "Aditya Borkar",
+      "url": "https://adityab.tech"
+    }
+  ],
   "dependencies": {
     "arktype": "^2.2.3",
     "bun": "^1.4.0",
@@ -57,10 +64,12 @@
   },
   "scripts": {
     "changeset": "changeset",
-    "check:conform": "conform check",
+    "check:conform": "bun src/cli/index.ts check",
     "check:lint": "biome check . --fix",
+    "check:lint:ci": "biome check .",
     "check:types": "tsc --noEmit",
     "format": "biome format --write .",
+    "lint": "biome check .",
     "prepare": "husky",
     "release": "changeset publish",
     "test": "vitest run",

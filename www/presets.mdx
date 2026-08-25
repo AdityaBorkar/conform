@@ -1,0 +1,116 @@
+---
+title: "Presets"
+description: "Built-in Presets — the package preset in full (9 plugins, 37 rules)."
+---
+
+# Presets
+
+Preset module `src/presets/package.ts:12` exported via `definePreset([...plugins] as const)({ name, description, rules })`. Resolved by `presetResolver` (`src/api/preset.ts:37`) from `src/presets/<name>.ts` or `src/presets/<name>/index.ts` relative to repo root (`resolve(import.meta.dir, "../..")`).
+
+Validation `isValidPreset` (`src/api/preset.ts:33`) requires `name: string`, `plugins: unknown[]`, optional `rules: object`.
+
+---
+
+## `package`
+
+> Conformance rules for publishing an NPM package.
+
+Plugins (in order): `packageJson`, `biome`, `tsconfig_json`, `husky`, `docs`, `gitignore`, `github`, `zed`, `bun`.
+
+Shipped overrides (`src/presets/package.ts:25`):
+
+```ts
+rules: {
+  "gitignore/excludes":           { file_expressions: ["node_modules", ".env*", "*.env", "*.gen.ts"] },
+  "husky/hook":                   { hooks: [
+    { file: ".husky/pre-commit", contains: "bun run format" },
+    { file: ".husky/commit-msg", contains: 'bun commitlint --edit "$1"' },
+  ]},
+  "package-json/required-fields": { fields: ["license","name","author","contributors","repository","publishConfig","homepage","files","bugs","description","keywords","engines"] },
+}
+```
+
+Config `rules` shallow-merge over these per rule ID.
+
+### Rule table (37 rules)
+
+| Plugin | Rule ID | Domain | Files | Default severity | One-line |
+|---|---|---|---|---|---|
+| `package-json` | `structure` | Build & Tasks | — | fail / warn | `name/version/license/type=module/bugs` required; `description/engines/homepage/repository/sideEffects` recommended (warn) |
+| `package-json` | `entry-point` | Build & Tasks | — | `fail` | `main` / `module` / `exports` present (`fields` param, default all three) |
+| `package-json` | `build-script` | Build & Tasks | — | `fail` | `prepare` or `build` script (`scripts` param) |
+| `package-json` | `files-or-npmignore` | Build & Tasks | — | `warn` | `files` field or `.npmignore` (or `file_expressions`) |
+| `package-json` | `no-install-hooks` | Security & Governance | — | `fail` | no `preinstall/postinstall/install` scripts (supply-chain) |
+| `package-json` | `required-fields` | Build & Tasks | — | `fail` | `fields` from preset (override with `fields: string[]`) |
+| `package-json` | `typecheck` | Build & Tasks | — | `warn` | `typecheck` / `check:types` / `types` script |
+| `package-json` | `no-prepublish` | Build & Tasks | — | `fail` | no deprecated `prepublish` script (use `prepublishOnly`) |
+| `biome` | `dev-deps` | Style & Validation | — | `fail` | `@biomejs/biome` in `devDependencies` |
+| `biome` | `config-exists` | Style & Validation | `biome.json`, `biome.jsonc` | `fail` | `biome.json` or `biome.jsonc` exists (`file_expressions`) |
+| `biome` | `config` | Style & Validation | `biome.json` | `fail` | `biome.json` matches expected config (strips `$schema`, deep-equals `EXPECTED_BIOME_CONFIG`; `config` param shallow-merges) |
+| `biome` | `lint-script` | Style & Validation | — | `fail` | `lint` or `check` runs `biome` (`file_expressions`, `contains`) |
+| `biome` | `format-script` | Style & Validation | — | `warn` | `format` / `check:format` / `check:lint` runs `biome` |
+| `typescript` | `deps` | Code Quality | — | `fail` | `typescript` in `dev` or `peerDependencies` |
+| `typescript` | `tsconfig` | Code Quality | `tsconfig.json` | `fail` | `tsconfig.json` exists |
+| `typescript` | `compiler-options` | Code Quality | `tsconfig.json` | `fail` | `compilerOptions` matches `EXPECTED_COMPILER_OPTIONS` (allow list + extra-key check; `compilerOptions` param shallow-merges) |
+| `husky` | `dev-deps` | Dev Environment | — | `fail` | `husky` in `devDependencies` |
+| `husky` | `hooks-dir` | Dev Environment | — | `fail` | `.husky/` directory exists (`file_expressions`) |
+| `husky` | `prepare-script` | Dev Environment | — | `fail` | `prepare` script calls `husky` (`file_expressions`, `contains`) |
+| `husky` | `hook` | Dev Environment | `.husky/pre-commit`, `.husky/commit-msg` | `fail` | `hooks: { file, contains }[]` all match (preset: two hooks) |
+| `docs` | `readme` | Documentation | — | `fail` | `README.md` exists and non-empty |
+| `docs` | `changelog` | Documentation | — | `warn` | `CHANGELOG.md` / `CHANGELOG` / `HISTORY.md` (`file_expressions`) |
+| `docs` | `contributing` | Documentation | — | `warn` | `CONTRIBUTING.md` or `.github/CONTRIBUTING.md` |
+| `docs` | `license` | Security & Governance | — | `fail` | `LICENSE` / `LICENSE.md` / `LICENSE.txt` |
+| `docs` | `security-md` | Security & Governance | — | `warn` | `SECURITY.md` or `.github/SECURITY.md` |
+| `gitignore` | `exists` | Dev Environment | — | `fail` | `.gitignore` exists |
+| `gitignore` | `excludes` | Dev Environment | — | `fail` | `.gitignore` contains `file_expressions` (preset: 4 patterns); missing yields `fail` with per-pattern details |
+| `github` | `ci-workflow` | GitHub Configuration | — | `fail` | `.github/workflows/{ci,test,build,check}.{yml,yaml}` |
+| `github` | `release-workflow` | GitHub Configuration | — | `warn` | `.github/workflows/{release,publish,deploy}.{yml,yaml}` |
+| `github` | `ci-lint` | GitHub Configuration | — | `warn` | CI workflow contains `biome` / `lint` / `check:lint` (skips if no CI file; `file_expressions` + `contains`) |
+| `github` | `ci-typecheck` | GitHub Configuration | — | `warn` | CI workflow contains `tsc` / `typecheck` / `check:types` |
+| `github` | `dependabot` | GitHub Configuration | — | `warn` | `.github/dependabot.{yml,yaml}` or `renovate.json` / `.renovaterc` |
+| `zed` | `dir` | Dev Environment | `.zed` | `fail` | `.zed/` directory exists (`file_expressions`) |
+| `zed` | `settings-exists` | Dev Environment | `.zed/settings.json` | `fail` | `.zed/settings.json` exists |
+| `zed` | `settings` | Dev Environment | `.zed/settings.json` | `fail` | settings match `EXPECTED_ZED_SETTINGS` (deep-equals; params shallow-merge) |
+| `bun` | `bunfig-exists` | Build & Tasks | `bunfig.toml` | `fail` | `bunfig.toml` exists (`file_expressions`) |
+| `bun` | `bunfig-content` | Build & Tasks | `bunfig.toml` | `fail` | `bunfig.toml` regex checks for `telemetry/logLevel/console.depth/run.bun/run.silent/install.*` (params: `telemetry`, `logLevel`, `consoleDepth`, `runBun`, `runSilent`, `installMinimumReleaseAge`, `installSaveTextLockfile`, `installIgnoreScripts`) |
+
+> Severity shown is the rule's intrinsic `Status.*` call. Coercion via `rules` overrides (including the preset's own) can change `fail ↔ warn` — `pass` is never rewritten. `off` skips entirely.
+
+### Using the preset
+
+```ts title="conform.config.ts"
+import { defineConfig } from "@adistack/conform";
+
+export default defineConfig({
+  preset: "package",
+  rules: {
+    "github/dependabot": "off",                       // not needed
+    "biome/format-script": "warn",                    // soften
+    "package-json/required-fields": {                 // extend required fields
+      fields: ["license", "name", "author", "engines"]
+    }
+  }
+});
+```
+
+## Authoring a custom preset
+
+See [Authoring](/authoring) for `definePreset` (curried + object form) and `PresetWithPlugins<Ps>` typing. In brief:
+
+```ts title="src/presets/acme.ts"
+import { definePreset } from "@adistack/conform";
+import { biome } from "@/plugins/biome.ts";
+import { husky } from "@/plugins/husky.ts";
+
+export default definePreset([biome, husky] as const)({
+  name: "acme",
+  description: "Acme org defaults",
+  rules: {
+    "biome/dev-deps": "error",
+    "husky/hook": { hooks: [{ file: ".husky/pre-commit", contains: "bun run format" }] }
+  }
+});
+```
+
+Referenced as `preset: "acme"` in `conform.config.ts`.
+

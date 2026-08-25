@@ -1,0 +1,71 @@
+---
+title: "Concepts"
+description: "Ubiquitous language — Preset, Plugin, Rule, Target, and the engine."
+---
+
+# Concepts
+
+Canonical terms are defined in `/CONTEXT.md` and `docs/architecture.md`. This page is the portable reference.
+
+## Core vocabulary
+
+| Term | What it is | Avoid |
+|---|---|---|
+| **Preset** | Named collection of `Plugin[]` + optional `StrictRuleOverrides`. Lives in `src/presets/*.ts`. Exported via `definePreset`. | Template, preset (lowercase) |
+| **Plugin** | Unit grouping related Rules. Declares `id` + `context: (target: Target) => T` and exposes Rules via `Plugin#defineRule`. IDs namespace to `pluginId/ruleId`. | RuleSet |
+| **Rule** | Atomic check. Must be defined via `Plugin#defineRule`; standalone `defineRule` does not exist. Fields: `id`, `domain`, `files`, `description` (authored as `name`), `check`, optional `paramsSchema`. | aiRule, kind |
+| **Domain** | Human display group: `Build & Tasks`, `Code Quality`, `Style & Validation`, `Dev Environment`, `Documentation`, `GitHub Configuration`, `Security & Governance`, `Observability`, `Testing`. Constant `DOMAIN` in `src/plugins/utils/domain.ts:1`. | Group |
+| **Files** | File paths a Rule concerns. Second-level TUI grouping key. Most rules `[]`, `husky/hook` → `[".husky/pre-commit", ".husky/commit-msg"]`. | group |
+| **Target** | Filesystem view rooted at a path. Wraps `fileExists`, `readFile`, `readJson` (with comment stripping), `packageJson`. Only FS surface Rules may use (`src/utils/fs.ts:10`). | — |
+| **CheckResult** | `{ status: Severity, message? }` returned by a Rule's `check`. | AiCheckResult |
+| **Status** | Helper `Status.pass/warn/fail(message?)` → `CheckResult` (`src/api/status.ts:3`). | — |
+| **Severity** | Result status `pass | warn | fail`. | — |
+| **RuleLevel** | Override severity `warn | off | error` (`error → fail`, `off` skips). `level` string alone or inside an object. | — |
+| **RuleConfig** | One override entry: `RuleLevel | ({ level?: RuleLevel } & Partial<P>)` where `P` is the Rule's params type. Params are **flattened** — no `params` wrapper, `level` is optional. | — |
+| **RuleOverrides** | `Record<string, RuleConfig>` — coerces non-`pass` results to the configured severity (`pass` never rewritten). Same shape on Preset and ConformConfig. | — |
+| **StrictRuleOverrides** | Typed `RuleOverrides` where known IDs enforce their param type via `RuleRegistry`. Unknown IDs fall back to `RuleConfig<unknown>` (`src/types.ts:107`). | — |
+| **RuleRegistry** | Auto-inferred map of rule ID → params type, derived from the `@/plugins/index.ts` barrel via `InferPresetParamMap<AllBuiltinPlugins>` (`src/types.ts:88`). No hardcoded list. | — |
+| **RuleResult** | Persisted outcome `{ id, domain, files, description, status, message? }` (`src/types.ts:151`). | — |
+| **ConformConfig** | `conform.config.ts` shape `{ preset, plugins?, rules? }` (`src/types.ts:160`). | — |
+| **ConformOutput** | Reporter payload `{ preset, path, results, summary, groupBy? }` — `results` filtered by `verbose`, `summary` always counts all (`src/types.ts:168`). | — |
+| **GroupBy** | Reporter grouping mode `domains | files` (`domains` default, `files` via `--group files`). | — |
+| **Drift** | Any `warn` or `fail` RuleResult — deviation from the Preset. | — |
+| **Engine** | Runner that flattens `preset.plugins[].rules`, applies overrides, awaits each `check(targetPath, params?)` (`src/api/engine.ts:172`). | — |
+| **presetResolver** | `(name: string) => Promise<Preset | null>` — resolves `src/presets/<name>.ts` or `src/presets/<name>/index.ts` from repo root via `import.meta.dir` (`src/api/preset.ts:37`). | resolver |
+
+## Design principles
+
+1. **Presets are code** — TypeScript modules exporting a Preset, not YAML. Rules can inspect anything via `Target`.
+2. **Check-only, no auto-fix** — report drift; humans fix it.
+3. **Opinionated with oxc-style overrides** — `Preset.rules` and `ConformConfig.rules` share the same `RuleOverrides` shape (string `level` or flat `{ level?, ...params }`).
+4. **Atomic rules, grouped display** — one check = one Rule. TUI groups by `domain → files` (or flat `files`).
+5. **Zero config from CLI** — preset selection lives in `conform.config.ts`; no `--preset` flag.
+6. **Plugins own context** — `Plugin<T>` declares `context: (target) => T`; each rule declares its own `domain` (required).
+
+## Engine flow
+
+```
+loadConfig(targetPath)                → ConformConfig | null
+presetResolver(config.preset)         → Preset | null
+mergePresetWithConfig(preset, config) → Preset          (plugins appended, rules shallow-merged)
+runChecks(preset, targetPath)         → RuleResult[]    (flatten, parseOverride, validateParams, coerceStatus)
+buildPackageConformance               → { output, rendered, hasFail, hasWarn }
+  renderTui  / renderJson              → string
+```
+
+- `parseOverride` (`src/api/engine.ts:85`) extracts `{ severity, params }` from `RuleConfig`.
+- `validateParams` (`src/api/plugin.ts:12`) validates `params` against arktype `Type<P>` before calling `test`; invalid → `fail` with `Invalid params: …`.
+- `coerceStatus` (`src/api/engine.ts:124`) maps overrides onto non-`pass` results; `pass` never rewritten; unknown severity → `fail` with `Invalid severity "…"` (fail-closed).
+- `verbose` controls `output.results` filtering (`src/api/engine.ts:248`); `summary` counts all.
+
+## Severity and exit codes
+
+`hasFail` dominates `hasWarn` (`src/api/engine.ts:180`, `src/cli/check.ts:44`).
+
+| Code | Meaning |
+|---|---|
+| `0` | all `pass` |
+| `1` | any `fail`, or `--json` + `--group` misuse |
+| `2` | `warn` only, or `no-config`, or `preset-not-found`, or monorepo config errors |
+
+TUI icons: `✓` pass (green), `⚠` warn (yellow), `✗` fail (red). Summary: `N passed · N warned · N failed`.

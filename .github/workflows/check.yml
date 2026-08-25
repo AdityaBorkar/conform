@@ -1,0 +1,46 @@
+name: Check
+
+on:
+  pull_request:
+    branches: [stable, beta]
+  push:
+    branches: [stable, beta]
+  workflow_call:
+
+permissions:
+  contents: read
+
+# Required status check for branch protection on stable/beta.
+# Enable in Settings → Branches → Add rule (stable, beta):
+#   Require status checks to pass before merging → check / type • lint • conform
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: type • lint • conform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run check:types
+
+      - name: Lint (biome, no --fix in CI)
+        run: bun run check:lint:ci
+
+      - name: Conform
+        run: bun run check:conform

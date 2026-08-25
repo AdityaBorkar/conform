@@ -1,0 +1,129 @@
+---
+title: "CLI"
+description: "conform check — flags, output modes, and exit codes."
+---
+
+# CLI
+
+Entrypoint `src/cli/index.ts:1` (`commander`), bin `conform → src/cli/index.ts` (`package.json:8`). Execution chain `src/cli/check.ts:7 CheckCommand → src/api/engine.ts:266 check()`.
+
+## Synopsis
+
+```sh
+conform check [--path <dir>] [--json] [-v|--verbose] [--group domains|files]
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--path <dir>` | `process.cwd()` | Target directory (`resolve()`'d). Must contain `conform.config.ts`. |
+| `--json` | `false` | Machine-readable `ConformOutput` via `src/cli/reporter/json.ts`. Mutually exclusive with `--group`. |
+| `-v, --verbose` | `false` | Include `pass` results in `output.results` / TUI. `summary` always counts all. |
+| `--group <mode>` | `domains` | TUI grouping: `domains` (domain → files) or `files` (flat by file). Unknown values fall through to `domains` (`src/cli/reporter/tui.ts:122`). |
+| `--version` | — | Reads `package.json` via `import.meta.dir` (`src/cli/index.ts:10`). |
+
+Misuse `conform check --json --group files` writes to `stderr` and exits `1` (`src/cli/check.ts:18`).
+
+## Examples
+
+```sh
+# current directory
+bunx conform check
+
+# explicit path
+bunx conform check --path ./my-project
+
+# verbose TUI grouped by file
+bunx conform check --verbose --group files
+
+# JSON for CI (no --group)
+bunx conform check --json > conform.json
+
+# programmatic equivalent
+bun src/cli/index.ts check --path ../other-repo --json
+```
+
+## Output
+
+### TUI (default)
+
+`src/cli/reporter/tui.ts:30 renderTui(presetName, results, { verbose, groupBy })`
+
+- Header: `@adistack/conform — <preset> preset`
+- Divider: `━×50`
+- Groups:
+  - `renderByDomains` (default): `Map<domain, Map<filesKey, RuleResult[]>>` preserving insertion order via `domainOrder[]` / `groupOrder[]`.
+  - `renderByFiles`: `Map<filesKey, RuleResult[]>`.
+- Keys are `files.join(", ")` (empty → grouped under the domain header).
+- Icons: `✓` pass · `⚠` warn · `✗` fail
+- Summary: `N passed · N warned · N failed` (from full `results`, not `visible`).
+
+```
+@adistack/conform — package preset
+
+Build & Tasks
+  package.json
+    ✓ required-fields       all required fields present: license, name, author, ...
+    ✗ entry-point           no main, module, or exports field defined
+  bunfig.toml
+    ✓ bunfig-exists         bunfig.toml exists
+
+Dev Environment
+  .husky/pre-commit, .husky/commit-msg
+    ✓ hook                  .husky/pre-commit: contains "bun run format", ...
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Summary: 32 passed · 2 warned · 1 failed
+```
+
+`--verbose` renders `pass` rows; without it they are hidden but still counted.
+
+### JSON
+
+`src/cli/reporter/json.ts` → `ConformOutput` (`src/types.ts:168`):
+
+```json
+{
+  "preset": "package",
+  "path": "/abs/path/to/repo",
+  "results": [
+    {
+      "id": "package-json/entry-point",
+      "domain": "Build & Tasks",
+      "files": [],
+      "description": "main, module, or exports entry defined",
+      "status": "fail",
+      "message": "no main, module, exports field defined"
+    }
+  ],
+  "summary": { "pass": 32, "warn": 2, "fail": 1 },
+  "groupBy": "files"
+}
+```
+
+- `results` filtered by `verbose` (`src/api/engine.ts:248 visible`).
+- `summary` counts all `results` before filtering.
+- `groupBy` only emitted when `"files"`; `"domains"` is the implicit default.
+- Monorepo JSON is `MonorepoConformOutput` (`outputs[]` per package + aggregated `summary`) — see [Monorepo](/monorepo).
+
+## Exit codes
+
+Determined in `src/api/engine.ts:180` and `src/cli/check.ts:44` (`hasFail` dominates `hasWarn`).
+
+| Code | Meaning |
+|---|---|
+| `0` | All rules `pass` |
+| `1` | One or more `fail`, or `--json` + `--group` misuse |
+| `2` | `warn` only (no `fail`), or no `conform.config.ts` (`no-config`), or preset not found |
+
+`no-config` and `preset-not-found` write to `stderr` (`src/cli/check.ts:34`).
+
+## Process I/O
+
+- `CheckCommand` writes the rendered output with `process.stdout.write(rendered + "\n")` (`src/cli/check.ts:44`).
+- Errors go to `process.stderr.write(...)`.
+- Exit is via `process.exit(code)` — suitable for `set -e` scripts and CI gates.
+
+```sh
+bunx conform check || echo "drift detected (exit $?)"
+bunx conform check --json | jq '.summary'
+```

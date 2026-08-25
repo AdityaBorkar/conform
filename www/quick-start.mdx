@@ -1,0 +1,116 @@
+---
+title: "Quick Start"
+description: "From empty repo to green conform check in under two minutes."
+---
+
+# Quick Start
+
+## 1. Install
+
+```sh
+bun add -d @adistack/conform
+```
+
+## 2. Configure
+
+Create `conform.config.ts` at the repository root:
+
+```ts title="conform.config.ts"
+import { defineConfig } from "@adistack/conform";
+
+export default defineConfig({
+  preset: "package",
+});
+```
+
+Single field required: `preset: string` (truthy). Optional `plugins` and `rules` are covered in [Configuration](/configuration).
+
+Mono-workspaces? Use `defineMonorepoConfig` — see [Monorepo](/monorepo).
+
+## 3. Run
+
+```sh
+bunx conform check
+
+# include passing checks
+bunx conform check --verbose
+
+# machine-readable (disallows --group)
+bunx conform check --json
+
+# group by file instead of domain
+bunx conform check --group files
+
+# check a different directory
+bunx conform check --path ./my-project
+```
+
+## 4. Read the output
+
+**TUI (default)** groups by `domain → files`:
+
+```
+@adistack/conform — package preset
+
+Build & Tasks
+  package.json
+    ✓ required-fields       all required fields present
+    ✗ entry-point           no main, module, or exports field defined
+```
+
+Summary line always counts all results (not just visible): `N passed · N warned · N failed`.
+
+**JSON** (`--json`) emits `ConformOutput`:
+
+```json
+{
+  "preset": "package",
+  "path": "/abs/path/to/repo",
+  "results": [{ "id": "package-json/entry-point", "domain": "Build & Tasks", "files": [], "description": "...", "status": "fail", "message": "…" }],
+  "summary": { "pass": 32, "warn": 2, "fail": 1 }
+}
+```
+
+`verbose` controls `results` filtering; `groupBy` is only emitted when `"files"`.
+
+## 5. Tune overrides
+
+Suppress or soften a noisy rule without forking the preset:
+
+```ts title="conform.config.ts"
+import { defineConfig } from "@adistack/conform";
+
+export default defineConfig({
+  preset: "package",
+  rules: {
+    "biome/dev-deps": "warn",                         // string shorthand
+    "package-json/no-install-hooks": "off",           // skip
+    "gitignore/excludes": {                            // flattened params, level optional
+      file_expressions: ["node_modules", ".env*"]
+    },
+    "husky/hook": {
+      level: "error",
+      hooks: [{ file: ".husky/pre-commit", contains: "bun run format" }]
+    }
+  }
+});
+```
+
+Rules detail: string `level` is `off | warn | error` (`error → fail`, `pass` stays `pass`). Object form is `{ level?, ...params }` with `level` optional — no `params` wrapper. Unknown `level` → `fail` with `Invalid severity "…"`.
+
+## 6. Make it a gate
+
+`package.json`:
+
+```json
+{
+  "scripts": {
+    "check:conform": "bunx conform check",
+    "check": "biome check . && tsc --noEmit && bunx conform check"
+  }
+}
+```
+
+CI rule of thumb: required order is `check:lint → check:types → test`; `check:conform` can run alongside `check:types`.
+
+Exit codes: `0` all pass · `1` any fail or `--json`+`--group` misuse · `2` warn-only / no-config / preset-not-found. `fail` dominates `warn`.

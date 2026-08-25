@@ -1,0 +1,165 @@
+---
+title: "Plugins"
+description: "Built-in plugins — domains, rules, params (arktype), and defaults."
+---
+
+# Plugins
+
+One file per plugin in `src/plugins/*.ts`, exported from `src/plugins/index.ts:1`. Each plugin is created with `definePlugin` (`src/api/plugin.ts:151`) and owns its rules via `Plugin#defineRule` (`src/api/plugin.ts:69`).
+
+All filesystem access goes through `Target` (`src/utils/fs.ts:10`): `fileExists`, `readFile`, `readJson` (JSON with `//`/`/* */` comment stripping), `packageJson`.
+
+Domains `DOMAIN` (`src/plugins/utils/domain.ts:1`): `BUILD` ("Build & Tasks"), `CODE_QUALITY` ("Code Quality"), `STYLE` ("Style & Validation"), `DEV_ENVIRONMENT` ("Dev Environment"), `DOCUMENTATION` ("Documentation"), `GITHUB_CONFIG` ("GitHub Configuration"), `SECURITY` ("Security & Governance"), `OBSERVABILITY` ("Observability"), `TESTING` ("Testing").
+
+Param schemas use `arktype` `type(...)`. Violations → `Status.fail("Invalid params: …")` without calling `test` (`src/api/plugin.ts:12`).
+
+Override syntax for every rule: `RuleLevel` string (`off | warn | error`, `error → fail`) or flat `{ level?, ...params }` with `level` optional, no `params` wrapper. See [Configuration](/configuration).
+
+---
+
+## `package-json`
+
+`src/plugins/package_json.ts:44` — `id: "package-json"`, context `{ fileExists, packageJson }`.
+
+| Rule | Params | Defaults | Severity | Description |
+|---|---|---|---|---|
+| `structure` | — | — | fail / warn | `package.json` has required `name/version/license/type=module/bugs` (`arktype` `requiredStructure`), and recommended `description/engines/homepage/repository/sideEffects` (warn via `summarize`). |
+| `entry-point` | `{ fields: string[] }` | `["main","module","exports"]` | fail | At least one entry field is defined (`isDefined`). |
+| `build-script` | `{ scripts: string[] }` | `["prepare","build"]` | fail | `scripts.prepare` or `scripts.build` exists. |
+| `files-or-npmignore` | `{ file_expressions: string[] }` | `[".npmignore"]` | warn | `package.json:files` or a candidate file exists. |
+| `no-install-hooks` | `{ scripts: string[] }` | `["preinstall","postinstall","install"]` | fail | No supply-chain install hooks. |
+| `required-fields` | `{ fields: string[] }` | `DEFAULT_REQUIRED_PACKAGE_FIELDS` | fail | All listed `package.json` top-level fields are `isDefined` (preset supplies 11 fields). |
+| `typecheck` | `{ scripts: string[] }` | `["typecheck","check:types","types"]` | warn | Typecheck script exists. |
+| `no-prepublish` | `{ scripts: string[] }` | `["prepublish"]` | fail | Deprecated `prepublish` script not used. |
+
+```ts
+rules: {
+  "package-json/entry-point": { fields: ["exports"] },
+  "package-json/required-fields": { fields: ["license","name","repository"] },
+  "package-json/no-install-hooks": "off"
+}
+```
+
+---
+
+## `biome`
+
+`src/plugins/biome.ts:186` — `id: "biome"`, context `{ fileExists, packageJson, readJson }`. Domain `STYLE`.
+
+| Rule | Params | Defaults | Severity |
+|---|---|---|---|
+| `dev-deps` | — | — | fail | `@biomejs/biome` in `devDependencies` |
+| `config-exists` | `{ file_expressions: string[] }` | `["biome.json","biome.jsonc"]` | fail | `biome.json` or `biome.jsonc` exists; `files: ["biome.json","biome.jsonc"]` |
+| `config` | `{ config?: Record<string, unknown> }` | `EXPECTED_BIOME_CONFIG` (`src/plugins/biome.ts:20`, 80+ lines) | fail | `biome.json` (minus `$schema`) deep-equals expected config; `config` param shallow-merges over expected; extra keys → fail; missing file → `pass` (deferred to `config-exists`) |
+| `lint-script` | `{ file_expressions: string[], contains: string }` | `["lint","check"]`, `"biome"` | fail | One candidate script contains `contains` |
+| `format-script` | same | `["format","check:format","check:lint"]`, `"biome"` | warn | Same as above |
+
+---
+
+## `typescript`
+
+`src/plugins/tsconfig_json.ts:61` — `id: "typescript"`, context `{ fileExists, packageJson, readJson }`. Domain `CODE_QUALITY`.
+
+| Rule | Params | Defaults | Severity |
+|---|---|---|---|
+| `deps` | — | — | fail | `typescript` in `dev` or `peerDependencies` |
+| `tsconfig` | — | — | fail | `tsconfig.json` exists; `files: ["tsconfig.json"]` |
+| `compiler-options` | `{ compilerOptions?: Record<string, unknown> }` | `EXPECTED_COMPILER_OPTIONS` (`src/plugins/tsconfig_json.ts:11`, ~40 keys incl. `strict`, `noUncheckedIndexedAccess`, `verbatimModuleSyntax`, `paths: {"@/*":["./src/*"]}`) | fail | `tsconfig.json:compilerOptions` deep-equals expected; `compilerOptions` param shallow-merges; extra keys + per-key diffs → fail |
+
+---
+
+## `husky`
+
+`src/plugins/husky.ts:20` — `id: "husky"`, context `{ fileExists, packageJson, readFile }`. Domain `DEV_ENVIRONMENT`.
+
+| Rule | Params | Defaults | Severity |
+|---|---|---|---|
+| `dev-deps` | — | — | fail | `husky` in `devDependencies` |
+| `hooks-dir` | `{ file_expressions: string[] }` | `[".husky"]` | fail | `.husky/` directory exists |
+| `prepare-script` | `{ file_expressions: string[], contains: string }` | `["prepare"]`, `"husky"` | fail | `scripts[prepare]` contains `husky` |
+| `hook` | `{ hooks: { file: string, contains: string }[] }` | `[]` (preset supplies two) | fail | Every `hooks[]` spec: `file` exists, readable, contains `contains`; `files: [".husky/pre-commit", ".husky/commit-msg"]` |
+
+```ts
+rules: {
+  "husky/hook": { hooks: [{ file: ".husky/pre-commit", contains: "bun run format" }] }
+}
+```
+
+---
+
+## `docs`
+
+`src/plugins/docs.ts:11` — `id: "docs"`, context `{ fileExists, readFile }`.
+
+| Rule | Params | Domain | Severity |
+|---|---|---|---|
+| `readme` | — | Documentation | fail | `README.md` exists and `trim().length > 0` |
+| `changelog` | `{ file_expressions: string[] }` | Documentation | warn | `CHANGELOG.md` / `CHANGELOG` / `HISTORY.md` |
+| `contributing` | same | Documentation | warn | `CONTRIBUTING.md` or `.github/CONTRIBUTING.md` |
+| `license` | same | Security & Governance | fail | `LICENSE` / `LICENSE.md` / `LICENSE.txt` |
+| `security-md` | same | Security & Governance | warn | `SECURITY.md` or `.github/SECURITY.md` |
+
+---
+
+## `gitignore`
+
+`src/plugins/gitignore.ts:11` — `id: "gitignore"`, context `{ fileExists, readFile }`. Domain `DEV_ENVIRONMENT`.
+
+| Rule | Params | Severity |
+|---|---|---|
+| `exists` | — | fail | `.gitignore` exists |
+| `excludes` | `{ file_expressions: string[] }` | fail | `.gitignore` contains every `file_expressions` entry (substring match); preset: `["node_modules",".env*","*.env","*.gen.ts"]`; missing file → `pass` (deferred to `exists`); per-pattern detail for `node_modules` / `.env` |
+
+---
+
+## `github`
+
+`src/plugins/github.ts:16` — `id: "github"`, context `{ fileExists, readFile }`. Domain `GITHUB_CONFIG`.
+
+| Rule | Params | Defaults | Severity |
+|---|---|---|---|
+| `ci-workflow` | `{ file_expressions: string[] }` | `.github/workflows/{ci,test,build,check}.{yml,yaml}` | fail |
+| `release-workflow` | same | `.github/workflows/{release,publish,deploy}.{yml,yaml}` | warn |
+| `ci-lint` | `{ file_expressions: string[], contains: string[] }` | candidates as above, `["biome","lint","check:lint"]` | warn | Skips if no CI file; checks workflow text contains a `contains` entry |
+| `ci-typecheck` | same | `["tsc","typecheck","check:types"]` | warn | Same |
+| `dependabot` | `{ file_expressions: string[] }` | `[".github/dependabot.yml",".github/dependabot.yaml","renovate.json",".renovaterc",".renovaterc.json"]` | warn |
+
+---
+
+## `zed`
+
+`src/plugins/zed.ts:56` — `id: "zed"`, context `{ fileExists, readJson }`. Domain `DEV_ENVIRONMENT`.
+
+| Rule | Params | Files | Severity |
+|---|---|---|---|
+| `dir` | `{ file_expressions: string[] }` | `.zed` | fail | `.zed/` directory exists |
+| `settings-exists` | same | `.zed/settings.json` | fail | `.zed/settings.json` exists |
+| `settings` | `{ code_actions_on_format?, file_scan_exclusions?, format_on_save?, formatter?, language_servers?, lsp? }` | `.zed/settings.json` | fail | Settings deep-equal `EXPECTED_ZED_SETTINGS` (`src/plugins/zed.ts:24`); params shallow-merge; extra keys → fail |
+
+---
+
+## `bun`
+
+`src/plugins/bun.ts:85` — `id: "bun"`, context `{ fileExists, readFile }`. Domain `BUILD`.
+
+| Rule | Params | Files | Severity |
+|---|---|---|---|
+| `bunfig-exists` | `{ file_expressions: string[] }` | `bunfig.toml` | fail | `bunfig.toml` exists |
+| `bunfig-content` | `{ consoleDepth?, installIgnoreScripts?, installMinimumReleaseAge?, installSaveTextLockfile?, logLevel?, runBun?, runSilent?, telemetry? }` | `bunfig.toml` | fail | Regex checks for each key (`src/plugins/bun.ts:34 buildBunfigChecks`); defaults `telemetry:false, logLevel:"warn", consoleDepth:10, runBun:true, runSilent:false, minimumReleaseAge:259200, saveTextLockfile:false, ignore-scripts:true`; missing file → `pass` |
+
+---
+
+## Adding a plugin to a config
+
+```ts title="conform.config.ts"
+import { defineConfig } from "@adistack/conform";
+import { myPlugin } from "./my-plugin.ts";
+
+export default defineConfig({
+  preset: "package",
+  plugins: [myPlugin],
+  rules: { "my-plugin/my-rule": "error" }
+});
+```
+
+Authoring a new plugin — next page: [Authoring](/authoring).

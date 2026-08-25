@@ -1,0 +1,155 @@
+---
+title: "Monorepo"
+description: "One conform.config.ts for every workspace package via defineMonorepoConfig."
+---
+
+# Monorepo
+
+Single-repo mode is `defineConfig({ preset })`. Monorepo mode is `defineMonorepoConfig(mapping)` where each workspace package gets its own `ConformConfig`.
+
+Detection is automatic in `src/api/engine.ts:269 check()` — if `loadRawConfig` looks like a `MonorepoConfig` (`isMonorepoConfig`), `checkMonorepo` is invoked.
+
+## Defining the mapping
+
+```ts title="conform.config.ts"
+import { defineMonorepoConfig } from "@adistack/conform";
+
+export default defineMonorepoConfig({
+  // keys are paths relative to repo root (or absolute), resolved via `resolve(rootDir, key)`
+  ".":            { preset: "package" },
+  "packages/app": { preset: "package" },
+  "packages/lib": {
+    preset: "package",
+    rules: { "biome/dev-deps": "off" }
+  },
+});
+```
+
+Shape `MonorepoConfig` (`src/types.ts:166`) is `Record<string, ConformConfig>` where each value is:
+
+```ts
+{ preset: string; plugins?: Plugin[]; rules?: StrictRuleOverrides }
+```
+
+Validated by `monorepoConfigSchema` (`src/api/config.ts:17`) — top-level `preset` is rejected (must not have one), empty object is rejected, each entry must have a non-empty `preset` (`isConformConfig`).
+
+## Workspace discovery
+
+`expandWorkspaces(rootDir)` (`src/utils/workspaces.ts:32`) reads `package.json:workspaces`:
+
+- Supports both forms: `string[]` and `{ packages: string[], nohoist? }`.
+- Each pattern is fed to `Bun.Glob(pattern).scanSync({ cwd: rootDir })`; results are filtered to directories containing `package.json`.
+- Exact paths without glob chars are checked directly.
+- Patterns starting with `!` are skipped (exclusions are not expanded).
+- Deduped via `Set`, sorted with `localeCompare`.
+
+If `package.json` is missing or `workspaces` is absent/empty, `expandWorkspaces` throws:
+
+- `No package.json found in <rootDir> — cannot resolve workspaces`
+- `No workspaces field found in <rootDir>/package.json — cannot resolve monorepo packages`
+
+## Validation
+
+`resolveMonorepoPackages(rootDir, config, discovered)` (`src/utils/config.ts:46`) normalizes keys to absolute paths and enforces:
+
+| Error | When | Code |
+|---|---|---|
+| Missing mapping for a discovered package | `!normalized.has(pkgPath)` | `monorepo-unconfigured-package` |
+| Extraneous key not matching any discovered package | `!discovered.includes(absKey)` | `monorepo-extraneous-package` |
+| Entry missing `preset` | `!isConformConfig(entry)` | `monorepo-config-error` |
+| No `workspaces` field at all | thrown by `expandWorkspaces` | `monorepo-no-workspaces` |
+| No `conform.config.ts` | `loadRawConfig` returns `null` | `no-config` |
+| Unknown preset per package | `presetResolver` returns `null` | `preset-not-found` |
+
+Messages include the relative path, e.g. `No preset/rules defined for workspace package "packages/app"`.
+
+Success returns `mapping` ordered by `discovered` order (`Map<string, ConformConfig>` insertion order = sorted workspace paths).
+
+## Running
+
+```sh
+bunx conform check                 # from monorepo root
+bunx conform check --verbose       # per-package verbose
+bunx conform check --json          # → MonorepoConformOutput
+bunx conform check --group files   # per-package groupBy
+```
+
+### TUI output
+
+`src/api/engine.ts:394` prefixes each package:
+
+```
+━━ /abs/path/packages/app (package) ━━
+@adistack/conform — package preset
+
+Build & Tasks
+  ...
+
+━━ /abs/path/packages/lib (package) ━━
+@adistack/conform — package preset
+...
+
+Summary: 64 passed · 4 warned · 2 failed across 3 packages
+```
+
+Per-package `verbose` filtering already applies; summary aggregates all packages.
+
+### JSON output
+
+`MonorepoConformOutput` (`src/types.ts:180`):
+
+```json
+{
+  "path": "/abs/repo",
+  "outputs": [
+    {
+      "preset": "package",
+      "path": "/abs/repo/packages/app",
+      "results": [{ "id": "biome/dev-deps", "status": "fail", "domain": "Style & Validation", "files": [], "description": "...", "message": "…" }],
+      "summary": { "pass": 30, "warn": 1, "fail": 2 }
+    }
+  ],
+  "summary": { "pass": 90, "warn": 3, "fail": 2 }
+}
+```
+
+### Exit codes
+
+Aggregated across packages (`src/api/engine.ts:346` `hasFail ||=` / `hasWarn ||=`):
+
+| Code | Meaning |
+|---|---|
+| `0` | all packages all `pass` |
+| `1` | any package any `fail` |
+| `2` | `warn`-only (no `fail`) or any `ConformanceError` above |
+
+## Programmatic access
+
+```ts
+import { check, checkMonorepo, isConformanceError, isMonorepoConformanceResult } from "@adistack/conform";
+
+const result = await check("/repo", { verbose: true, json: true });
+
+if (isConformanceError(result)) {
+  console.error(result.code, result.message);
+} else if (isMonorepoConformanceResult(result)) {
+  console.log(result.summary, result.packageResults.map(p => p.path));
+} else {
+  console.log(result.output.summary);
+}
+```
+
+Helpers: `loadAndResolveMonorepo`, `resolveMonorepoPackages`, `expandWorkspaces`, `getWorkspacesPatterns`.
+
+## Relative vs absolute keys
+
+Both work:
+
+```ts
+defineMonorepoConfig({
+  "packages/app": { preset: "package" },          // relative — recommended
+  ["/abs/path/packages/lib"]: { preset: "package" } // absolute
+})
+```
+
+Normalized via `isAbsolute(rawKey) ? resolve(rawKey) : resolve(rootDir, rawKey)` (`src/utils/config.ts:52`).

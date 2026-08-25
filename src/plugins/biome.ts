@@ -149,6 +149,28 @@ const EXPECTED_BIOME_CONFIG: Record<string, unknown> = {
         },
       },
     },
+    {
+      includes: ["scripts/**/*.ts"],
+      linter: {
+        rules: {
+          complexity: {
+            noExcessiveLinesPerFunction: "off",
+          },
+          correctness: {
+            noUndeclaredVariables: "off",
+          },
+          style: {
+            noMagicNumbers: "off",
+            noProcessEnv: "off",
+          },
+          suspicious: {
+            noConsole: "off",
+            noShadow: "off",
+            noUnnecessaryConditions: "off",
+          },
+        },
+      },
+    },
   ],
   vcs: {
     clientKind: "git",

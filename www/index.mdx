@@ -1,0 +1,101 @@
+---
+title: "@adistack/conform"
+description: "Check any repository against a typed conformance Preset. Detect drift, stay consistent."
+---
+
+# @adistack/conform
+
+CLI and TypeScript library that checks a repository against a **Preset** — a code-defined collection of atomic **Rules** — and reports **drift**.
+
+No scaffolding. No auto-fix. Just a verdict: `pass` / `warn` / `fail`.
+
+```sh
+bun add -d @adistack/conform
+bunx conform check
+```
+
+```ts title="conform.config.ts"
+import { defineConfig } from "@adistack/conform";
+
+export default defineConfig({
+  preset: "package",
+});
+```
+
+```
+@adistack/conform — package preset
+
+Build & Tasks
+  package.json
+    ✓ required-fields       all required fields present: license, name, author, ...
+    ✗ entry-point           no main, module, or exports field defined
+  bunfig.toml
+    ✓ bunfig-exists         bunfig.toml exists
+
+Summary: 32 passed · 2 warned · 1 failed
+```
+
+## Why conform
+
+- **Presets are code**, not YAML. Rules can inspect anything on disk via `Target`.
+- **Opinionated with overrides** — `rules: { "biome/dev-deps": "warn" }` in oxc style, severity coerced, params flattened.
+- **Atomic rules, grouped display** — one check = one Rule; TUI groups by `domain → files` or `files`.
+- **Zero CLI config** — preset selection lives in `conform.config.ts`. No `--preset` flag.
+- **Typed end-to-end** — `arktype` param schemas, auto-inferred `StrictRuleOverrides`, `StrictPresetRules`.
+
+## How it works
+
+```
+conform.config.ts         src/presets/<name>.ts
+        │                          │
+   loadConfig ──→ presetResolver ──→ mergePresetWithConfig ──→ runChecks ──→ renderTui / renderJson
+                         │                     plugins[].rules flattened
+                         │                     overrides applied (off skips, warn/error→fail coerce, unknown → fail-closed)
+                         │                     Target rooted at --path
+```
+
+1. `loadConfig` dynamic-imports `conform.config.ts` and requires truthy `preset`.
+2. `presetResolver` resolves `src/presets/<name>.ts` or `src/presets/<name>/index.ts` via `import.meta.dir`.
+3. `mergePresetWithConfig` appends `config.plugins` and shallow-merges `config.rules` over `preset.rules`.
+4. `runChecks` flattens `preset.plugins[].rules`, validates params via `Plugin`, coerces severities, and awaits each `check(targetPath, params?)`.
+5. Output is rendered as TUI or JSON. `verbose` controls `results` filtering; `summary` always counts all.
+
+## Package surface
+
+```ts
+import {
+  defineConfig,        // single-repo config helper
+  defineMonorepoConfig,// monorepo mapping helper
+  definePlugin, Plugin,// author plugins
+  definePreset,        // author presets (curried + object form)
+  presetResolver,      // resolve preset by name
+  Status,              // Status.pass / warn / fail
+  DOMAIN,              // domain display strings
+  Target,              // filesystem view
+  check,               // programmatic runner
+  checkMonorepo,
+  runChecks,
+} from "@adistack/conform";
+```
+
+| Entry | What it is |
+|---|---|
+| `conform check` | CLI entry (`src/cli/index.ts` via `bin.conform`) |
+| `@adistack/conform` | Library entry (`src/index.ts`, `exports: "." → ./src/index.ts`) |
+| `@adistack/conform/plugins` | Barrel of built-in plugins |
+
+## Built-in Presets
+
+| Preset | Description | Plugins | Rules |
+|---|---|---|---|
+| `package` | Conformance for publishing an npm package | 9 | 37 |
+
+See [Presets](/presets) for the full rule table and [Plugins](/plugins) for per-rule params and defaults.
+
+## Next steps
+
+- [Installation](/installation) — requirements and install
+- [Quick Start](/quick-start) — first green check in 2 minutes
+- [CLI](/cli) — flags, exit codes, JSON vs TUI
+- [Configuration](/configuration) — `defineConfig`, overrides, params
+- [Authoring](/authoring) — write your own Plugin and Preset

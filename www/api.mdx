@@ -1,0 +1,252 @@
+---
+title: "API Reference"
+description: "Programmatic API — check(), checkMonorepo(), types, and re-exports."
+---
+
+# API Reference
+
+Library entry `src/index.ts:1` re-exports the public surface. All paths use alias `@/* → ./src/*` (`tsconfig.json:31`, `vitest.config.ts:8`). No deep imports needed.
+
+## Imports
+
+```ts
+import {
+  // config
+  defineConfig, defineMonorepoConfig, isConformConfig, isMonorepoConfig,
+  // plugins & presets
+  definePlugin, Plugin, definePreset, presetResolver,
+  // engine
+  check, checkMonorepo, runChecks, isConformanceError, isMonorepoConformanceResult,
+  // reporters & fs
+  loadConfig, loadRawConfig, loadAndResolveMonorepo, resolveMonorepoPackages,
+  // utils
+  createTarget, Target, expandWorkspaces, getWorkspacesPatterns,
+  // constants & helpers
+  DOMAIN, Status,
+} from "@adistack/conform";
+
+import type {
+  CheckResult, ConformConfig, ConformOutput, GroupBy,
+  MonorepoConfig, MonorepoConformOutput, MonorepoPackageResult,
+  PackageJson, Plugin as PluginType, Preset, Rule, RuleConfig,
+  RuleLevel, RuleOverrides, RuleResult, Severity,
+  ConformanceOptions, ConformanceResult, ConformanceError, ConformanceErrorCode,
+  MonorepoConformanceResult,
+} from "@adistack/conform";
+
+import { biome, bun, docs, github, gitignore, husky, packageJson as pkgJson, tsconfig_json, zed } from "@adistack/conform/plugins";
+```
+
+`@adistack/conform/plugins` is the second entry (`package.json:42 exports["./plugins"] → ./src/plugins/index.ts`).
+
+---
+
+## Config
+
+### `defineConfig(config: ConformConfig): ConformConfig`
+
+`src/api/config.ts:5` — identity helper that provides typing.
+
+### `defineMonorepoConfig(config: MonorepoConfig): MonorepoConfig`
+
+`src/api/config.ts:9` — identity for `Record<string, ConformConfig>`.
+
+### `isConformConfig(value: unknown): value is ConformConfig`
+
+`src/api/config.ts:33` — `arktype` check `preset: "string>0"`.
+
+### `isMonorepoConfig(value: unknown): value is MonorepoConfig`
+
+`src/api/config.ts:37` — `Record<string, ConformConfig>` with no top-level `preset`, non-empty.
+
+---
+
+## Plugins & Presets
+
+### `definePlugin<const Id, T>(config: { id: Id, context: (target: Target) => T }): Plugin<Id, T, Record<never, never>>`
+
+`src/api/plugin.ts:151` — creates `Plugin<Id, T, M>`.
+
+### `Plugin<Id, T, M>`
+
+`src/api/plugin.ts:49` — `id`, `context`, `ruleDefs[]`, `get rules(): Rule[]`. Method `defineRule` has two overloads (with/without `params: Type<P>`) and accumulates `M`.
+
+### `definePreset<const Ps>(plugins: Ps): (config) => PresetWithPlugins<Ps>`
+
+### `definePreset<const Ps>(config: { name, description, plugins: Ps, rules? }): PresetWithPlugins<Ps>`
+
+`src/api/preset.ts:68` — curried and object forms. `Ps` must be `as const` for inference. `rules` typed as `StrictPresetRules<Ps>`.
+
+### `presetResolver(name: string): Promise<Preset | null>`
+
+`src/api/preset.ts:37` — resolves `src/presets/<name>.ts` or `src/presets/<name>/index.ts` from `resolve(import.meta.dir, "../..")`. Validates with `presetSchema` (`name:string + plugins:array + optional rules:object`).
+
+### `Status`
+
+`src/api/status.ts:3`
+
+```ts
+Status.pass(message?: string): CheckResult
+Status.warn(message?: string): CheckResult
+Status.fail(message?: string): CheckResult
+```
+
+### `DOMAIN`
+
+`src/plugins/utils/domain.ts:1` — `BUILD`, `CODE_QUALITY`, `STYLE`, `DEV_ENVIRONMENT`, `DOCUMENTATION`, `GITHUB_CONFIG`, `SECURITY`, `OBSERVABILITY`, `TESTING`.
+
+---
+
+## Engine
+
+### `check(targetPath: string, opts?: ConformanceOptions): Promise<ConformanceResult | MonorepoConformanceResult | ConformanceError>`
+
+`src/api/engine.ts:266` — auto-detects monorepo via `loadRawConfig` + `isMonorepoConfig` → delegates to `checkMonorepo` or single-repo flow.
+
+```ts
+const result = await check("/path/to/repo", { verbose: true, json: false, groupBy: "domains" });
+
+if ("code" in result) {
+  // ConformanceError
+  console.error(result.code, result.message);
+} else if ("packageResults" in result) {
+  // MonorepoConformanceResult
+} else {
+  // ConformanceResult
+}
+```
+
+### `checkMonorepo(rootDir: string, opts?: ConformanceOptions): Promise<MonorepoConformanceResult | ConformanceError>`
+
+`src/api/engine.ts:309` — `loadAndResolveMonorepo` → per-package `buildPackageConformance` → aggregated `MonorepoConformanceResult` (or `renderJson` envelope when `json: true`).
+
+### `runChecks(preset: Preset, targetPath: string): Promise<RuleResult[]>`
+
+`src/api/engine.ts:172` — core loop: flatten `preset.plugins[].rules`, `parseOverride`, unknown `level` → `fail`, `off` → skip, `rule.check(targetPath, params)`, `coerceStatus`.
+
+### Type guards
+
+```ts
+isConformanceError(value): value is ConformanceError         // "code" in value
+isMonorepoConformanceResult(value): value is MonorepoConformanceResult // "packageResults" in value
+```
+
+### Option and result types
+
+`src/api/engine.ts:26`
+
+```ts
+interface ConformanceOptions { verbose?: boolean; json?: boolean; groupBy?: GroupBy; }
+
+interface ConformanceResult {
+  hasFail: boolean; hasWarn: boolean;
+  output: ConformOutput; rendered: string;
+}
+
+interface MonorepoConformanceResult {
+  hasFail: boolean; hasWarn: boolean;
+  outputs: ConformOutput[]; packageResults: MonorepoPackageResult[];
+  rendered: string; summary: { pass: number; warn: number; fail: number };
+}
+
+type ConformanceErrorCode =
+  | "no-config" | "preset-not-found"
+  | "monorepo-unconfigured-package" | "monorepo-extraneous-package"
+  | "monorepo-no-workspaces" | "monorepo-config-error";
+
+interface ConformanceError { code: ConformanceErrorCode; message: string; }
+```
+
+---
+
+## Config loading
+
+`src/utils/config.ts`
+
+```ts
+loadConfig(targetPath: string): Promise<ConformConfig | null>
+loadRawConfig(targetPath: string): Promise<unknown | null>
+loadAndResolveMonorepo(rootDir: string): Promise<{ config, discovered, mapping } | null>
+resolveMonorepoPackages(rootDir, monorepoConfig, discovered: string[]): Map<string, ConformConfig>
+```
+
+`loadConfig` dynamic-imports `conform.config.ts` and gates with `isConformConfig`. `loadAndResolveMonorepo` composes `loadRawConfig` + `isMonorepoConfig` + `expandWorkspaces` + `resolveMonorepoPackages`.
+
+---
+
+## Filesystem
+
+`src/utils/fs.ts:10`
+
+```ts
+class Target {
+  constructor(readonly path: string);
+  fileExists(rel: string): boolean;
+  readFile(rel: string): string | null;
+  readJson<T>(rel: string): T | null; // stripJsonComments fallback
+  packageJson(): PackageJson | null;
+}
+createTarget(path: string): Target
+fileExists(target: Target, rel: string): boolean
+readFile(target: Target, rel: string): string | null
+readJson<T>(target: Target, rel: string): T | null
+packageJson(target: Target): PackageJson | null
+```
+
+`src/utils/workspaces.ts`
+
+```ts
+getWorkspacesPatterns(pkg: PackageJson): string[] | null
+expandWorkspaces(rootDir: string): string[]  // throws if no package.json or no workspaces
+```
+
+---
+
+## Types
+
+`src/types.ts`
+
+```ts
+type Severity = "pass" | "warn" | "fail";
+type GroupBy  = "domains" | "files";
+type RuleLevel = "warn" | "off" | "error";
+
+interface CheckResult { status: Severity; message?: string; }
+
+interface Rule<P = unknown> {
+  id: string; domain: string; files: string[]; description: string;
+  check: (ctx: string, params?: P) => CheckResult | Promise<CheckResult>;
+  paramsSchema?: Type<P>;
+}
+
+interface Plugin<Id = string, ParamMap = Record<string, unknown>> {
+  _paramMap: ParamMap; id: Id; rules: Rule<unknown>[];
+}
+
+type RuleConfig<P> = RuleLevel | ({ level?: RuleLevel } & Partial<P>);
+type RuleOverrides = Record<string, RuleConfig<unknown>>;
+type StrictRuleOverrides = { [K in keyof RuleRegistry]?: RuleConfig<RuleRegistry[K]> } & Record<string, RuleConfig<unknown>>;
+type StrictPresetRules<Ps> = { [K in keyof PresetRuleRegistry<Ps>]?: RuleConfig<PresetRuleRegistry<Ps>[K]> } & Record<string, RuleConfig<unknown>>;
+type RuleRegistry = InferPresetParamMap<AllBuiltinPlugins>; // auto-inferred from barrel
+
+interface Preset { name: string; description: string; plugins: Plugin[]; rules?: StrictRuleOverrides; }
+interface PresetWithPlugins<Ps> { name: string; description: string; plugins: Ps; rules?: StrictPresetRules<Ps>; }
+
+interface RuleResult { id: string; domain: string; files: string[]; description: string; status: Severity; message?: string; }
+interface ConformConfig { preset: string; plugins?: Plugin[]; rules?: StrictRuleOverrides; }
+type MonorepoConfig = Record<string, ConformConfig>;
+interface ConformOutput { preset: string; path: string; results: RuleResult[]; summary: { pass: number; warn: number; fail: number }; groupBy?: GroupBy; }
+interface MonorepoConformOutput { path: string; outputs: ConformOutput[]; summary: { pass: number; warn: number; fail: number }; }
+interface MonorepoPackageResult { path: string; output: ConformOutput; rendered: string; hasFail: boolean; hasWarn: boolean; }
+
+interface PackageJson { name?, version?, license?, type?, description?, engines?, homepage?, repository?, sideEffects?, bin?, bugs?, contributors?, dependencies?, devDependencies?, peerDependencies?, exports?, files?, main?, module?, scripts?, workspaces?, author? }
+```
+
+## Reporters (internal, not re-exported)
+
+`src/cli/reporter/tui.ts:106 renderTui(presetName, results, { verbose?, groupBy? }): string`
+
+`src/cli/reporter/json.ts:3 renderJson(presetName, targetPath, results, { verbose?, groupBy? }): string`
+
+Both compute `visible` by `verbose`, `summary` from all `results`, and `maxIdLen` for alignment. TUI preserves insertion order via `Map` + `domainOrder[]`/`groupOrder[]`.
+

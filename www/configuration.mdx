@@ -1,0 +1,172 @@
+---
+title: "Configuration"
+description: "conform.config.ts — preset, plugins, and oxc-style rule overrides."
+---
+
+# Configuration
+
+File `conform.config.ts` at the repository root (resolved as `join(targetPath, "conform.config.ts")` in `src/utils/config.ts:10`). Loaded via dynamic `import()`.
+
+## Minimal config
+
+```ts title="conform.config.ts"
+import { defineConfig } from "@adistack/conform";
+
+export default defineConfig({
+  preset: "package",
+});
+```
+
+`defineConfig` is an identity helper (`src/api/config.ts:5`) — it only provides typing. The shape is `ConformConfig` (`src/types.ts:160`):
+
+```ts
+interface ConformConfig {
+  preset: string;              // required, truthy (non-empty string)
+  plugins?: Plugin[];          // optional, appended to preset.plugins
+  rules?: StrictRuleOverrides; // optional, shallow-merged over preset.rules
+}
+```
+
+`loadConfig` (`src/utils/config.ts:7`) returns `null` if the file is missing or `preset` is falsy → engine returns `{ code: "no-config" }` → CLI exits `2`.
+
+For monorepos use `defineMonorepoConfig` — see [Monorepo](/monorepo).
+
+## Merging
+
+`src/api/engine.ts:134 mergePresetWithConfig(preset, config)`:
+
+- `plugins`: `[...preset.plugins, ...config.plugins]` if `config.plugins` non-empty, else `preset.plugins`.
+- `rules`: `{ ...preset.rules, ...config.rules }` (shallow) if either defined.
+- Returns original `preset` ref if neither changed.
+
+Config `rules` shadow preset `rules` per rule ID.
+
+## Rule overrides
+
+One entry is `RuleConfig` (`src/types.ts:59`):
+
+```ts
+type RuleLevel = "warn" | "off" | "error";
+type RuleConfig<P> =
+  | RuleLevel
+  | ({ level?: RuleLevel } & Partial<P>);
+```
+
+Two syntaxes, both accepted:
+
+```ts
+// string shorthand — severity only
+rules: {
+  "biome/dev-deps": "warn",
+  "package-json/no-install-hooks": "off",
+}
+
+// object — level optional, params flattened (no `params` wrapper)
+rules: {
+  "gitignore/excludes": {
+    file_expressions: ["node_modules", ".env*"]
+  },
+  "husky/hook": {
+    level: "error",
+    hooks: [{ file: ".husky/pre-commit", contains: "bun run format" }]
+  },
+  "package-json/required-fields": {
+    level: "warn",
+    fields: ["license", "name"]
+  }
+}
+```
+
+### Flattened params
+
+Overrides are destructured in `src/api/engine.ts:85 parseOverride` as `{ level, ...rest }` where `...rest` is forwarded as `params`. The plugin wrapper validates it via `validateParams` (`src/api/plugin.ts:12`) against the rule's `params: Type<P>` arktype schema:
+
+- No schema → forwarded unvalidated.
+- Schema + `params === undefined` (no extra keys beyond `level`) → validation skipped, `undefined` forwarded.
+- Invalid → rule short-circuits to `Status.fail("Invalid params: …")` without calling `test`.
+
+`StrictRuleOverrides` (`src/types.ts:111`) enforces correct `P` for known IDs via `RuleRegistry` (auto-inferred from `@/plugins/index.ts` barrel). Unknown IDs accept `RuleConfig<unknown>`.
+
+### Severity coercion
+
+`src/api/engine.ts:74 normalizeLevel` maps `"error" → "fail"`, `"warn" → "warn"`, `"off" → "off"`. Unknown strings → `null` (fail-closed).
+
+`parseOverride` extracts `severity`; `runChecks` (`src/api/engine.ts:172`):
+
+1. `severity === null` → emit `fail` with `Invalid severity "…" for rule "…"`, skip `check`.
+2. `severity === "off"` → skip rule entirely.
+3. Otherwise call `rule.check(targetPath, params)`, then `coerceStatus(original, severity)` (`src/api/engine.ts:124`):
+   - `original === "pass"` → never rewritten (intentionally allows suppression).
+   - `original !== "pass"` and `severity` defined → coerced to `severity`.
+
+Consequences:
+
+- `"off"` always skips.
+- `"warn"` demotes a `fail` to `warn`; `"error"` promotes a `warn` to `fail`.
+- Unknown severity fails the rule (exit `1`) — fail-closed, not ignored.
+
+## Full example
+
+```ts title="conform.config.ts"
+import { defineConfig, definePlugin, DOMAIN, Status } from "@adistack/conform";
+import type { Target } from "@adistack/conform";
+
+const myPlugin = definePlugin({
+  id: "my-org",
+  context: (target: Target) => ({
+    hasFile: (p: string) => target.fileExists(p),
+  }),
+});
+
+myPlugin.defineRule({
+  id: "readme-has-title",
+  domain: DOMAIN.DOCUMENTATION,
+  name: "README starts with #",
+  test({ context }) {
+    const text = context.hasFile("README.md") ? "ok" : null;
+    return text ? Status.pass() : Status.fail("README.md missing");
+  },
+});
+
+export default defineConfig({
+  preset: "package",
+  plugins: [myPlugin],
+  rules: {
+    // soften a noisy preset rule
+    "biome/format-script": "warn",
+    // disable entirely
+    "github/dependabot": "off",
+    // custom params, level omitted
+    "gitignore/excludes": {
+      file_expressions: ["node_modules", ".env*", "*.gen.ts"],
+    },
+    // custom plugin rule
+    "my-org/readme-has-title": "error",
+  },
+});
+```
+
+## Preset-defined overrides
+
+`src/presets/package.ts:25 rules` ships with:
+
+```ts
+rules: {
+  "gitignore/excludes":          { file_expressions: ["node_modules", ".env*", "*.env", "*.gen.ts"] },
+  "husky/hook":                  { hooks: [{ file: ".husky/pre-commit", contains: "bun run format" }, { file: ".husky/commit-msg", contains: 'bun commitlint --edit "$1"' }] },
+  "package-json/required-fields":{ fields: ["license","name","author","contributors","repository","publishConfig","homepage","files","bugs","description","keywords","engines"] },
+}
+```
+
+Config `rules` override these per-ID.
+
+## Validation
+
+| Input | Result |
+|---|---|
+| Missing `conform.config.ts` | `no-config` (exit 2) |
+| `preset: ""` (falsy) | `no-config` (exit 2) |
+| Unknown `preset` name | `preset-not-found` (exit 2) |
+| Unknown `level` string | `fail` with `Invalid severity "…"` (exit 1) |
+| Invalid `params` | `fail` with `Invalid params: …` (exit 1) |
+
