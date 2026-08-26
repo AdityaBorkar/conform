@@ -13,10 +13,12 @@ export interface RepoIdentity {
 
 function parseGithubUrl(url: string): RepoIdentity | null {
   const match = url.match(/github\.com[/:]([^/:]+)\/([^/#?]+?)(?:\.git)?\/?$/i);
-  if (!match) {
+  const owner = match?.[1];
+  const repo = match?.[2];
+  if (!(owner && repo)) {
     return null;
   }
-  return { owner: match[1], repo: match[2] };
+  return { owner, repo };
 }
 
 function repoIdentityFromTarget(target: Target): RepoIdentity | null {
@@ -38,8 +40,9 @@ function repoIdentityFromTarget(target: Target): RepoIdentity | null {
     const originMatch = gitConfig.match(
       /\[remote "origin"\][^[]*?\burl\s*=\s*(\S+)/,
     );
-    if (originMatch) {
-      const identity = parseGithubUrl(originMatch[1]);
+    const originUrl = originMatch?.[1];
+    if (originUrl) {
+      const identity = parseGithubUrl(originUrl);
       if (identity) {
         return identity;
       }

@@ -12,7 +12,11 @@ import {
   unavailableField,
 } from "./api.ts";
 import type { GithubPluginContext } from "./context.ts";
-import { githubApiScopeSchema, githubDefaultBranchSchema } from "./schemas.ts";
+import {
+  githubApiScopeSchema,
+  githubDefaultBranchSchema,
+  githubEnvironmentsSchema,
+} from "./schemas.ts";
 
 const SOCIAL_PREVIEW_IMAGE_HOST = "repository-images.githubusercontent.com";
 
@@ -386,21 +390,52 @@ export function withGeneralRules<M extends Record<string, unknown>>(
     })
     .defineRule({
       domain: DOMAIN.GITHUB_CONFIG,
+      id: "environments",
+      name: "Required deployment environments exist",
+      params: githubEnvironmentsSchema,
+      async test({ context, params }) {
+        const required = params?.environments ?? ["stable", "beta"];
+        const gate = resolveApiGate(context, "Environments", params);
+        if (!gate.ok) {
+          return gate.result;
+        }
+        const response = await githubApi<{
+          environments?: { name?: string }[];
+        }>(repoPath(gate.gate.identity, "/environments"), gate.gate.token);
+        if (!response.ok) {
+          return Status.fail(describeApiFailure("Environments", response));
+        }
+        const existing = (response.data.environments ?? [])
+          .map((environment) => environment.name)
+          .filter((name): name is string => typeof name === "string");
+        const missing = required.filter(
+          (name) => !existing.some((candidate) => candidate === name),
+        );
+        if (missing.length === 0) {
+          return Status.pass(`environments present: ${required.join(", ")}`);
+        }
+        return Status.fail(
+          `missing environment(s): ${missing.join(", ")} — found ${existing.join(", ") || "none"} (Settings → Environments → New environment)`,
+        );
+      },
+    })
+    .defineRule({
+      domain: DOMAIN.GITHUB_CONFIG,
       id: "manual-settings",
       name: "Settings only configurable in the GitHub UI (verify manually)",
       test() {
+        const unverifiable = [
+          "auto-close issues with merged linked PRs (Settings → General)",
+          "disable comments on individual commits (Settings → General)",
+          "exclude Git LFS objects from archives (Settings → General)",
+          "limit branches/tags updated in a single push (Settings → General → Pushes)",
+          "limit code review to explicitly granted users (Settings → General → Code review limits)",
+          "Copilot Autofix disabled (Settings → Advanced Security)",
+          "OIDC immutable subject claim (Actions → General → OIDC)",
+          "agent suggestions for issues = Full Control (Settings → Planning)",
+        ];
         return Status.fail(
-          [
-            "the following settings have no GitHub REST/GraphQL API and must be verified manually:",
-            "auto-close issues with merged linked PRs (Settings → General)",
-            "disable comments on individual commits (Settings → General)",
-            "exclude Git LFS objects from archives (Settings → General)",
-            "limit branches/tags updated in a single push (Settings → General → Pushes)",
-            "limit code review to explicitly granted users (Settings → General → Code review limits)",
-            "Copilot Autofix disabled (Settings → Advanced Security)",
-            "OIDC immutable subject claim (Actions → General → OIDC)",
-            "agent suggestions for issues = Full Control (Settings → Planning)",
-          ].join("; "),
+          `the following settings have no GitHub REST/GraphQL API and must be verified manually: ${unverifiable.join("; ")}`,
         );
       },
     });

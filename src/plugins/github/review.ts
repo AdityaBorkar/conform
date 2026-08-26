@@ -1,6 +1,7 @@
 import { Status } from "@/api/index.ts";
 import type { Plugin } from "@/api/plugin.ts";
 import { DOMAIN } from "@/plugins/utils/domain.ts";
+import type { CheckResult } from "@/types.ts";
 import {
   type ApiGateResult,
   describeApiFailure,
@@ -32,8 +33,14 @@ function findCodeownersFile(
   );
 }
 
+interface CodeownersError {
+  line?: number;
+  message?: string;
+  path?: string;
+}
+
 function fetchCodeownersErrors(gate: Extract<ApiGateResult, { ok: true }>) {
-  return githubApi<{ errors: Record<string, unknown>[] }>(
+  return githubApi<{ errors: CodeownersError[] }>(
     repoPath(gate.gate.identity, "/codeowners/errors"),
     gate.gate.token,
   );
@@ -70,6 +77,33 @@ function findMissingRequiredChecks(
   return requiredChecks.filter(
     (required) => !names.some((name) => name.includes(required.toLowerCase())),
   );
+}
+
+async function fetchDefaultBranchCheckRuns(
+  gate: Extract<ApiGateResult, { ok: true }>,
+): Promise<
+  | { ok: true; ref: string; runs: CheckRun[] }
+  | { ok: false; result: CheckResult }
+> {
+  const repository = await loadRepository(gate.gate, "PR checks");
+  if (!repository.ok) {
+    return repository;
+  }
+  const ref = encodeURIComponent(repository.data.default_branch ?? "main");
+  const response = await githubApi<{
+    check_runs: CheckRun[];
+    total_count: number;
+  }>(
+    repoPath(gate.gate.identity, `/commits/${ref}/check-runs`),
+    gate.gate.token,
+  );
+  if (!response.ok) {
+    return {
+      ok: false,
+      result: Status.fail(describeApiFailure("PR checks", response)),
+    };
+  }
+  return { ok: true, ref, runs: response.data.check_runs ?? [] };
 }
 
 /** Adds the CODEOWNERS and PR-check rules to the github plugin. */
@@ -131,27 +165,12 @@ export function withReviewRules<M extends Record<string, unknown>>(
         if (!gate.ok) {
           return gate.result;
         }
-
-        const repository = await loadRepository(gate.gate, "PR checks");
-        if (!repository.ok) {
-          return repository.result;
-        }
-        const ref = encodeURIComponent(
-          repository.data.default_branch ?? "main",
-        );
-
-        const response = await githubApi<{
-          check_runs: CheckRun[];
-          total_count: number;
-        }>(
-          repoPath(gate.gate.identity, `/commits/${ref}/check-runs`),
-          gate.gate.token,
-        );
-        if (!response.ok) {
-          return Status.fail(describeApiFailure("PR checks", response));
+        const fetched = await fetchDefaultBranchCheckRuns(gate);
+        if (!fetched.ok) {
+          return fetched.result;
         }
 
-        const checkRuns = response.data.check_runs ?? [];
+        const { ref, runs: checkRuns } = fetched;
         if (checkRuns.length === 0) {
           return Status.fail(
             `no check runs found on the latest "${ref}" commit — CI did not report lint/format/typecheck/conform results`,

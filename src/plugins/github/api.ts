@@ -78,9 +78,9 @@ async function githubApi<T>(
     };
   }
 
-  const data =
+  const data: T =
     response.status === HTTP_NO_CONTENT
-      ? {}
+      ? ({} as T)
       : ((await response.json().catch(() => ({}))) as T);
   const result: GithubApiResponse<T> = {
     data,
@@ -123,10 +123,32 @@ export type ApiGateResult =
   | { gate: ApiGate; ok: true }
   | { ok: false; result: CheckResult };
 
+/**
+ * Extracts the optional owner/repo scope override from a rule's params.
+ * Every API-backed rule accepts these regardless of its other params.
+ */
+function scopeParams(params: unknown): { owner?: string; repo?: string } {
+  if (typeof params !== "object" || params === null) {
+    return {};
+  }
+  const record = params as Record<string, unknown>;
+  const owner =
+    typeof record["owner"] === "string" ? record["owner"] : undefined;
+  const repo = typeof record["repo"] === "string" ? record["repo"] : undefined;
+  const scope: { owner?: string; repo?: string } = {};
+  if (owner) {
+    scope.owner = owner;
+  }
+  if (repo) {
+    scope.repo = repo;
+  }
+  return scope;
+}
+
 export function resolveApiGate(
   context: GithubPluginContext,
   what: string,
-  params?: { owner?: string; repo?: string },
+  params?: unknown,
 ): ApiGateResult {
   // biome-ignore lint/style/noProcessEnv: the GitHub token must come from the environment
   const token = process.env[TOKEN_ENV_VAR];
@@ -138,9 +160,10 @@ export function resolveApiGate(
       ),
     };
   }
+  const scope = scopeParams(params);
   const fallbackIdentity = context.getRepoIdentity();
-  const owner = params?.owner ?? fallbackIdentity?.owner;
-  const repo = params?.repo ?? fallbackIdentity?.repo;
+  const owner = scope.owner ?? fallbackIdentity?.owner;
+  const repo = scope.repo ?? fallbackIdentity?.repo;
   if (!(owner && repo)) {
     return {
       ok: false,
