@@ -1,7 +1,7 @@
 import { type } from "arktype";
 
-import { definePlugin, Status } from "@/api/index.ts";
-import type { Target } from "@/utils/fs.ts";
+import { definePlugin, Status } from "#/api/index.ts";
+import type { Target } from "#/utils/fs.ts";
 import { DOMAIN } from "./utils/domain.ts";
 
 export const zedDirSchema = type({

@@ -1,9 +1,9 @@
 import { type } from "arktype";
 
-import { isMonorepoConfig } from "@/api/config.ts";
-import { presetResolver } from "@/api/preset.ts";
-import { renderJson } from "@/cli/reporter/json.ts";
-import { renderTui } from "@/cli/reporter/tui.ts";
+import { isMonorepoConfig } from "#/api/config.ts";
+import { presetResolver } from "#/api/preset.ts";
+import { renderJson } from "#/cli/reporter/json.ts";
+import { renderTui } from "#/cli/reporter/tui.ts";
 import type {
   CheckResult,
   ConformOutput,
@@ -16,12 +16,12 @@ import type {
   RuleOverrides,
   RuleResult,
   Severity,
-} from "@/types.ts";
+} from "#/types.ts";
 import {
   loadAndResolveMonorepo,
   loadConfig,
   loadRawConfig,
-} from "@/utils/config.ts";
+} from "#/utils/config.ts";
 
 export interface ConformanceOptions {
   groupBy?: GroupBy;

@@ -5,8 +5,8 @@ import { Glob } from "bun";
 
 import { type } from "arktype";
 
-import type { PackageJson } from "@/types.ts";
-import { Target } from "@/utils/fs.ts";
+import type { PackageJson } from "#/types.ts";
+import { Target } from "#/utils/fs.ts";
 
 const workspacesArraySchema = type("unknown[]");
 const workspacesObjectSchema = type({

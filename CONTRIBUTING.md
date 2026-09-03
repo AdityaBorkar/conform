@@ -53,7 +53,7 @@ bun run src/cli/index.ts check [--path <dir>] [--json] [-v] [--group domains|fil
 ## Code standards
 
 - Read [`CONTEXT.md`](./CONTEXT.md) (canonical terms), [`docs/architecture.md`](./docs/architecture.md) (engine, authoring, output), and [`CODING_STANDARDS.md`](./CODING_STANDARDS.md) (toolchain, TS strict, Biome, testing).
-- Public surface only: `src/index.ts` (+ `./plugins → src/plugins/index.ts`). No deep imports from outside `src/`; cross-module imports use the `@/* → ./src/*` alias.
+- Public surface only: `src/index.ts` (+ `./plugins → src/plugins/index.ts`). No deep imports from outside `src/`; cross-module imports use the `#/* → ./src/*` alias.
 - Rules belong to Plugins (`definePlugin` + `plugin.defineRule`); rule params use arktype `type()`. Presets live in `src/presets/*.ts` (curried `definePreset([plugins] as const)({…})` preferred).
 - Biome 2.x: 2-space, double-quotes, LF, width 80. TS strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noUnusedLocals/Parameters`, `verbatimModuleSyntax`, `allowImportingTsExtensions`).
 

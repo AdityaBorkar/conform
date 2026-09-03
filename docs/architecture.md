@@ -13,7 +13,7 @@ Source of truth: `src/types.ts` + `src/api/*` + `src/utils/*` + `src/cli/*`. For
 
 ## Types (see `src/types.ts`)
 
-The global `RuleRegistry` is auto-inferred from the `@/plugins/index.ts` barrel — no hardcoded ID list. Per-preset `StrictPresetRules<Ps>` narrows further to the preset's own tuple.
+The global `RuleRegistry` is auto-inferred from the `#/plugins/index.ts` barrel — no hardcoded ID list. Per-preset `StrictPresetRules<Ps>` narrows further to the preset's own tuple.
 
 ```ts
 export type Severity = "pass" | "warn" | "fail";
@@ -95,7 +95,7 @@ Preset — curried (preferred, infers `StrictPresetRules<Ps>`) and object (compa
 
 ```ts
 import { definePreset } from "@adistack/conform";
-import { husky } from "@/plugins/husky.ts";
+import { husky } from "#/plugins/husky.ts";
 
 // curried — plugins captured first so rules is checked against their inferred param map
 export default definePreset([husky] as const)({
@@ -113,7 +113,7 @@ export default definePreset({
 });
 ```
 
-`@/*` alias (`tsconfig.json`, `vitest.config.ts`) → `./src/*` must be used for cross-module imports. Public surface is `src/index.ts` / `src/api/index.ts` / `src/plugins/index.ts` barrel (drives `RuleRegistry` inference). Package also exposes `./plugins` → `./src/plugins/index.ts`. No deep imports like `src/plugins/biome.ts` from outside `src/`.
+`#/*` alias (`tsconfig.json`, `vitest.config.ts`) → `./src/*` must be used for cross-module imports. Public surface is `src/index.ts` / `src/api/index.ts` / `src/plugins/index.ts` barrel (drives `RuleRegistry` inference). Package also exposes `./plugins` → `./src/plugins/index.ts`. No deep imports like `src/plugins/biome.ts` from outside `src/`.
 
 ## Preset & Plugin Layout
 

@@ -80,12 +80,12 @@ export type InferPresetParamMap<Ps extends readonly AnyPlugin[]> =
 
 // ---------------------------------------------------------------------------
 // Dynamic global registry — no hardcoded AllBuiltinPlugins list.
-// All plugins exported from `@/plugins/index.ts` are auto-discovered at
+// All plugins exported from `#/plugins/index.ts` are auto-discovered at
 // type-level via `typeof import(...)`. Adding `export { foo } from "./foo.ts"`
 // automatically extends the registry without touching this file.
 // This is type-only and avoids a value import cycle (types.ts <-> plugins).
 // ---------------------------------------------------------------------------
-type _PluginModule = typeof import("@/plugins/index.ts");
+type _PluginModule = typeof import("#/plugins/index.ts");
 type _BuiltinPluginUnion = {
   [K in keyof _PluginModule]: _PluginModule[K] extends AnyPlugin
     ? _PluginModule[K]
@@ -98,7 +98,7 @@ type AllBuiltinPlugins = readonly _BuiltinPluginUnion[];
  * Registry that maps known Rule IDs to their validated params type.
  * Auto-inferred from the arktype `params` schemas defined in `src/plugins/*.ts`
  * via `InferPresetParamMap<AllBuiltinPlugins>` — single source of truth.
- * `AllBuiltinPlugins` is itself derived from the `@/plugins/index.ts` barrel,
+ * `AllBuiltinPlugins` is itself derived from the `#/plugins/index.ts` barrel,
  * so no hardcoded plugin list is needed.
  * Unknown keys fall back to `RuleConfig<unknown>`.
  */

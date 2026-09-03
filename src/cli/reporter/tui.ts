@@ -1,4 +1,4 @@
-import type { GroupBy, RuleResult, Severity } from "@/types.ts";
+import type { GroupBy, RuleResult, Severity } from "#/types.ts";
 
 const RESET = "\x1b[0m";
 const GREEN = "\x1b[32m";

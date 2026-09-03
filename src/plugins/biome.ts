@@ -1,8 +1,8 @@
 import { type } from "arktype";
 
-import { definePlugin, Status } from "@/api/index.ts";
-import { DOMAIN } from "@/plugins/utils/domain.ts";
-import type { Target } from "@/utils/fs.ts";
+import { definePlugin, Status } from "#/api/index.ts";
+import { DOMAIN } from "#/plugins/utils/domain.ts";
+import type { Target } from "#/utils/fs.ts";
 
 export const biomeConfigExistsSchema = type({
   file_expressions: "string[]",

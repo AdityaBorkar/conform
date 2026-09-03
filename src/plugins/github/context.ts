@@ -1,7 +1,7 @@
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 
-import type { Target } from "@/utils/fs.ts";
+import type { Target } from "#/utils/fs.ts";
 
 /**
  * GitHub owner/repo identity for the checked-out target repository.

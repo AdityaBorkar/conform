@@ -1,8 +1,8 @@
 import { resolve } from "node:path";
 import process from "node:process";
 
-import { check } from "@/api/engine.ts";
-import type { GroupBy } from "@/types.ts";
+import { check } from "#/api/engine.ts";
+import type { GroupBy } from "#/types.ts";
 
 export async function CheckCommand({
   path,

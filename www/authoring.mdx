@@ -76,7 +76,7 @@ A preset combines plugins with default rule settings. Use the curried form with 
 
 ```ts
 import { definePreset } from "@adistack/conform";
-import { biome } from "@/plugins/biome.ts";
+import { biome } from "#/plugins/biome.ts";
 
 export default definePreset([myPlugin, biome] as const)({
   name: "acme",

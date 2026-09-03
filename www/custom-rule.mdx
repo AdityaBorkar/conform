@@ -75,7 +75,7 @@ If several repositories need the same rule, bundle it into a preset:
 ```ts title="src/presets/acme.ts"
 import { definePreset } from "@adistack/conform";
 import { myPlugin } from "../plugins/my-plugin.ts";
-import { docs } from "@/plugins/docs.ts";
+import { docs } from "#/plugins/docs.ts";
 
 export default definePreset([myPlugin, docs] as const)({
   name: "acme",

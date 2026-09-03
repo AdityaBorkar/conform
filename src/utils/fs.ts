@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import type { PackageJson } from "@/types.ts";
+import type { PackageJson } from "#/types.ts";
 
 function stripJsonComments(text: string): string {
   return text.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");

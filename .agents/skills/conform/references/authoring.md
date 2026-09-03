@@ -59,7 +59,7 @@ Use the curried form with `as const` so rule params are type-checked:
 
 ```ts
 import { definePreset } from "@adistack/conform";
-import { biome } from "@/plugins/biome.ts";
+import { biome } from "#/plugins/biome.ts";
 
 export default definePreset([myPlugin, biome] as const)({
   name: "acme",

@@ -1,7 +1,7 @@
 import process from "node:process";
 
-import { Status } from "@/api/index.ts";
-import type { CheckResult } from "@/types.ts";
+import { Status } from "#/api/index.ts";
+import type { CheckResult } from "#/types.ts";
 import type { GithubPluginContext, RepoIdentity } from "./context.ts";
 
 // ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-import { definePlugin } from "@/api/index.ts";
+import { definePlugin } from "#/api/index.ts";
 import { withActionsRules } from "./github/actions.ts";
 import { createGithubContext } from "./github/context.ts";
 import { withGeneralRules } from "./github/general.ts";

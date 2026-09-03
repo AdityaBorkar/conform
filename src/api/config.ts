@@ -1,6 +1,6 @@
 import { type } from "arktype";
 
-import type { ConformConfig, MonorepoConfig } from "@/types.ts";
+import type { ConformConfig, MonorepoConfig } from "#/types.ts";
 
 const conformConfigSchema = type({
   preset: "string>0",

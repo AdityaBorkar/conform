@@ -15,7 +15,7 @@ Source of truth: `src/types.ts`, `src/api/*`, `src/utils/*`, `src/cli/*`, `src/p
 
 ## 3. Aliases & Imports
 
-- **Alias** `@/*` → `./src/*` (`tsconfig.json`, `vitest.config.ts`). Always use `@/…` for cross-module imports; never deep-import from another plugin/preset file. Public surface is `src/index.ts` / `src/api/index.ts` (`defineConfig`, `defineMonorepoConfig`, `definePlugin`, `definePreset`, `presetResolver`, `Status`, `DOMAIN`, `Target`) plus `./plugins` barrel.
+- **Alias** `#/*` → `./src/*` (`tsconfig.json`, `vitest.config.ts`). Always use `#/…` for cross-module imports; never deep-import from another plugin/preset file. Public surface is `src/index.ts` / `src/api/index.ts` (`defineConfig`, `defineMonorepoConfig`, `definePlugin`, `definePreset`, `presetResolver`, `Status`, `DOMAIN`, `Target`) plus `./plugins` barrel.
 - **Biome organizeImports** groups: `:URL:` → `:BLANK_LINE:` → `:NODE:` → `:BUN:` → `:PACKAGE_WITH_PROTOCOL:` → `:BLANK_LINE:` → `:PACKAGE:` → `:BLANK_LINE:` → `:ALIAS:` → `:PATH:` (`biome.json` assist actions).
 
 ## 4. Formatting & Lint — Biome 2.x
@@ -50,7 +50,7 @@ Source of truth: `src/types.ts`, `src/api/*`, `src/utils/*`, `src/cli/*`, `src/p
 
 - Presets live in `src/presets/*.ts` (`package.ts` is canonical: 9 plugins, 62 rules). Compose `src/plugins/*` via `definePreset`.
 - **Curried form for typed overrides**: `definePreset([pluginA, pluginB] as const)({ name, description, rules? })` infers `StrictPresetRules<Ps>` from the plugin tuple (`PresetRuleRegistry<Ps>`). Object form `definePreset({ name, description, plugins, rules? })` is also accepted.
-- `rules` is `StrictPresetRules<Ps>` (per-preset, auto-inferred) extending `StrictRuleOverrides` (global `RuleRegistry = InferPresetParamMap<AllBuiltinPlugins>` from `@/plugins/index.ts` barrel — no hardcoded list). Unknown IDs still accepted as `RuleConfig<unknown>`.
+- `rules` is `StrictPresetRules<Ps>` (per-preset, auto-inferred) extending `StrictRuleOverrides` (global `RuleRegistry = InferPresetParamMap<AllBuiltinPlugins>` from `#/plugins/index.ts` barrel — no hardcoded list). Unknown IDs still accepted as `RuleConfig<unknown>`.
 - `isValidPreset` (`src/api/preset.ts`) requires `name:string` + `description:string` + `plugins:array` + optional `rules:object` (non-array).
 - `mergePresetWithConfig` (`src/api/engine.ts`) appends `config.plugins` to `preset.plugins` and shallow-merges `rules` (`{ ...preset.rules, ...config.rules }`); returns original ref if unchanged.
 

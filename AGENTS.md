@@ -49,7 +49,7 @@ CI (`check.yml`, required on `stable`/`beta`): `check:types` + `check:lint:ci` +
 
 ## Toolchain & Gotchas
 
-- Bun only; `import.meta.dir`/`import.meta.dirname` for paths; `@/*` → `./src/*` (`tsconfig.json`, `vitest.config.ts`). Cross-module imports must use `@/`.
+- Bun only; `import.meta.dir`/`import.meta.dirname` for paths; `#/*` → `./src/*` (`tsconfig.json`, `vitest.config.ts`). Cross-module imports must use `#/`.
 - TS strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noUnusedLocals/Parameters`, `verbatimModuleSyntax`, `allowImportingTsExtensions`); arktype `type()` for rule params.
 - Biome 2.x (`assist.actions.source.organizeImports` + formatter + linter): 2-space, double-quotes, LF, width 80; `useNamingConvention`/`noDefaultExport`/`noSecrets` off. No ESLint/Prettier.
 - Husky `pre-commit`: `bun run format` only; `commit-msg`: `bun commitlint --edit "$1"`. Commits: conventional `feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|wip`.

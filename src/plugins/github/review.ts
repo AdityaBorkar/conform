@@ -1,7 +1,7 @@
-import { Status } from "@/api/index.ts";
-import type { Plugin } from "@/api/plugin.ts";
-import { DOMAIN } from "@/plugins/utils/domain.ts";
-import type { CheckResult } from "@/types.ts";
+import { Status } from "#/api/index.ts";
+import type { Plugin } from "#/api/plugin.ts";
+import { DOMAIN } from "#/plugins/utils/domain.ts";
+import type { CheckResult } from "#/types.ts";
 import {
   type ApiGateResult,
   describeApiFailure,

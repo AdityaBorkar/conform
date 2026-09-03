@@ -1,8 +1,8 @@
 import type { Type } from "arktype";
 import { type } from "arktype";
 
-import type { CheckResult, Plugin as PluginInterface, Rule } from "@/types.ts";
-import { Target } from "@/utils/fs.ts";
+import type { CheckResult, Plugin as PluginInterface, Rule } from "#/types.ts";
+import { Target } from "#/utils/fs.ts";
 
 /**
  * Single validation adapter for arktype params.

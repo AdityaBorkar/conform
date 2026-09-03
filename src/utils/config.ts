@@ -1,8 +1,8 @@
 import { isAbsolute, join, relative, resolve } from "node:path";
 
-import { isConformConfig, isMonorepoConfig } from "@/api/config.ts";
-import type { ConformConfig, MonorepoConfig } from "@/types.ts";
-import { expandWorkspaces } from "@/utils/workspaces.ts";
+import { isConformConfig, isMonorepoConfig } from "#/api/config.ts";
+import type { ConformConfig, MonorepoConfig } from "#/types.ts";
+import { expandWorkspaces } from "#/utils/workspaces.ts";
 
 export async function loadConfig(
   targetPath: string,

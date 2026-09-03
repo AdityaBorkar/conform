@@ -1,4 +1,4 @@
-export { DOMAIN } from "@/plugins/utils/domain.ts";
+export { DOMAIN } from "#/plugins/utils/domain.ts";
 export type {
   ConformConfig,
   MonorepoConfig,
@@ -11,8 +11,8 @@ export type {
   RuleOverrides,
   RuleRegistry,
   StrictRuleOverrides,
-} from "@/types.ts";
-export { Target } from "@/utils/fs.ts";
+} from "#/types.ts";
+export { Target } from "#/utils/fs.ts";
 export {
   defineConfig,
   defineMonorepoConfig,

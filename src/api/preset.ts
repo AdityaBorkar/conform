@@ -8,7 +8,7 @@ import type {
   Preset,
   PresetWithPlugins,
   StrictPresetRules,
-} from "@/types.ts";
+} from "#/types.ts";
 
 const packageRoot = resolve(import.meta.dir, "..", "..");
 const presetsDir = join(packageRoot, "src", "presets");

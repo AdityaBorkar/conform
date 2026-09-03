@@ -1,13 +1,13 @@
-import { definePreset } from "@/api/index.ts";
-import { biome } from "@/plugins/biome.ts";
-import { bun } from "@/plugins/bun.ts";
-import { docs } from "@/plugins/docs.ts";
-import { github } from "@/plugins/github.ts";
-import { gitignore } from "@/plugins/gitignore.ts";
-import { husky } from "@/plugins/husky.ts";
-import { packageJson } from "@/plugins/package_json.ts";
-import { tsconfig_json } from "@/plugins/tsconfig_json.ts";
-import { zed } from "@/plugins/zed.ts";
+import { definePreset } from "#/api/index.ts";
+import { biome } from "#/plugins/biome.ts";
+import { bun } from "#/plugins/bun.ts";
+import { docs } from "#/plugins/docs.ts";
+import { github } from "#/plugins/github.ts";
+import { gitignore } from "#/plugins/gitignore.ts";
+import { husky } from "#/plugins/husky.ts";
+import { packageJson } from "#/plugins/package_json.ts";
+import { tsconfig_json } from "#/plugins/tsconfig_json.ts";
+import { zed } from "#/plugins/zed.ts";
 
 const BIOME_CONFIG = {
   assist: {
@@ -215,7 +215,7 @@ const TSCONFIG_COMPILER_OPTIONS = {
   noUnusedLocals: true,
   noUnusedParameters: true,
   paths: {
-    "@/*": ["./src/*"],
+    "#/*": ["./src/*"],
   },
   resolveJsonModule: true,
   skipLibCheck: true,

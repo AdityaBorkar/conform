@@ -36,7 +36,7 @@ CLI that checks a repository against a named Preset and reports Drift. Supports 
  Map of Rule ID to `RuleConfig`. Coerces non-`pass` results to the configured severity; `pass` stays `pass`.
 
 **RuleRegistry**:
- Global map of known Rule IDs to their params types, auto-inferred from the `@/plugins/index.ts` barrel.
+ Global map of known Rule IDs to their params types, auto-inferred from the `#/plugins/index.ts` barrel.
  _Avoid_: hardcoded map
 
 **StrictRuleOverrides**:

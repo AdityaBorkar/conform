@@ -1,4 +1,4 @@
-import type { ConformOutput, GroupBy, RuleResult } from "@/types.ts";
+import type { ConformOutput, GroupBy, RuleResult } from "#/types.ts";
 
 export function renderJson(
   presetName: string,

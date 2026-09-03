@@ -43,6 +43,9 @@
   },
   "files": ["src", "README.md"],
   "homepage": "https://github.com/AdityaBorkar/conform#readme",
+  "imports": {
+    "#/*": "./src/*"
+  },
   "keywords": ["conform", "check"],
   "license": "MIT",
   "maintainers": [

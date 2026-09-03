@@ -1,6 +1,6 @@
-import { Status } from "@/api/index.ts";
-import type { Plugin } from "@/api/plugin.ts";
-import { DOMAIN } from "@/plugins/utils/domain.ts";
+import { Status } from "#/api/index.ts";
+import type { Plugin } from "#/api/plugin.ts";
+import { DOMAIN } from "#/plugins/utils/domain.ts";
 import type { GithubPluginContext } from "./context.ts";
 import {
   githubWorkflowContentSchema,

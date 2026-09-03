@@ -1,4 +1,4 @@
-import type { CheckResult } from "@/types.ts";
+import type { CheckResult } from "#/types.ts";
 
 export const Status = {
   fail: (message?: string): CheckResult => {
