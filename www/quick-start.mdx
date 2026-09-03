@@ -1,6 +1,6 @@
 ---
 title: "Quick Start"
-description: "From empty repo to green conform check in under two minutes."
+description: "Install Conform, add a config, and run your first check."
 icon: Zap
 ---
 
@@ -8,120 +8,62 @@ icon: Zap
 
 ## 1. Install
 
-**Requirements:**
-
-- **Bun** `>= 1.0.0` — the only supported runtime/PM (`import.meta.dir`, `Bun.Glob`).
-- **TypeScript** `^7.0.2` if you consume the library (strict, `verbatimModuleSyntax`, `noEmit` friendly).
-- Node is not required and not tested.
-
-Package metadata lives in `package.json:engines`, `type: module`, `exports: "." → ./src/index.ts`.
+Conform requires Bun. Node is not supported.
 
 ```sh
-# as a dev dependency (recommended)
 bun add -d @adistack/conform
-
-# globally via bunx (no install)
-bunx @adistack/conform check
 ```
 
-The published `files` are `src` + `README.md` only; there is no build step (`noEmit: true`). The bin `conform` points at `src/cli/index.ts` and is executed by Bun directly.
-
-### bunfig recommendations
-
-If you use the `package` preset, `bun/bunfig-content` enforces these values in `bunfig.toml`:
-
-```toml
-telemetry = false
-logLevel = "warn"
-console.depth = 10
-run.bun = true
-run.silent = false
-install.minimumReleaseAge = 259200
-install.saveTextLockfile = false
-install.ignore-scripts = true
-```
-
-See [Plugins — `bun`](/plugins#bun) for the full param table.
-
-### Verify
+Verify the installation:
 
 ```sh
-# show version (reads package.json via import.meta.dir)
 bunx conform --version
-
-# run against this repo (dogfoods preset: "package")
-bun src/cli/index.ts check
-
-# typecheck and lint gates (required order: lint → types → test)
-bun run check:lint
-bun run check:types
 ```
 
-## 2. Configure
+## 2. Create a config
 
-Create `conform.config.ts` at the repository root:
+Create one file at the repository root named `conform.config.ts`:
 
 ```ts title="conform.config.ts"
 import { defineConfig } from "@adistack/conform";
 
-export default defineConfig({
-  preset: "package",
-});
+export default defineConfig({ preset: "package" });
 ```
 
-Single field required: `preset: string` (truthy). Optional `plugins` and `rules` are covered in [Configuration](/configuration).
+If your repository contains multiple packages, use a monorepo config instead. See [Monorepo](/monorepo).
 
-Mono-workspaces? Use `defineMonorepoConfig` — see [Monorepo](/monorepo).
-
-## 3. Run
+## 3. Run a check
 
 ```sh
-bunx conform check
-
-# include passing checks
-bunx conform check --verbose
-
-# machine-readable (disallows --group)
-bunx conform check --json
-
-# group by file instead of domain
-bunx conform check --group files
-
-# check a different directory
-bunx conform check --path ./my-project
+bunx conform check                # check the current directory
+bunx conform check -v             # also show passing checks
+bunx conform check --json         # print machine-readable JSON
+bunx conform check --path ./other # check a different directory
 ```
 
 ## 4. Read the output
 
-**TUI (default)** groups by `domain → files`:
+- `✓` means pass.
+- `⚠` means warn. Fix it later. The exit code is 2.
+- `✗` means fail. Fix it now. The exit code is 1.
 
 ```
 @adistack/conform — package preset
 
 Build & Tasks
-  package.json
-    ✓ required-fields       all required fields present
-    ✗ entry-point           no main, module, or exports field defined
+  
+    ✓ package-json/required-fields   all required fields present
+    ✗ package-json/entry-point       no main, module, or exports field defined
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  59 passed · 2 warned · 1 failed
 ```
 
-Summary line always counts all results (not just visible): `N passed · N warned · N failed`.
+The summary always counts every result. The `-v` flag only controls which rows are displayed. Rule IDs are always full `plugin-id/rule-id` paths.
 
-**JSON** (`--json`) emits `ConformOutput`:
+## 5. Tune noisy rules
 
-```json
-{
-  "preset": "package",
-  "path": "/abs/path/to/repo",
-  "results": [{ "id": "package-json/entry-point", "domain": "Build & Tasks", "files": [], "description": "...", "status": "fail", "message": "…" }],
-  "summary": { "pass": 32, "warn": 2, "fail": 1 }
-}
-```
-
-`verbose` controls `results` filtering; `groupBy` is only emitted when `"files"`.
-
-## 5. Tune overrides
-
-Suppress or soften a noisy rule without forking the preset:
+If a rule does not fit your repository, soften it or turn it off:
 
 ```ts title="conform.config.ts"
 import { defineConfig } from "@adistack/conform";
@@ -129,54 +71,20 @@ import { defineConfig } from "@adistack/conform";
 export default defineConfig({
   preset: "package",
   rules: {
-    "biome/dev-deps": "warn",                         // string shorthand
-    "package-json/no-install-hooks": "off",           // skip
-    "gitignore/excludes": {                            // flattened params, level optional
-      file_expressions: ["node_modules", ".env*"]
-    },
-    "husky/hook": {
-      level: "error",
-      hooks: [{ file: ".husky/pre-commit", contains: "bun run format" }]
-    }
-  }
+    "biome/format-script": "warn", // soften a failure into a warning
+    "github/dependabot": "off",    // skip the rule entirely
+  },
 });
 ```
 
-Rules detail: string `level` is `off | warn | error` (`error → fail`, `pass` stays `pass`). Object form is `{ level?, ...params }` with `level` optional — no `params` wrapper. Unknown `level` → `fail` with `Invalid severity "…"`.
-
-## 6. Make it a gate
-
-`package.json`:
-
-```json
-{
-  "scripts": {
-    "check:conform": "bunx conform check",
-    "check": "biome check . && tsc --noEmit && bunx conform check"
-  }
-}
-```
-
-CI rule of thumb: required order is `check:lint → check:types → test`; `check:conform` can run alongside `check:types`.
-
-`release.yml` does:
-
-```sh
-bun install --frozen-lockfile
-bun run check:lint
-bun run check:types
-```
-
-Use `bun install --frozen-lockfile` in CI; `bunfig.toml` sets `minimumReleaseAge = 259200` (3 days) so freshly published vulnerable versions are not auto-adopted.
-
-Exit codes: `0` all pass · `1` any fail or `--json`+`--group` misuse · `2` warn-only / no-config / preset-not-found. `fail` dominates `warn`.
+All tuning options are described in [Configuration](/configuration).
 
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `No conform.config.ts found` (exit 2) | Missing config or `preset` falsy | Create `conform.config.ts` with `defineConfig({ preset: "package" })` |
-| `Preset 'x' not found` (exit 2) | Typo or missing file in `src/presets/` | Use `package` or add `src/presets/x.ts` exporting a Preset |
-| `--group is not supported with --json` (exit 1) | Mutually exclusive flags | Drop `--group` when using `--json` |
-| `Invalid severity "…" for rule "…"` | Typo in override `level` | Use `off`/`warn`/`error` only — unknown is fail-closed |
-| ESM import errors | Running with Node | Use Bun |
+| `No conform.config.ts found` | The config file is missing | Create `conform.config.ts` |
+| `Preset 'x' not found` | The preset name is wrong | Use `package` or add `src/presets/x.ts` |
+| `--group is not supported with --json` | The flags are mutually exclusive | Remove `--group` when using `--json` |
+| `Invalid severity "…"` | The `level` value has a typo | Use only `off`, `warn`, or `error` |
+| Crash under Node | The wrong runtime is used | Run with Bun |

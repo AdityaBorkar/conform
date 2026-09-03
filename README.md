@@ -1,6 +1,6 @@
 # @adistack/conform
 
-CLI that checks repositories against conformance presets. Supports single-package and monorepo (`defineMonorepoConfig`) workspaces — see `/CONTEXT.md` and `docs/architecture.md`.
+CLI that checks repositories against conformance presets. Supports single-package and monorepo (`defineMonorepoConfig`) workspaces — see [`CONTEXT.md`](./CONTEXT.md) and [`docs/architecture.md`](./docs/architecture.md).
 
 ## Install
 
@@ -8,7 +8,7 @@ CLI that checks repositories against conformance presets. Supports single-packag
 bun add -d @adistack/conform
 ```
 
-Bun only. No build: `exports: "." → ./src/index.ts`, `files: ["src","README.md"]`, `bin: conform → src/cli/index.ts`.
+Bun only. No build: `exports "." → ./src/index.ts` (+ `"./plugins" → ./src/plugins/index.ts`), `files: ["src","README.md"]`, `bin: conform → src/cli/index.ts`.
 
 ## Usage
 
@@ -27,7 +27,7 @@ bunx conform check --json
 # Show passing checks too
 bunx conform check -v
 
-# Group by file instead of domain
+# Group by file instead of domain (default: domains)
 bunx conform check --group files
 ```
 
@@ -66,7 +66,7 @@ export default defineMonorepoConfig({
 ### Programmatic API
 
 ```ts
-import { defineConfig, definePreset, definePlugin, DOMAIN, Status } from "@adistack/conform";
+import { definePreset, definePlugin, DOMAIN, Status } from "@adistack/conform";
 import type { Target } from "@adistack/conform";
 
 // Plugin-owned rule (all Rules must belong to a Plugin)
@@ -92,13 +92,17 @@ export default definePreset([myPlugin] as const)({
 
 `definePreset(plugins)(config)` (curried) and `definePreset({ name, description, plugins, rules? })` (object) are both accepted; presets live in `src/presets/*.ts` and resolve via `presetResolver` (`src/presets/<name>.ts` or `src/presets/<name>/index.ts`).
 
-See [`/CONTEXT.md`](./CONTEXT.md) for terminology and [`docs/architecture.md`](./docs/architecture.md) for full authoring, engine (single-package + monorepo dispatch), and output details.
+See [`CONTEXT.md`](./CONTEXT.md) for terminology and [`docs/architecture.md`](./docs/architecture.md) for full authoring, engine (single-package + monorepo dispatch), and output details.
 
 ## Built-in Presets
 
-| Preset | Description |
-|--------|-------------|
-| `package` | Conformance rules for publishing an NPM package (9 plugins, 37 rules — see `docs/architecture.md`) |
+| Preset    | Description                                                            |
+| --------- | ---------------------------------------------------------------------- |
+| `package` | Conformance rules for publishing an NPM package (9 plugins, 62 rules — see `docs/architecture.md`) |
+
+## Development
+
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md). Canonical verify order: `bun run check:types` → `bun run check:lint:ci` → `bun run check:conform`.
 
 ## License
 

@@ -1,18 +1,16 @@
 ---
 title: "Authoring"
-description: "Author Plugins and Presets with definePlugin, defineRule, definePreset — typed params, domains, and Target."
+description: "Create your own plugin, rule, and preset in three steps."
 icon: Wrench
 ---
 
 # Authoring
 
-All Rules must be defined via a Plugin (`src/api/plugin.ts:49 class Plugin`). Standalone `defineRule` does not exist. Presets compose Plugins and override Rules.
+Every rule must belong to a plugin. There is no standalone `defineRule`.
 
-## Plugin
+## Step 1: Create a plugin
 
-### `definePlugin`
-
-`src/api/plugin.ts:151`
+A plugin is a container with an ID and a context factory. The factory receives a Target and returns the helpers your rules need:
 
 ```ts
 import { definePlugin } from "@adistack/conform";
@@ -22,34 +20,25 @@ export const myPlugin = definePlugin({
   id: "my-plugin",
   context: (target: Target) => ({
     fileExists: (p: string) => target.fileExists(p),
-    readFile:   (p: string) => target.readFile(p),
-    readJson:   <T>(p: string) => target.readJson<T>(p),
-    packageJson: () => target.packageJson(),
+    readFile: (p: string) => target.readFile(p),
   }),
 });
 ```
 
-- `id: string` — namespace prefix for rule IDs (`my-plugin/my-rule`).
-- `context: (target: Target) => T` — factory called per `rule.check` invocation with `new Target(targetPath)` (`src/api/plugin.ts:106`). Return whatever the rules need; typical shape re-exports `Target` methods.
+The context factory runs once per rule invocation.
 
-Generic `Plugin<Id, T, M>` tracks `M = Record<"pluginId/ruleId", Params>` for type inference. Each `defineRule` call extends `M`.
+## Step 2: Add a rule
 
-### `Plugin#defineRule`
-
-`src/api/plugin.ts:69`
-
-Two overloads — with and without `params`:
+Each rule performs exactly one check. A rule requires an `id`, a `domain`, a `name`, and a `test` function:
 
 ```ts
-import { type } from "arktype";
 import { DOMAIN, Status } from "@adistack/conform";
+import { type } from "arktype";
 
-// without params
 myPlugin.defineRule({
   id: "readme",
   domain: DOMAIN.DOCUMENTATION,
-  name: "README.md exists",               // → Rule.description
-  // files?: string[]                     // default []
+  name: "README.md exists",
   test({ context }) {
     return context.fileExists("README.md")
       ? Status.pass()
@@ -57,227 +46,65 @@ myPlugin.defineRule({
   },
 });
 
-// with params (arktype)
+// A rule with params:
 myPlugin.defineRule({
   id: "hook-pattern",
   domain: DOMAIN.DEV_ENVIRONMENT,
-  name: "hook matches pattern",
+  name: "hook has pattern",
   files: [".husky/pre-commit"],
-  params: type({ pattern: "string", file_expressions: "string[]" }),
+  params: type({ pattern: "string" }),
   test({ context, params }) {
-    // params: { pattern: string, file_expressions: string[] } | undefined
-    // validated before test is called; invalid → fail with "Invalid params: …"
-    const files = params?.file_expressions ?? [".husky/pre-commit"];
-    return files.every(f => context.fileExists(f))
+    const text = context.readFile(".husky/pre-commit") ?? "";
+    return text.includes(params?.pattern ?? "")
       ? Status.pass()
-      : Status.fail(`missing ${files.join(", ")}`);
+      : Status.fail("pattern missing");
   },
 });
 ```
 
-Field contract:
+Field rules:
 
-| Field | Type | Required | Notes |
-|---|---|---|---|
-| `id` | `string` | yes | Local ID; materialized as `pluginId/id` |
-| `domain` | `string` | yes | One of `DOMAIN.*`; no plugin-level default |
-| `name` | `string` | yes | Human label → `Rule.description` |
-| `files` | `string[]` | no | Default `[]`; TUI second-level grouping key |
-| `params` | `Type<P>` (arktype) | no | Schema for `params`; absence means `params` forwarded unvalidated |
-| `test` | `({ context: T, params?: P }) => CheckResult \| Promise<CheckResult>` | yes | Rule body; use `Status.*` |
+- `id`, `domain`, `name`, and `test` are required.
+- `domain` must be one of `DOMAIN.*`. There is no plugin-level default.
+- `files` defaults to `[]` and only affects display grouping.
+- `test` receives `{ context, params }` and returns `Status.pass()`, `Status.warn()`, or `Status.fail(message)`.
+- If params are invalid, Conform fails the rule before `test` runs.
 
-`test` receives `{ context: T, params?: P }` (object arg), not `(ctx, params)`. The underlying `Rule.check` is `(targetPath: string, params?: unknown) => Promise<CheckResult>` and adapts via the wrapper in `src/api/plugin.ts:103`.
+## Step 3: Create a preset
 
-### `Status`
-
-`src/api/status.ts:3`
-
-```ts
-Status.pass(message?)
-Status.warn(message?)
-Status.fail(message?)
-```
-
-Each returns `{ status, message? }` where `status` is `Severity = "pass" | "warn" | "fail"`.
-
-### `Target`
-
-`src/utils/fs.ts:10 class Target`
-
-```ts
-new Target(path)     // path = absolute target directory
-target.path          // readonly string
-target.fileExists(rel: string): boolean
-target.readFile(rel: string): string | null
-target.readJson<T>(rel: string): T | null   // JSON.parse, falls back to stripJsonComments
-target.packageJson(): PackageJson | null
-```
-
-Helpers re-exported: `createTarget`, `fileExists`, `readFile`, `readJson`, `packageJson`. All FS must go through `Target` — no bare `fs` in rules.
-
-### Param validation
-
-`validateParams` (`src/api/plugin.ts:12`) runs inside the `Plugin.rules` getter wrapper:
-
-- No schema → `{ ok: true, value: params }`
-- `params === undefined` → `{ ok: true, value: undefined }` (missing override → no validation)
-- `schema(params) instanceof type.errors` → `{ ok: false, error: { status: "fail", message: "Invalid params: …" } }` and `test` is not called.
-
-Engine forwards `rawParams = rest` from the override object (minus `level`) as `params` (`src/api/engine.ts:119`).
-
-### Rule materialization
-
-`Plugin.rules` (`src/api/plugin.ts:102 get rules()`) maps `ruleDefs` to `Rule[]`:
-
-```ts
-{
-  id: `${pluginId}/${ruleId}`,
-  description: ruleDef.name,
-  domain: ruleDef.domain,
-  files: ruleDef.files ?? [],
-  check: async (targetPath, params) => { /* Target + validateParams + test */ },
-  paramsSchema?: Type<P>   // only if ruleDef.params defined
-}
-```
-
-`RuleRegistry` (`src/types.ts:88`) is auto-inferred from `@/plugins/index.ts` barrel — no hardcoded list. Adding `export { foo } from "./foo.ts"` extends the registry at type level.
-
----
-
-## Preset
-
-### `definePreset`
-
-`src/api/preset.ts:68` — two forms, both infer `Ps` as `const` tuple:
+A preset combines plugins with default rule settings. Use the curried form with `as const` so rule params are type-checked:
 
 ```ts
 import { definePreset } from "@adistack/conform";
 import { biome } from "@/plugins/biome.ts";
-import { husky } from "@/plugins/husky.ts";
 
-// object form (backwards-compatible)
-export default definePreset({
-  name: "acme",
-  description: "Acme org defaults",
-  plugins: [biome, husky] as const,
-  rules: {
-    "biome/dev-deps": "error",
-    "husky/hook": { hooks: [{ file: ".husky/pre-commit", contains: "bun run format" }] }
-  }
-});
-
-// curried form — plugins first so `rules` is strictly checked against them
-export default definePreset([biome, husky] as const)({
+export default definePreset([myPlugin, biome] as const)({
   name: "acme",
   description: "Acme org defaults",
   rules: {
-    "biome/dev-deps": "error",
-    // unknown IDs still accepted as RuleConfig<unknown>
-  }
-});
-```
-
-Types involved:
-
-- `Preset` (`src/types.ts:137`): `{ name, description, plugins: Plugin[], rules?: StrictRuleOverrides }`
-- `PresetWithPlugins<Ps>` (`src/types.ts:144`): same but `plugins: Ps` and `rules?: StrictPresetRules<Ps>`
-- `StrictPresetRules<Ps>` (`src/types.ts:128`): per-preset registry derived from `Ps` via `InferPresetParamMap<Ps>` — fully local, no global hardcoding.
-- `StrictRuleOverrides` (`src/types.ts:111`): global registry `RuleRegistry = InferPresetParamMap<AllBuiltinPlugins>` where `AllBuiltinPlugins` is derived from the barrel.
-
-`as const` is required so `Ps` retains literal tuple type and rule params are inferred.
-
-### Layout
-
-```
-src/presets/
-  package.ts          — flat file, default-exports Preset
-  acme.ts             — same
-  foo/index.ts        — index variant (both tried by presetResolver)
-```
-
-`presetResolver` (`src/api/preset.ts:37`) joins `presetsDir = join(packageRoot, "src", "presets")` with `${name}.ts` and `${name}/index.ts`, filters by `existsSync`, then dynamic-imports each candidate and gates with `isValidPreset` (`name:string + plugins:array + optional rules:object`).
-
-### Composing presets
-
-```ts
-// re-export + extend
-import acme from "./acme.ts";
-import { definePreset } from "@adistack/conform";
-import { zed } from "@/plugins/zed.ts";
-
-export default definePreset({
-  name: "acme-strict",
-  description: "Acme strict (extends acme)",
-  plugins: [...acme.plugins, zed] as const,
-  rules: { ...acme.rules, "zed/dir": "error" }
-});
-```
-
-Or let `ConformConfig.plugins` append at consumption time (see [Configuration](/configuration)).
-
-## End-to-end example
-
-```ts title="src/plugins/my_checks.ts"
-import { type } from "arktype";
-import { definePlugin, DOMAIN, Status } from "@adistack/conform";
-import type { Target } from "@adistack/conform";
-
-export const myChecks = definePlugin({
-  id: "my-checks",
-  context: (target: Target) => ({
-    fileExists: (p: string) => target.fileExists(p),
-    readFile: (p: string) => target.readFile(p),
-  }),
-})
-  .defineRule({
-    id: "license-header",
-    domain: DOMAIN.SECURITY,
-    name: "source files have license header",
-    files: ["src"],
-    params: type({ header: "string" }),
-    test({ context, params }) {
-      const header = params?.header ?? "// Copyright";
-      const sample = context.readFile("src/index.ts");
-      if (!sample) return Status.pass("no src/index.ts — skipping");
-      return sample.includes(header)
-        ? Status.pass()
-        : Status.fail(`src/index.ts missing header "${header}"`);
-    },
-  });
-```
-
-```ts title="src/presets/acme.ts"
-import { definePreset } from "@adistack/conform";
-import { myChecks } from "@/plugins/my_checks.ts";
-import { biome } from "@/plugins/biome.ts";
-
-export default definePreset([myChecks, biome] as const)({
-  name: "acme",
-  description: "Acme org defaults",
-  rules: {
-    "my-checks/license-header": { header: "// Copyright Acme" },
-    "biome/dev-deps": "error",
+    "my-plugin/readme": "error",
+    "biome/dev-deps": "warn",
   },
 });
 ```
+
+- Save the file as `src/presets/acme.ts` and reference it with `preset: "acme"`.
+- The object form `definePreset({ name, description, plugins, rules })` is also accepted.
+
+## Use the preset
 
 ```ts title="conform.config.ts"
 import { defineConfig } from "@adistack/conform";
 
 export default defineConfig({
   preset: "acme",
-  rules: {
-    "my-checks/license-header": "off", // suppress in this repo
-  },
+  rules: { "my-plugin/readme": "off" },
 });
 ```
 
-## Gotchas
+## Common pitfalls
 
-- `domain` is required per rule — there is no plugin-level default.
-- `files` defaults to `[]`; empty means "not file-scoped" and groups under the domain header.
-- `level` is optional; `{ file_expressions: [...] }` without `level` is valid.
-- `pass` results are never coerced — a `level: "error"` override on a `pass` does nothing (intentional suppression).
-- Unknown `level` strings fail the rule with `Invalid severity "…"` (fail-closed, not ignored).
-- TypeScript must be `strict` + `verbatimModuleSyntax` + `noUncheckedIndexedAccess` — the codebase enforces it and the `typescript/compiler-options` rule checks it.
-
+- A `pass` result is never coerced. An `error` override only affects `warn` and `fail` results, which allows intentional suppression.
+- An unknown `level` string fails the rule. It is not ignored.
+- Rules must read files through Target. They must not use bare `fs`.
+- The project requires Bun and strict TypeScript with `verbatimModuleSyntax` enabled.

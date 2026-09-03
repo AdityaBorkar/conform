@@ -1,0 +1,93 @@
+---
+title: "Fix Drift"
+description: "Read a failure, fix your repository, and get back to green."
+icon: Hammer
+---
+
+# Fix Drift
+
+## 1. Run a check and see a failure
+
+```sh
+bunx conform check
+```
+
+```
+@adistack/conform — package preset
+
+Build & Tasks
+  
+    ✗ package-json/entry-point   no main, module, or exports field defined
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  61 passed · 0 warned · 1 failed
+```
+
+The exit code is 1, so CI stops here.
+
+## 2. Read the rule
+
+The rule ID is `package-json/entry-point`. It requires at least one of `main`, `module`, or `exports` in `package.json`.
+
+## 3. Fix the repository (do not just mute)
+
+The preferred fix is to correct the repository:
+
+```json title="package.json"
+{
+  "exports": { ".": "./src/index.ts" }
+}
+```
+
+Disabling the rule is a last resort. Only disable it when the rule genuinely does not apply:
+
+```ts
+rules: { "package-json/entry-point": "off" }
+```
+
+The guideline is simple: fix first and mute last.
+
+## 4. Run the check again
+
+```sh
+bunx conform check
+```
+
+```
+@adistack/conform — package preset
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  62 passed · 0 warned · 0 failed
+```
+
+The exit code is now 0, so the change is safe to ship.
+
+## Warn versus fail
+
+- `✗ fail` must be fixed now. It exits with code 1.
+- `⚠ warn` should be fixed later. It exits with code 2, which CI may allow.
+- `✓ pass` rows are hidden unless you pass `-v`.
+
+If you need to ship urgently, you can temporarily soften a failure:
+
+```ts
+rules: { "package-json/entry-point": "warn" }
+```
+
+Then fix the underlying problem promptly.
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Every rule passed. |
+| `1` | At least one rule failed, or `--json` was combined with `--group`. |
+| `2` | Only warnings, or `no-config`, `preset-not-found`, or monorepo errors. |
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `No conform.config.ts found` | The config file is missing | Create `conform.config.ts` |
+| `Preset 'x' not found` | The preset name is wrong | Use `package` |
+| `Invalid severity "…"` | The `level` value has a typo | Use only `off`, `warn`, or `error` |

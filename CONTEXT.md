@@ -5,20 +5,19 @@ CLI that checks a repository against a named Preset and reports Drift. Supports 
 ## Language
 
 **Preset**:
- Named collection of Plugins plus optional RuleOverrides (`StrictPresetRules` per-preset, `StrictRuleOverrides` globally). Lives in `src/presets/*.ts`. Composed via `definePreset` — curried `definePreset(plugins)(config)` (preferred, infers per-preset params) or object `definePreset({ name, description, plugins, rules? })`. Validated by `isValidPreset` requiring `name:string` + `description:string` + `plugins:array`.
+ Named collection of Plugins plus optional RuleOverrides. Lives in `src/presets/*.ts`.
  _Avoid_: Template, preset (lowercase alias)
 
 **Plugin**:
- Unit that groups related Rules. Declares `id` + `context: (target: Target) => T` and exposes multiple atomic Rules via `Plugin#defineRule`; each Rule declares its own `domain` (no plugin-level default). Rule IDs are namespaced `pluginId/ruleId`.
+ Unit that groups related Rules. Each Rule declares its own `domain`; Rule IDs are namespaced `pluginId/ruleId`.
  _Avoid_: RuleSet
 
 **Rule**:
- Atomic check. Must be defined via `Plugin#defineRule`; standalone `defineRule` does not exist. Declares `id`, `domain`, `files`, `description` (authoring field `name` → materialized `description`), `check` (`test({ context: T, params? })` at authoring), and optional arktype `params` (`paramsSchema` at runtime).
- _Avoid_: aiRule, kind, standalone rule
+ Atomic check defined via `Plugin#defineRule`. Declares `id`, `domain`, `files`, `description`, and optional params.
+ _Avoid_: standalone rule, kind
 
 **CheckResult**:
- Outcome returned by a Rule's `check`: `{ status, message? }` where `status` is `Severity`.
- _Avoid_: AiCheckResult
+ Outcome returned by a Rule: `{ status, message? }` where `status` is a `Severity`.
 
 **Status**:
  Helper that constructs a CheckResult: `Status.pass/warn/fail(message?)`.
@@ -26,74 +25,56 @@ CLI that checks a repository against a named Preset and reports Drift. Supports 
 **Severity**:
  Result status: `pass | warn | fail`.
 
-**RuleSeverity**:
- Override severity: `Severity | off | error` where `error` maps to `fail` and `off` skips the Rule. Unknown strings fail the rule with `Invalid severity "…"` (fail-closed).
+**RuleLevel**:
+ Override severity: `warn | off | error`, where `error` maps to `fail` and `off` skips the Rule.
+ _Avoid_: RuleSeverity
 
 **RuleConfig**:
- One override entry: `RuleLevel` string (`"off"|"warn"|"error"`) or flat object `{ level?: RuleLevel, ...params }` where `...params` (flattened, no `params` wrapper) is validated as Rule `params`; `level` optional.
+ One override entry: a `RuleLevel` string or a flat object `{ level?, ...params }` with `level` optional and no `params` wrapper.
 
 **RuleOverrides**:
- Map of Rule ID → RuleConfig that coerces non-pass results to the configured severity (pass stays pass, intentionally allowing suppression). Shares the same shape on Preset and on ConformConfig. Unknown severity values are fail-closed.
+ Map of Rule ID to `RuleConfig`. Coerces non-`pass` results to the configured severity; `pass` stays `pass`.
 
 **RuleRegistry**:
- Auto-inferred global map of known Rule IDs to their validated params types via `InferPresetParamMap<AllBuiltinPlugins>` where `AllBuiltinPlugins` is derived from the `@/plugins/index.ts` barrel (`_PluginModule` → `_BuiltinPluginUnion[]`). Single source of truth — adding `export { foo } from "./foo.ts"` to the barrel extends the registry without touching `src/types.ts`. Unknown keys fall back to `RuleConfig<unknown>`. Drives `StrictRuleOverrides` typing.
- _Avoid_: static hardcoded map of 2-3 IDs
+ Global map of known Rule IDs to their params types, auto-inferred from the `@/plugins/index.ts` barrel.
+ _Avoid_: hardcoded map
 
 **StrictRuleOverrides**:
- Global typed RuleOverrides via `RuleRegistry`: `{ [K in keyof RuleRegistry]?: RuleConfig<RuleRegistry[K]> } & Record<string, RuleConfig<unknown>>`. Used by `ConformConfig.rules` and `Preset.rules` before per-preset narrowing.
-
-**PresetRuleRegistry**:
- Per-preset registry derived from the preset's own plugins: `InferPresetParamMap<Ps>` for `Ps extends readonly AnyPlugin[]`. Local to the preset tuple, no global hardcoding.
+ Global typed `RuleOverrides` driven by `RuleRegistry`. Used by `ConformConfig.rules`.
 
 **StrictPresetRules**:
- Per-preset typed overrides via `PresetRuleRegistry<Ps>`: `{ [K in keyof PresetRuleRegistry<Ps>]?: RuleConfig<PresetRuleRegistry<Ps>[K]> } & { [K: string]: RuleConfig<unknown> }` for unknown IDs. Inferred by the curried `definePreset(plugins)(config)` form; object form also infers `Ps` as `const`.
+ Per-preset typed overrides inferred from the preset's own plugins. Inferred by the curried `definePreset(plugins)(config)` form.
 
 **Target**:
- Filesystem view rooted at a repository path. Wraps `fileExists`, `readFile`, `readJson` (JSONC-tolerant via `stripJsonComments` fallback), `packageJson` and is passed to each Plugin's `context` factory. Also available as `createTarget(path)`.
+ Filesystem view rooted at a repository path. Exposes `fileExists`, `readFile`, `readJson`, and `packageJson`.
 
 **Domain**:
- Human display group for a Rule, e.g. `Build & Tasks`, `Style & Validation`, `Dev Environment`. Constants in `src/plugins/utils/domain.ts` (`DOMAIN.*`).
+ Human display group for a Rule, e.g. `Build & Tasks`, `Style & Validation`. Constants in `DOMAIN`.
  _Avoid_: Group
 
 **Files**:
- File paths a Rule concerns; second-level TUI grouping key (`files.join(", ")`). Defaults to `[]`.
+ File paths a Rule concerns. Second-level display grouping key; defaults to `[]`.
 
 **RuleResult**:
  Persisted outcome of a Rule: `{ id, domain, files, description, status, message? }`.
 
 **ConformConfig**:
- Single-package repository's `conform.config.ts` shape: `{ preset: string, plugins?: Plugin[], rules?: StrictRuleOverrides }`. Created via `defineConfig`; validated by `isConformConfig` (`preset: string>0`). Missing/falsy `preset` → `no-config` (exit 2).
+ Single-package `conform.config.ts` shape: `{ preset, plugins?, rules? }`. Created via `defineConfig`.
 
 **MonorepoConfig**:
- Monorepo repository's `conform.config.ts` shape: `Record<string, ConformConfig>` — mapping of package directory (relative or absolute) → `ConformConfig`. Created via `defineMonorepoConfig`; validated by `isMonorepoConfig` (object without top-level `preset`, non-empty). Detected before `ConformConfig` via `loadRawConfig` + `isMonorepoConfig` dispatch in `check()`.
+ Monorepo `conform.config.ts` shape: mapping of package directory to `ConformConfig`. Created via `defineMonorepoConfig`.
 
 **ConformOutput**:
- Single-package reporter payload: `{ preset, path, results, summary, groupBy? }`. `results` are filtered by `verbose`; `summary` always counts all. `groupBy` only emitted when `"files"`.
+ Single-package reporter payload: `{ preset, path, results, summary, groupBy? }`.
 
 **MonorepoConformOutput**:
- Monorepo reporter payload: `{ path, outputs: ConformOutput[], summary }` plus optional `groupBy` envelope mirroring per-package `groupBy`. JSON is the stringified envelope; TUI is concatenated per-package blocks with `━━ <path> (<preset>) ━━` headers plus `Summary: N passed · N warned · N failed across M packages`.
-
-**MonorepoPackageResult**:
- Per-package monorepo result: `{ path, output: ConformOutput, rendered: string, hasFail, hasWarn }`.
+ Monorepo reporter payload: `{ path, outputs, summary }`.
 
 **GroupBy**:
- Reporter grouping mode: `domains` (default, domain → files) or `files` (flat by file).
+ Reporter grouping mode: `domains` (default) or `files`.
 
 **Drift**:
  Any `warn` or `fail` RuleResult; deviation of a repo from its Preset.
 
 **Engine**:
- Runner that dispatches monorepo vs single-package. Single-package: `loadConfig → presetResolver → mergePresetWithConfig → runChecks → renderTui/renderJson`. Monorepo: `loadRawConfig → isMonorepoConfig → loadAndResolveMonorepo → expandWorkspaces → resolveMonorepoPackages → (per-package) presetResolver → mergePresetWithConfig → buildPackageConformance → aggregate`. Flattens `preset.plugins[].rules`, applies RuleOverrides via `parseOverride`/`normalizeLevel` (`error`→`fail`, unknown → fail-closed without calling `check`), skips `off`, forwards flattened params (rest minus `level`) to `rule.check(targetPath, params?)` with validation in `Plugin.rules` (`validateParams` → `fail` `Invalid params: …` without calling `test`).
-
-**Resolver**:
- Function `presetResolver(name)` that resolves a preset name to a Preset by importing `src/presets/<name>.ts` or `src/presets/<name>/index.ts` from repo root (`resolve(import.meta.dir,"..","..")` + `join(packageRoot,"src","presets")`), `existsSync`-filtered candidates, `isValidPreset`-gated.
- _Avoid_: resolver
-
-**expandWorkspaces**:
- Utility `expandWorkspaces(rootDir)` that reads `package.json:workspaces` (array or `{ packages }`) and expands globs via `Bun.Glob` plus exact-path fallback, deduplicates, verifies `package.json` per package, and returns sorted absolute paths. Throws `No workspaces field` if missing/empty.
-
-**resolveMonorepoPackages**:
- Utility `resolveMonorepoPackages(rootDir, monorepoConfig, discovered)` that normalizes `MonorepoConfig` keys to absolute paths, throws `No preset/rules defined for workspace package "…"` for missing keys and `does not match any workspace package` for extraneous keys, validates each entry via `isConformConfig`, and returns an ordered `Map<string, ConformConfig>` in discovered order.
-
-**checkMonorepo**:
- Engine entry `checkMonorepo(rootDir, opts)` that orchestrates `loadAndResolveMonorepo` → per-package `presetResolver`/`mergePresetWithConfig`/`buildPackageConformance` → aggregated `MonorepoConformanceResult { outputs, packageResults, summary, hasFail, hasWarn, rendered }`. Errors map to codes `monorepo-no-workspaces` / `monorepo-unconfigured-package` / `monorepo-extraneous-package` / `monorepo-config-error` (all exit 2).
+ Runner that checks a target path and renders results, dispatching single-package vs monorepo.

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — 2026-08-24. Rewritten 2026-08-25 to reflect current `src/*` (9 plugins / 37 rules, auto-inferred `RuleRegistry`, curried `definePreset`).
+Accepted — 2026-08-24. Rewritten 2026-08-25 to reflect current `src/*` (9 plugins / 37 rules, auto-inferred `RuleRegistry`, curried `definePreset`). Amended 2026-09-03: 9 plugins / 62 rules after `github` split (see Amendment below).
 
 ## Context
 
@@ -12,7 +12,7 @@ History: 2026-08-24 removed standalone `defineRule` (rules always plugin-owned) 
 
 ## Decision
 
-- **Preset composes Plugins, not Rules directly.** `src/presets/*.ts` assemble `src/plugins/*` plugins. The canonical `package` preset (`src/presets/package.ts`) composes 9 plugins — `packageJson`, `biome`, `tsconfig_json`, `husky`, `docs`, `gitignore`, `github`, `zed`, `bun` — totalling 37 atomic rules.
+- **Preset composes Plugins, not Rules directly.** `src/presets/*.ts` assemble `src/plugins/*` plugins. The canonical `package` preset (`src/presets/package.ts`) composes 9 plugins — `packageJson`, `biome`, `tsconfig_json`, `husky`, `docs`, `gitignore`, `github`, `zed`, `bun` — totalling 62 atomic rules (`github` contributes 30 via `github/{actions,general,review,security,workflows}` submodules).
 - **Plugin owns context extraction (no domain on Plugin).** `Plugin<T>` is `new Plugin({ id, context })` (or `definePlugin`) — per-rule `domain` is required; no plugin-level domain or fallback. `files` is optional per-rule (default `[]`). Rules namespace to `pluginId/ruleId`; `paramsSchema` via arktype `params` is optional. Rules inside a plugin receive typed `context` via `test({ context: T, params?: P })`; `Target` (`src/utils/fs.ts`) is the FS view passed to `context`. All Rules are defined via `Plugin#defineRule`; no standalone `defineRule` exists.
 - **Overrides are oxc-style and typed — auto-inferred registry.** `RuleRegistry` is not a hardcoded map; it is `InferPresetParamMap<AllBuiltinPlugins>` where `AllBuiltinPlugins` is derived from the `@/plugins/index.ts` barrel (`_PluginModule` → `_BuiltinPluginUnion[]`). Adding `export { foo } from "./foo.ts"` to the barrel extends the registry without touching `src/types.ts`. `StrictRuleOverrides` is the global typed view (`RuleRegistry` + `Record<string, RuleConfig<unknown>>` for unknown IDs). Per-preset, `definePreset` is curried — `definePreset([p1, p2] as const)({ name, description, rules? })` captures `Ps` and infers `StrictPresetRules<Ps>` via `PresetRuleRegistry<Ps> = InferPresetParamMap<Ps>` (object form `definePreset({ name, description, plugins, rules? })` also infers `Ps` as `const`). Unknown rule IDs remain accepted as `RuleConfig<unknown>`. Overrides merge via `mergePresetWithConfig` (`src/api/engine.ts:134`): append `config.plugins`, shallow-merge `rules` (`{ ...preset.rules, ...config.rules }`), return original ref if unchanged.
 - **Engine coercion & validation.** `engine.ts` `normalizeLevel` maps `error`→`fail`; `off` skips; unknown severity → `fail` with `Invalid severity "…"` (fail-closed, without calling `check`); non-pass results are coerced to configured severity; `pass` stays `pass` (intentionally allowing suppression). Flat `{ level?: RuleLevel, ...params }` (or `RuleLevel` string) passes flattened params (rest minus `level`) validated against `paramsSchema` before `test` via `validateParams` (`src/api/plugin.ts:12`); `level` optional; invalid → `fail` with `Invalid params: …` without calling `test`.
@@ -45,3 +45,7 @@ History: 2026-08-24 removed standalone `defineRule` (rules always plugin-owned) 
 - ADR 001 — Code-based presets (still accepted).
 - ADR 002 — Atomic rules with grouped display (still accepted; grouping now `domain`+`files`).
 - ADR 003 — Deterministic + AI rules (superseded by this ADR).
+
+## Amendment 2026-09-03
+
+- `package` preset: 37 → 62 rules with no new top-level plugins. `github` grew from 5 workflow rules to 30 via `src/plugins/github/{actions,general,review,security,workflows}.ts` composition in `src/plugins/github.ts`. Per-plugin counts: `package_json` 8, `biome` 5, `typescript` 3, `husky` 4, `docs` 5, `gitignore` 2, `github` 30, `zed` 3, `bun` 2. See `docs/architecture.md`.

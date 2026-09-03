@@ -1,0 +1,87 @@
+---
+title: "Custom Check"
+description: "Build your own rule in five minutes with a plugin."
+icon: Sparkles
+---
+
+# Custom Check
+
+This example requires every repository to contain a `SECURITY.md` file with a contact email.
+
+## 1. Create a plugin file
+
+```ts title="my-plugin.ts"
+import { definePlugin, DOMAIN, Status } from "@adistack/conform";
+import type { Target } from "@adistack/conform";
+
+export const myPlugin = definePlugin({
+  id: "my-org",
+  context: (target: Target) => ({
+    readFile: (p: string) => target.readFile(p),
+  }),
+});
+
+myPlugin.defineRule({
+  id: "security-email",
+  domain: DOMAIN.SECURITY,
+  name: "SECURITY.md has email",
+  files: ["SECURITY.md"],
+  test({ context }) {
+    const text = context.readFile("SECURITY.md");
+    if (!text) return Status.fail("SECURITY.md missing");
+    return text.includes("@")
+      ? Status.pass()
+      : Status.fail("SECURITY.md has no contact email");
+  },
+});
+```
+
+## 2. Register it in the config
+
+```ts title="conform.config.ts"
+import { defineConfig } from "@adistack/conform";
+import { myPlugin } from "./my-plugin.ts";
+
+export default defineConfig({
+  preset: "package",
+  plugins: [myPlugin],
+  rules: { "my-org/security-email": "error" },
+});
+```
+
+## 3. Run the check
+
+```sh
+bunx conform check -v
+```
+
+```
+@adistack/conform — package preset
+
+Security & Governance
+  SECURITY.md
+    ✗ my-org/security-email   SECURITY.md missing
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  61 passed · 0 warned · 1 failed
+```
+
+Create the missing file, run the check again, and confirm it passes.
+
+## 4. Share it as a Preset
+
+If several repositories need the same rule, bundle it into a preset:
+
+```ts title="src/presets/acme.ts"
+import { definePreset } from "@adistack/conform";
+import { myPlugin } from "../plugins/my-plugin.ts";
+import { docs } from "@/plugins/docs.ts";
+
+export default definePreset([myPlugin, docs] as const)({
+  name: "acme",
+  description: "Acme defaults",
+  rules: { "my-org/security-email": "error" },
+});
+```
+
+Reference it with `preset: "acme"`. The full preset API is described in [Authoring](/authoring).

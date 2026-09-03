@@ -1,117 +1,112 @@
 ---
 title: "Presets"
-description: "Built-in Presets — the package preset in full (9 plugins, 37 rules)."
+description: "The built-in package preset: 9 plugins and 62 rules."
 icon: Layers
 ---
 
 # Presets
 
-Preset module `src/presets/package.ts:12` exported via `definePreset([...plugins] as const)({ name, description, rules })`. Resolved by `presetResolver` (`src/api/preset.ts:37`) from `src/presets/<name>.ts` or `src/presets/<name>/index.ts` relative to repo root (`resolve(import.meta.dir, "../..")`).
-
-Validation `isValidPreset` (`src/api/preset.ts:33`) requires `name: string`, `plugins: unknown[]`, optional `rules: object`.
-
----
-
-## `package`
-
-> Conformance rules for publishing an NPM package.
-
-Plugins (in order): `packageJson`, `biome`, `tsconfig_json`, `husky`, `docs`, `gitignore`, `github`, `zed`, `bun`.
-
-Shipped overrides (`src/presets/package.ts:25`):
-
-```ts
-rules: {
-  "gitignore/excludes":           { file_expressions: ["node_modules", ".env*", "*.env", "*.gen.ts"] },
-  "husky/hook":                   { hooks: [
-    { file: ".husky/pre-commit", contains: "bun run format" },
-    { file: ".husky/commit-msg", contains: 'bun commitlint --edit "$1"' },
-  ]},
-  "package-json/required-fields": { fields: ["license","name","author","contributors","repository","publishConfig","homepage","files","bugs","description","keywords","engines"] },
-}
-```
-
-Config `rules` shallow-merge over these per rule ID.
-
-### Rule table (37 rules)
-
-| Plugin | Rule ID | Domain | Files | Default severity | One-line |
-|---|---|---|---|---|---|
-| `package-json` | `structure` | Build & Tasks | — | fail / warn | `name/version/license/type=module/bugs` required; `description/engines/homepage/repository/sideEffects` recommended (warn) |
-| `package-json` | `entry-point` | Build & Tasks | — | `fail` | `main` / `module` / `exports` present (`fields` param, default all three) |
-| `package-json` | `build-script` | Build & Tasks | — | `fail` | `prepare` or `build` script (`scripts` param) |
-| `package-json` | `files-or-npmignore` | Build & Tasks | — | `warn` | `files` field or `.npmignore` (or `file_expressions`) |
-| `package-json` | `no-install-hooks` | Security & Governance | — | `fail` | no `preinstall/postinstall/install` scripts (supply-chain) |
-| `package-json` | `required-fields` | Build & Tasks | — | `fail` | `fields` from preset (override with `fields: string[]`) |
-| `package-json` | `typecheck` | Build & Tasks | — | `warn` | `typecheck` / `check:types` / `types` script |
-| `package-json` | `no-prepublish` | Build & Tasks | — | `fail` | no deprecated `prepublish` script (use `prepublishOnly`) |
-| `biome` | `dev-deps` | Style & Validation | — | `fail` | `@biomejs/biome` in `devDependencies` |
-| `biome` | `config-exists` | Style & Validation | `biome.json`, `biome.jsonc` | `fail` | `biome.json` or `biome.jsonc` exists (`file_expressions`) |
-| `biome` | `config` | Style & Validation | `biome.json` | `fail` | `biome.json` matches expected config (strips `$schema`, deep-equals `EXPECTED_BIOME_CONFIG`; `config` param shallow-merges) |
-| `biome` | `lint-script` | Style & Validation | — | `fail` | `lint` or `check` runs `biome` (`file_expressions`, `contains`) |
-| `biome` | `format-script` | Style & Validation | — | `warn` | `format` / `check:format` / `check:lint` runs `biome` |
-| `typescript` | `deps` | Code Quality | — | `fail` | `typescript` in `dev` or `peerDependencies` |
-| `typescript` | `tsconfig` | Code Quality | `tsconfig.json` | `fail` | `tsconfig.json` exists |
-| `typescript` | `compiler-options` | Code Quality | `tsconfig.json` | `fail` | `compilerOptions` matches `EXPECTED_COMPILER_OPTIONS` (allow list + extra-key check; `compilerOptions` param shallow-merges) |
-| `husky` | `dev-deps` | Dev Environment | — | `fail` | `husky` in `devDependencies` |
-| `husky` | `hooks-dir` | Dev Environment | — | `fail` | `.husky/` directory exists (`file_expressions`) |
-| `husky` | `prepare-script` | Dev Environment | — | `fail` | `prepare` script calls `husky` (`file_expressions`, `contains`) |
-| `husky` | `hook` | Dev Environment | `.husky/pre-commit`, `.husky/commit-msg` | `fail` | `hooks: { file, contains }[]` all match (preset: two hooks) |
-| `docs` | `readme` | Documentation | — | `fail` | `README.md` exists and non-empty |
-| `docs` | `changelog` | Documentation | — | `warn` | `CHANGELOG.md` / `CHANGELOG` / `HISTORY.md` (`file_expressions`) |
-| `docs` | `contributing` | Documentation | — | `warn` | `CONTRIBUTING.md` or `.github/CONTRIBUTING.md` |
-| `docs` | `license` | Security & Governance | — | `fail` | `LICENSE` / `LICENSE.md` / `LICENSE.txt` |
-| `docs` | `security-md` | Security & Governance | — | `warn` | `SECURITY.md` or `.github/SECURITY.md` |
-| `gitignore` | `exists` | Dev Environment | — | `fail` | `.gitignore` exists |
-| `gitignore` | `excludes` | Dev Environment | — | `fail` | `.gitignore` contains `file_expressions` (preset: 4 patterns); missing yields `fail` with per-pattern details |
-| `github` | `ci-workflow` | GitHub Configuration | — | `fail` | `.github/workflows/{ci,test,build,check}.{yml,yaml}` |
-| `github` | `release-workflow` | GitHub Configuration | — | `warn` | `.github/workflows/{release,publish,deploy}.{yml,yaml}` |
-| `github` | `ci-lint` | GitHub Configuration | — | `warn` | CI workflow contains `biome` / `lint` / `check:lint` (skips if no CI file; `file_expressions` + `contains`) |
-| `github` | `ci-typecheck` | GitHub Configuration | — | `warn` | CI workflow contains `tsc` / `typecheck` / `check:types` |
-| `github` | `dependabot` | GitHub Configuration | — | `warn` | `.github/dependabot.{yml,yaml}` or `renovate.json` / `.renovaterc` |
-| `zed` | `dir` | Dev Environment | `.zed` | `fail` | `.zed/` directory exists (`file_expressions`) |
-| `zed` | `settings-exists` | Dev Environment | `.zed/settings.json` | `fail` | `.zed/settings.json` exists |
-| `zed` | `settings` | Dev Environment | `.zed/settings.json` | `fail` | settings match `EXPECTED_ZED_SETTINGS` (deep-equals; params shallow-merge) |
-| `bun` | `bunfig-exists` | Build & Tasks | `bunfig.toml` | `fail` | `bunfig.toml` exists (`file_expressions`) |
-| `bun` | `bunfig-content` | Build & Tasks | `bunfig.toml` | `fail` | `bunfig.toml` regex checks for `telemetry/logLevel/console.depth/run.bun/run.silent/install.*` (params: `telemetry`, `logLevel`, `consoleDepth`, `runBun`, `runSilent`, `installMinimumReleaseAge`, `installSaveTextLockfile`, `installIgnoreScripts`) |
-
-> Severity shown is the rule's intrinsic `Status.*` call. Coercion via `rules` overrides (including the preset's own) can change `fail ↔ warn` — `pass` is never rewritten. `off` skips entirely.
-
-### Using the preset
+Conform ships with one built-in preset: `package`. It checks everything an npm package needs.
 
 ```ts title="conform.config.ts"
 import { defineConfig } from "@adistack/conform";
 
+export default defineConfig({ preset: "package" });
+```
+
+## The `package` preset
+
+The preset contains 9 plugins and 62 rules. It pre-tunes 7 rules (`biome/config`, `bun/bunfig-content`, `gitignore/excludes`, `husky/hook`, `package-json/required-fields`, `typescript/compiler-options`, and `zed/settings`). Your `rules` in `conform.config.ts` override these defaults per rule ID.
+
+## All 62 rules
+
+The severity column shows what each rule reports by itself. You can change it with an override.
+
+| Rule | Check |
+|---|---|
+| `package-json/structure` | Are name, version, and license present? |
+| `package-json/entry-point` | Is at least one of main, module, or exports defined? |
+| `package-json/build-script` | Is a prepare or build script defined? |
+| `package-json/files-or-npmignore` | Is a files field or .npmignore present? (warn) |
+| `package-json/no-install-hooks` | Are install hooks such as preinstall absent? |
+| `package-json/required-fields` | Are all configured required fields present? |
+| `package-json/typecheck` | Is a typecheck script defined? (warn) |
+| `package-json/no-prepublish` | Is the deprecated prepublish script absent? |
+| `biome/dev-deps` | Is Biome in devDependencies? |
+| `biome/config-exists` | Is biome.json or biome.jsonc present? |
+| `biome/config` | Does biome.json match the expected config? |
+| `biome/lint-script` | Does a lint script run Biome? |
+| `biome/format-script` | Does a format script run Biome? (warn) |
+| `typescript/deps` | Is TypeScript in devDependencies or peerDependencies? |
+| `typescript/tsconfig` | Is tsconfig.json present? |
+| `typescript/compiler-options` | Do the compiler options match the expected strict set? |
+| `husky/dev-deps` | Is Husky in devDependencies? |
+| `husky/hooks-dir` | Is the .husky/ directory present? |
+| `husky/prepare-script` | Does the prepare script call Husky? |
+| `husky/hook` | Does each hook file contain the expected text? |
+| `docs/readme` | Is README.md present and non-empty? |
+| `docs/changelog` | Is a CHANGELOG file present? (warn) |
+| `docs/contributing` | Is a CONTRIBUTING file present? (warn) |
+| `docs/license` | Is a LICENSE file present? |
+| `docs/security-md` | Is a SECURITY.md file present? (warn) |
+| `gitignore/exists` | Is .gitignore present? |
+| `gitignore/excludes` | Does .gitignore hide node_modules and .env files? |
+| `github/ci-workflow` | Is a CI workflow file present? |
+| `github/release-workflow` | Is a release workflow file present? (warn) |
+| `github/ci-lint` | Does CI run lint? (warn) |
+| `github/ci-typecheck` | Does CI run typecheck? (warn) |
+| `github/dependabot` | Is Dependabot or Renovate configured? (warn) |
+| `github/codeowners` | Is CODEOWNERS present? Requires a token. |
+| `github/pr-checks` | Are PR checks green? Requires a token. |
+| `github/releases-immutable` | Are releases immutable? Requires a token. |
+| `github/default-branch` | Is the default branch correct? Requires a token. |
+| `github/social-preview` | Is a social preview image set? Requires a token. |
+| `github/core-features` | Are issues on and wiki/discussions off? Requires a token. |
+| `github/issue-and-pr-templates` | Are issue and PR templates present? |
+| `github/merge-commit-strategy` | Is the merge-commit strategy correct? Requires a token. |
+| `github/squash-merge-strategy` | Is the squash strategy correct? Requires a token. |
+| `github/rebase-merge-disabled` | Is rebase merging disabled? Requires a token. |
+| `github/auto-merge-enabled` | Is auto-merge enabled? Requires a token. |
+| `github/delete-head-branches` | Are head branches deleted after merge? Requires a token. |
+| `github/web-signoff-not-required` | Is web sign-off not required? Requires a token. |
+| `github/environments` | Do the deployment environments exist? Requires a token. |
+| `github/manual-settings` | Some settings can only be verified by hand in the GitHub UI. |
+| `github/actions-policy` | Is the Actions policy locked down? Requires a token. |
+| `github/actions-sha-pinning` | Is SHA pinning required for third-party Actions? Requires a token. |
+| `github/actions-retention` | Is artifact and log retention configured? Requires a token. |
+| `github/actions-fork-approval` | Is approval required for fork PRs? Requires a token. |
+| `github/actions-workflow-permissions` | Are default workflow permissions locked down? Requires a token. |
+| `github/private-vulnerability-reporting` | Is private vulnerability reporting enabled? Requires a token. |
+| `github/dependency-graph` | Is the dependency graph enabled? Requires a token. |
+| `github/dependabot-alerts` | Are Dependabot alerts enabled? Requires a token. |
+| `github/secret-protection` | Is secret scanning enabled? Requires a token. |
+| `github/push-protection` | Is push protection enabled? Requires a token. |
+| `zed/dir` | Is the .zed/ directory present? |
+| `zed/settings-exists` | Is .zed/settings.json present? |
+| `zed/settings` | Do the Zed settings match the expected values? |
+| `bun/bunfig-exists` | Is bunfig.toml present? |
+| `bun/bunfig-content` | Does bunfig.toml contain the expected values? |
+
+## Tune the preset
+
+```ts
 export default defineConfig({
   preset: "package",
   rules: {
-    "github/dependabot": "off",                       // not needed
-    "biome/format-script": "warn",                    // soften
-    "package-json/required-fields": {                 // extend required fields
-      fields: ["license", "name", "author", "engines"]
-    }
-  }
+    "github/dependabot": "off",
+    "biome/format-script": "warn",
+  },
 });
 ```
 
-## Authoring a custom preset
+To build your own preset, see [Authoring](/authoring).
 
-See [Authoring](/authoring) for `definePreset` (curried + object form) and `PresetWithPlugins<Ps>` typing. In brief:
+## GitHub token
 
-```ts title="src/presets/acme.ts"
-import { definePreset } from "@adistack/conform";
-import { biome } from "@/plugins/biome.ts";
-import { husky } from "@/plugins/husky.ts";
+Many `github/*` rules call the GitHub API. They require a token:
 
-export default definePreset([biome, husky] as const)({
-  name: "acme",
-  description: "Acme org defaults",
-  rules: {
-    "biome/dev-deps": "error",
-    "husky/hook": { hooks: [{ file: ".husky/pre-commit", contains: "bun run format" }] }
-  }
-});
+```sh
+export CONFORM_GITHUB_API_TOKEN="ghp_..."
 ```
 
-Referenced as `preset: "acme"` in `conform.config.ts`.
-
+Without a token, those rules fail. Either set the token or disable the rules you do not need.
